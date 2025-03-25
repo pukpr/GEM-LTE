@@ -3,3 +3,13 @@
 
 # Ada Library Information
 *.ali
+
+# Execs
+*.exe
+
+# runtime parameter files
+*.par
+*.resp
+
+
+
