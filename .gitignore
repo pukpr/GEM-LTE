@@ -4,6 +4,13 @@
 # Ada Library Information
 *.ali
 
+# GNAT auxiliary comple info
+*.stderr
+*.stdout
+*.bexch
+b__*.ad?
+*.cgpr
+
 # Execs
 *.exe
 
@@ -11,5 +18,8 @@
 *.par
 *.resp
 
-
+dlod_compare.csv
+dlod_ref.dat
+lt.exe.parms
+lte_results.csv
 
