@@ -1,4 +1,3 @@
-with Ada.Integer_Text_IO;
 with Ada.Long_Float_Text_IO;
 with Text_IO;
 with Ada.Numerics.Long_Elementary_Functions;
@@ -14,11 +13,9 @@ package body GEM.LTE.Primitives is
    Every_N_Line : constant Integer := GEM.Getenv("EVERY", 1);
    Magnify : constant Integer := GEM.Getenv("MAG", 1);
    Clip : constant LONG_FLOAT := GEM.Getenv("CLIP", 0.0);
-   Skip_Impulse : constant Integer := GEM.Getenv("SKIP", -1);
    Start_Year : constant LONG_FLOAT := GEM.Getenv("CC_START", 0.0);
    End_Year : constant LONG_FLOAT := GEM.Getenv("CC_END", 999999999.0);
    Sinc: constant LONG_FLOAT := GEM.Getenv("SINC", 0.0);
-   --LTE_abs: constant Boolean := GEM.Getenv("ABS", FALSE);
    Modulation : constant Boolean := GEM.Getenv("MODULATION", TRUE); -- FALSE
 
 
@@ -159,15 +156,8 @@ package body GEM.LTE.Primitives is
          Res(I).Value := Raw(I-1).Value
            + lagA*Res(I-1).Value
            + lagB*Res(I-2).Value
-           -- + lagC*Res(I-3).Value;
-           - Ramp + FB2; -- Long_Float'Copy_Sign(lagC, Res(I-1).Value);
+           - Ramp + FB2; 
       end loop;
-      -- Backwards integration
-      --  for I in reverse Raw'First .. Start_Index-1 loop
-      --     Res(I).Value := (Res(I+3).Value - Raw(I+1).Value
-      --       - lagA*Res(I+2).Value
-      --       - lagB*Res(I+1).Value)/lagC;
-      --  end loop;
       for I in Raw'First+4 .. Start_Index-1 loop
          if Modulation then
             Ramp := Long_Float'Copy_Sign(lagC, Res(I-1).Value)*(1.0-cos(2.0*pi*Raw(I).Date));
@@ -177,8 +167,7 @@ package body GEM.LTE.Primitives is
          Res(I).Value := Raw(I-1).Value
            + lagA*Res(I-1).Value
            + lagB*Res(I-2).Value
-           -- + lagC*Res(I-3).Value;
-           + Ramp; -- Long_Float'Copy_Sign(lagC, Res(I-1).Value);
+           + Ramp;
       end loop;
       return Res;
    end IIR;
@@ -220,7 +209,6 @@ package body GEM.LTE.Primitives is
       Pi : Long_Float := Ada.Numerics.Pi;
       Time : Long_Float;
       Res : Data_Pairs := Template;
-      -- Cumulative : Long_Float := 0.0;
       One : constant Long_Float := 1.0;
       Partition : constant Integer := 7; -- 4
    begin
@@ -260,15 +248,9 @@ package body GEM.LTE.Primitives is
                   end if;
                end;
             end loop;
-            -- Cumulative := Cumulative + cos(Scaling + TF1);
-            -- Res(I) := (Time, cos(Scaling + TF1)*(Integ + TF2) );
             Res(I) := (Time, TF1 + TF2 + Scaling * TF1 * TF2 );
          end;
       end loop;
-      --Cumulative := Cumulative/Long_Float(Template'Length);
-      --for I in Template'Range loop
-      --   Res(I).Value := Res(I).Value - Cumulative*Integ;
-      --end loop;
      return Res;
    end Tide_Sum_Diff;
 
@@ -281,14 +263,9 @@ package body GEM.LTE.Primitives is
                       Year_Len : in Long_Float := Year_Length;
                       Integ: in Long_Float := 0.0
                       ) return Data_Pairs is
-      --Res2, 
       Res1 : Data_Pairs := Template;
    begin
       Res1 := Tide_Sum_Diff (Template, Constituents, Periods, 0.0, Scaling, Cos_Phase, Year_Len, Integ);
-      --Res2 := Tide_Sum_Diff (Template, Constituents, Periods, Ref_Time, Scaling, Cos_Phase, Year_Len, Integ);
-      --for I in Res1'Range loop
-      --   Res1(I).Value := Res1(I).Value - Res2(I).Value;
-      --end loop;
       return Res1;
    end Tide_Sum;
 
@@ -314,11 +291,7 @@ package body GEM.LTE.Primitives is
                   M : GEM.LTE.Amp_Phase renames Amp_Phase(J);
                   SW : Long_Float;
                begin
-                  --if LTE_Abs then
-                  --   SW := Sin(2.0*Pi*Wave_Numbers(J)*abs(Res(I).Value) + M.Phase);
-                  --else
-                     SW := Sin(2.0*Pi*Wave_Numbers(J)*Res(I).Value + M.Phase)  * exp(Res(I).Value*Third);
-                  --end if;
+                  SW := Sin(2.0*Pi*Wave_Numbers(J)*Res(I).Value + M.Phase)  * exp(Res(I).Value*Third);
                   if SW < 0.0 then
                      SW := -(abs SW) ** NonLin;
                   else
@@ -378,7 +351,6 @@ package body GEM.LTE.Primitives is
         end if;
       end loop;
       J := Y'First + (Start-X'First);
-      --for I in X'Range loop
       for I in Start .. Stop loop
          -- sum of elements of array X.
          if X(I).Date > Start_Year and X(I).Date < End_Year
@@ -417,9 +389,7 @@ package body GEM.LTE.Primitives is
    -- improve fits to time-series with many zero crossings, as the precise
    -- amplitude is not critical
    function Xing (X, Y : in Data_Pairs) return Long_Float is
-      N : Integer := X'Length;
       sum_absXY, sum_XY : Long_Float := 0.0;
-      use Ada.Numerics.Long_Elementary_Functions;
       J : Integer := Y'First;
    begin
       for I in X'Range loop
@@ -435,7 +405,6 @@ package body GEM.LTE.Primitives is
 
   function RMS (X, Y : in Data_Pairs;
                 Ref, Offset : in Long_Float) return Long_Float is
-      N : Integer := X'Length;
       sum_XY : Long_Float := 0.0;
       use Ada.Numerics.Long_Elementary_Functions;
       J : Integer := Y'First;
@@ -445,33 +414,8 @@ package body GEM.LTE.Primitives is
         sum_XY := sum_XY + (X(i).Value - Y(j).Value + Offset)**2;
         J := J + 1;
       end loop;
-      -- return 1.0 - sqrt(sum_XY)/Ref;
       return 1.0/(1.0+sqrt(sum_XY)/Ref);
    end RMS;
-
-  function CID_invert(X, Y : in Data_Pairs) return Long_Float is
-      sum_XY, sum_X, sum_Y : Long_Float := 0.0;
-      use Ada.Numerics.Long_Elementary_Functions;
-      J : Integer := Y'First;
-      The_CID : Long_Float;
-   begin
-      for I in X'Range loop
-        -- sum of (X[i] - Y[i])^2
-        sum_XY := sum_XY + (X(i).Value - Y(j).Value)**2;
-        J := J + 1;
-      end loop;
-
-      for I in X'First .. X'Last-1 loop
-        sum_X := sum_X + (X(i).Value - X(i+1).Value)**2;
-      end loop;
-
-      for I in Y'First .. Y'Last-1 loop
-        sum_Y := sum_Y + (Y(i).Value - Y(i+1).Value)**2;
-      end loop;
-
-      The_CID := sum_XY * Long_Float'Max(Sum_X, Sum_Y) / Long_Float'Min(Sum_X, Sum_Y);  
-      return 1.0/Sqrt(The_CID);
-   end CID_invert;
 
   function CID(X, Y : in Data_Pairs) return Long_Float is
       -- sum_XY, 
@@ -526,7 +470,6 @@ package body GEM.LTE.Primitives is
             DTW_Previous := DTW_Current;
         end loop;
 
-        --return 1.0/DTW_Current(N);
         return DTW_Current(N);
     end Distance;
 
@@ -542,14 +485,13 @@ package body GEM.LTE.Primitives is
    begin
     Max := Distance(Neg(Y), Y, Window_Size);
     return (Max-Distance(X, Y, Window_Size))/Max;
-    --return Distance(X, Y, Window_Size)
    end DTW_Distance;
 
 
    Pi : constant Long_Float := Ada.Numerics.Pi;
-   Mult : constant Long_Float := GEM.Getenv("FMULT", 1.006);  -- 1.003 1.012 1.02 --1.05
-   Step : constant Long_Float := GEM.Getenv("FSTEP", 0.18); -- 0.04  -- 0.02  ==0.18
-   F_Start : constant Long_Float := GEM.Getenv("FSTART", 0.1); -- 0.3; -- 0.01; --1.0
+   Mult : constant Long_Float := GEM.Getenv("FMULT", 1.006);
+   Step : constant Long_Float := GEM.Getenv("FSTEP", 0.18);
+   F_Start : constant Long_Float := GEM.Getenv("FSTART", 0.1);
    F_End : constant Long_Float := 1000.0;
 
    function Min_Entropy_RMS (X, Y : in Data_Pairs) return Long_Float is
@@ -582,51 +524,6 @@ package body GEM.LTE.Primitives is
       return Value;
    end Min_Entropy_RMS;
 
-
-   procedure LTE_Power_Spectrum (Forcing, Model, Data : in Data_Pairs;
-                             Model_Spectrum, Data_Spectrum : out Data_Pairs) is
-     use Ada.Numerics.Long_Elementary_Functions;
-     Model_S : Data_Pairs(Model'Range);
-     Data_S : Data_Pairs(Data'Range);
-     Value, Sum : Long_Float := 0.0;
-     F : Long_Float := F_Start;
-     S, C : Long_Float; -- cumulative
-     N : Integer := 1;
-   begin
-      for J in Data'Range loop
-         S := 0.0;
-         C := 0.0;
-         for I in Data'First+8 .. Data'Last loop  -- remove Init value
-            S := S + Sin(2.0*Pi*F*Forcing(I).Value)*Data(I).Value;
-            C := C + Cos(2.0*Pi*F*Forcing(I).Value)*Data(I).Value;
-         end loop;
-         Data_S(J).Date := F;
-         Data_S(J).Value := (S*S + C*C);
-         if Linear_Step then
-            F := F + Step;
-         else
-            F := F*Mult;
-         end if;
-      end loop;
-      F := F_Start;
-      for J in Model'Range loop
-         S := 0.0;
-         C := 0.0;
-         for I in Model'First+8 .. Model'Last loop  -- remove Init value
-            S := S + Sin(2.0*Pi*F*Forcing(I).Value)*Model(I).Value;
-            C := C + Cos(2.0*Pi*F*Forcing(I).Value)*Model(I).Value;
-         end loop;
-         Model_S(J).Date := F;
-         Model_S(J).Value := (S*S + C*C);
-         if Linear_Step then
-            F := F + Step;
-         else
-            F := F*Mult;
-         end if;
-      end loop;
-      Model_Spectrum := Model_S;
-      Data_Spectrum := Data_S;
-   end LTE_Power_Spectrum;
 
    procedure ME_Power_Spectrum (Forcing, Model, Data : in Data_Pairs;
                                 Model_Spectrum, Data_Spectrum : out Data_Pairs;
@@ -701,9 +598,7 @@ package body GEM.LTE.Primitives is
          return Min_Entropy_RMS (X, Y);
       else
          ME_Power_Spectrum (X, FD, LD, FD, LD, RMS, False);
-         return -- RMS *
-           CC(Filter9Point(FD), Filter9Point(LD));
-         -- return CC(Window(FD,2), Window(LD,2));
+         return CC(Filter9Point(FD), Filter9Point(LD));
       end if;
    end Min_Entropy_Power_Spectrum;
 
@@ -857,20 +752,13 @@ package body GEM.LTE.Primitives is
       return Res;
    end Window;
 
-   -- Regression procedures
---   package MLR is new Gem.Matrices (
---      Element_Type => Long_Float,
---      Zero => 0.0,
---      One => 1.0);
---   subtype Vector is MLR.Vector;
---   subtype Matrix is MLR.Matrix;
 
+   -- Multiple Linear Regression types
 
    package MLR is new Ada.Numerics.Generic_Real_Arrays (Real => Long_Float);
    subtype Vector is MLR.Real_Vector;
    subtype Matrix is MLR.Real_Matrix;
 
-   -- Multiple Linear Regression types
 
    function To_Matrix
      (Source        : Vector;
@@ -1017,9 +905,6 @@ package body GEM.LTE.Primitives is
    begin
       for I in Raw'First + 1 .. Raw'Last - 1 loop -- 4
          Res(I).Value :=
-          -- 1.0/3.0 * ( 0.25*(Raw(I-4).Value + Raw(I-3).Value + Raw(I-2).Value)+
-          --             0.5*(Raw(I-1).Value + Raw(I).Value + Raw(I+1).Value)+
-          --             0.25*(Raw(I+2).Value + Raw(I+3).Value + Raw(I+4).Value) );
             0.25*(+ Raw(I-1).Value)+
                        0.5*(+ Raw(I).Value)+
                        0.25*( + Raw(I+1).Value)  ;

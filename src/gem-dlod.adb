@@ -1,11 +1,9 @@
 with Text_IO;
 with GEM.LTE.Primitives;
-with Ada.Numerics;
 
 function GEM.dLOD (File_Name : in String) return Gem.LTE.Long_Periods_Amp_Phase is
    use GEM.LTE, GEM.LTE.Primitives;
    D : Data_Pairs := Make_Data(File_Name);
-   Y : constant Long_Float := Year_Length;
    First, Last : Integer;
    Singular : Boolean;
    Forcing : Data_Pairs := D;
@@ -16,7 +14,6 @@ function GEM.dLOD (File_Name : in String) return Gem.LTE.Long_Periods_Amp_Phase 
    Level, K0, Trend, Accel : Long_Float := 0.0;
    Last_Time : Long_Float;
 begin
-   --DBLT(4) :=  Gem.LTE.LP(9);
    First := D'First;
    Last := D'Last;
    Text_IO.Put_Line("records from " & First'Img & " ... " & Last'Img);
@@ -64,21 +61,8 @@ begin
                 K0 => K0,
                 Trend => 0.0,
                 NonLin => 1.0);
-   --  for I in DBLT'Range loop -- to frequency
-   --     DBLT(I) := GEM.LTE.Year_Length/DBLT(I);
-   --  end loop;
-   --  Model := Tide_Sum(Template => D,
-   --                 Constituents => DBLTAP,
-   --                 Periods => DBLT,
-   --                 Ref_Time => 0.0,
-   --                 Scaling => 1.0,
-   --                 Cos_Phase => False);
    Put(CC(D,Model), "=CC " );
    Put(Year_Length, "=Yr", True);
-
---   for I in Model'Range loop
---         Text_IO.Put_Line(Model(I).Date'Img & " " & Model(I).Value'Img & " " & D(I).Value'Img);
---   end loop;
 
    return DBLTAP;
 

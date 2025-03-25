@@ -44,12 +44,7 @@ package body GEM is
       for EV in Options loop
          if OL(EV).Name /= null and then
            OL(EV).Name.all = Name then
-            --  if Str = OL(EV).Value.all then
-            --     null;
-            --  else
-            --     Text_IO.Put_Line("DIFFERS " & Name & " " & Str);
             return OL(EV).Value.all;
-            -- end if;
          end if;
       end loop;
       -- Otherwise return the Env Var
@@ -174,18 +169,5 @@ package body GEM is
 begin
 
    Read_Response_File;
-
---  src/enso_opt.adb:      D.B.LT(1) := GEM.Getenv("LT1", D.B.LT(1));
---  src/enso_opt.adb:      D.B.LT(2) := GEM.Getenv("LT2", D.B.LT(2));
---  src/enso_opt.adb:      D.B.LT(3) := GEM.Getenv("LT3", D.B.LT(3));
---  src/enso_opt.adb:      D.B.LT(4) := GEM.Getenv("LT4", D.B.LT(4));
---  src/enso_opt.adb:      D.B.Offset := GEM.Getenv("OFFSET", D.B.Offset);
---  src/enso_opt.adb:      D.B.shiftT := GEM.Getenv("SHIFTT", D.B.shiftT);
---  src/enso_opt.adb:      D.B.ImpA := GEM.Getenv("IMPaVALUE", D.B.ImpA);
---  src/enso_opt.adb:      D.B.ImpB := GEM.Getenv("IMPbVALUE", D.B.ImpB);
---  src/enso_opt.adb:      D.B.mP   := GEM.Getenv("MP",        D.B.mP);
---  src/enso_opt.adb:      D.B.Init := GEM.Getenv("INIT",      D.B.Init);
---  src/gem-lte-primitives-solution.adb:      Ref_Time : Long_Float := GEM.Getenv("REF_TIME", Data_Records(Data_Records'First).Date);
-
 
 end GEM;

@@ -1,6 +1,3 @@
-with Ada.Text_IO;
-with GNAT.OS_Lib;
-
 package body GEM.LTE is
 
    Year_in_Days : constant := 365.2422484;  -- 365.241237718675000;
@@ -33,7 +30,6 @@ package body GEM.LTE is
    begin
       if Value /= 0.0 then
          Year_Dynamic_Correction := Value;
-         --Year_Correction := Value;
          for I in List'Range loop
             List(I) := Doodson(I, Doodson_Args);
          end loop;

@@ -1,4 +1,3 @@
-with Ada.Command_Line;
 with System.Task_Info;
 with GEM.LTE.Primitives.Solution;
 with GEM.LTE.Primitives.Shared;
@@ -10,7 +9,6 @@ with Ada.Calendar;
 procedure ENSO_Opt is  -- gprbuild lte.gpr enso_opt -largs -Wl,--stack=40000000
    N :  Positive := Gem.Getenv("NUMBER_OF_PROCESSORS",  System.Task_Info.Number_Of_Processors);
    dLOD_dat : String := Gem.Getenv("DLOD_DAT",  "../dlod3.dat"); 
-   --N :  Positive := System.Task_Info.Number_Of_Processors;
    Ch : Character;
    Avail : Boolean;
    T : Ada.Calendar.Time;
@@ -36,8 +34,8 @@ procedure ENSO_Opt is  -- gprbuild lte.gpr enso_opt -largs -Wl,--stack=40000000
          LT     => GEM.LTE.LTM,
          Offset => 0.0,
          bg     => 0.0,
-         ImpA   => 1.0, -- 9.0
-         ImpB   => 0.0, ---9.0,
+         ImpA   => 1.0,
+         ImpB   => 0.0,
          impC  =>  0.0,
          delA  =>  0.0,
          delB  =>  0.0,
@@ -55,7 +53,6 @@ procedure ENSO_Opt is  -- gprbuild lte.gpr enso_opt -largs -Wl,--stack=40000000
       C => (others => 0)
      );
 
-   -- Ref : GEM.LTE.Long_Periods_Amp_Phase := GEM.LTE.LPAP;
 begin
    declare
       AP : Gem.LTE.Long_Periods_Amp_Phase  :=  GEM.dLOD(dLOD_dat);
@@ -73,31 +70,13 @@ begin
            D.B.LPAP(I).Amplitude := Ap(I).Amplitude * (1.0 + dLOD_Scale*D.A.LP(I));
            D.B.LPAP(I).Phase := Ap(I).Phase;
          end loop;
-         --D.B.LPAP(28).Amplitude := D.B.LPAP(28).Amplitude/10.0;
-         --GEM.LTE.LPRef(28).Amplitude := D.B.LPAP(28).Amplitude;
       else -- update
          Text_IO.Put_Line("Referencing dLOD");
          for I in D.B.LPAP'Range loop
            GEM.LTE.LPRef(I).Amplitude := Ap(I).Amplitude;
            GEM.LTE.LPRef(I).Phase := Ap(I).Phase;
          end loop;
-         --GEM.LTE.LPRef(28).Amplitude := AP(28).Amplitude/10.0;
       end if;
-      --  D.B.LT(1) := GEM.Getenv("LT1", D.B.LT(1));
-      --  D.B.LT(2) := GEM.Getenv("LT2", D.B.LT(2));
-      --  D.B.LT(3) := GEM.Getenv("LT3", D.B.LT(3));
-      --  D.B.LT(4) := GEM.Getenv("LT4", D.B.LT(4));
-      --  D.B.LT(5) := GEM.Getenv("LT5", D.B.LT(5));
-      --  D.B.LT(6) := GEM.Getenv("LT6", D.B.LT(6));
-      --  D.B.Offset := GEM.Getenv("OFFSET", D.B.Offset);
-      --  D.B.bg :=    GEM.Getenv("BG", D.B.bg);
-      --  D.B.shiftT := GEM.Getenv("SHIFTT", D.B.shiftT);
-      --  D.B.ImpA := GEM.Getenv("IMPAVALUE", D.B.ImpA);
-      --  D.B.ImpB := GEM.Getenv("IMPBVALUE", D.B.ImpB);
-      --  D.B.mA   := GEM.Getenv("MA",        D.B.mA);
-      --  D.B.mP   := GEM.Getenv("MP",        D.B.mP);
-      --  D.B.Init := GEM.Getenv("INIT",      D.B.Init);
-      --
       GEM.LTE.Primitives.Shared.Put(D);
 
    end;
@@ -108,13 +87,11 @@ begin
 
 
    for I in 1..Integer'Last loop
-      -- delay 1.0;
       -- The call to Status is blocking
       declare
          S : String := GEM.LTE.Primitives.Solution.Status;
       begin
          if I mod GEM.LTE.Primitives.Solution.Check_Every_N_Loops = 0 then
-         --if I mod 100 = 0 then
             Text_IO.Put_Line(S & " #" & I'Img);
          end if;
          exit when GEM.LTE.Primitives.Halted;

@@ -211,7 +211,6 @@ package body GEM.LTE.Primitives.Shared is
       Str : String(1..100);
       N : Integer;
       Floats : Fs(1..3);
-      Index : Integer := 1;
    begin
       Ada.Text_IO.Get_Line(FT, Str, N);
       Floats := S_to_LF (Str(1..N));
