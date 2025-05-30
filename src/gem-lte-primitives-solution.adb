@@ -22,6 +22,7 @@ package body GEM.LTE.Primitives.Solution is
    Delay_Difference : constant LONG_FLOAT:=  GEM.Getenv("DD", 0.0); -- 1.0 = Full
    Diff_Delay_N : constant INTEGER :=  GEM.Getenv("DDN", 23);
    Full_Wave_Rectification : constant Boolean :=  GEM.Getenv("FULL_WAVE", FALSE);
+   Ext_Forcing : constant STRING := GEM.Getenv("EFF", "");
 
    function CompareRef(LP : in Long_Periods;
                        LPRef, AP : in Long_Periods_Amp_Phase) return Long_Float is
@@ -66,23 +67,25 @@ package body GEM.LTE.Primitives.Solution is
    -- Map task threads to multicore processors if available
    task type Thread(CPU : System.Multiprocessors.CPU;
                     N_Tides, N_Modulations : Integer) is
-     pragma CPU (CPU);
+      pragma CPU (CPU);
+      entry Start;
    end Thread;
    type Thread_Access is access Thread;
 
    -- Start the task threads with a remote handler to cleanly stopping mechanism
    procedure Start (N_Tides, N_Modulations : in Integer;
                     Number_of_Threads : Positive := 1) is
-      TA : Thread_Access;
+      TA : array(1..Number_of_Threads) of Thread_Access;
       use System.Multiprocessors;
       Num : constant Positive := System.Task_Info.Number_Of_Processors;
       CPU : Positive;
    begin
-     GNAT.Ctrl_C.Install_Handler (Handler => GEM.LTE.Primitives.Stop'Access);
+      GNAT.Ctrl_C.Install_Handler (Handler => GEM.LTE.Primitives.Stop'Access);
       for I in 1..Number_of_Threads loop
          CPU := I mod Num + 1;
-         TA := new Thread (CPU=>CPU_Range(CPU), N_Tides=>N_Tides, N_Modulations=>N_Modulations);
-         delay 1.0; -- let them gradually start up
+         TA(I) := new Thread (CPU=>CPU_Range(CPU), N_Tides=>N_Tides, N_Modulations=>N_Modulations);
+         TA(I).Start;
+         delay 0.1; -- let them gradually start up
       end loop;
    end Start;
 
@@ -211,6 +214,7 @@ package body GEM.LTE.Primitives.Solution is
       Monitor.Client(ID);
       Text_IO.Put_Line(Name & " for Thread #" & ID'Img & Thread.CPU'Img);
       -- Assume default for File_Name
+      accept Start;
       loop
          Dipole_Model(N_Tides=>Thread.N_Tides,
                       N_Modulations=>Thread.N_Modulations,
@@ -238,6 +242,7 @@ package body GEM.LTE.Primitives.Solution is
       package LEF renames Ada.Numerics.Long_Elementary_Functions;
 
       Data_Records : Data_Pairs := Make_Data(File_Name);
+      Data_Ext : Data_Pairs := Make_Data(Ext_Forcing);
       DR : Data_Pairs := Data_Records;
 
       function Impulse (Time : Long_Float) return Long_Float;
@@ -269,7 +274,12 @@ package body GEM.LTE.Primitives.Solution is
       DTW_Metric : constant Boolean := GEM.Getenv("METRIC", "CC") = "DTW";
       CID_Metric : constant Boolean := GEM.Getenv("METRIC", "CC") = "CID";
       CTW_Metric : constant Boolean := GEM.Getenv("METRIC", "CC") = "CTW";
+      DER_Metric : constant Boolean := GEM.Getenv("METRIC", "CC") = "DER";
+      EMD_Metric : constant Boolean := GEM.Getenv("METRIC", "CC") = "EMD";
       DTW_CC : constant Boolean := GEM.Getenv("METRIC", "CC") = "DC";
+      EMD_CC : constant Boolean := GEM.Getenv("METRIC", "CC") = "EC";
+      EMD_DER : constant Boolean := GEM.Getenv("METRIC", "CC") = "ED";
+      SEM_Metric : constant Boolean := GEM.Getenv("METRIC", "CC") = "SEM";
       DTW_Window : constant Integer :=  GEM.Getenv("DTW", 1); -- 100 is about ~5% of the time-series length
       Sin_Impulse : constant Boolean := GEM.Getenv("IMPULSE", "DELTA") = "SIN";
       Sin_Power : constant Integer := GEM.Getenv("SINPOW", 3); --posituve
@@ -292,6 +302,8 @@ package body GEM.LTE.Primitives.Solution is
       Derivative : constant Boolean := GEM.Getenv("DER", FALSE);
       Partial : constant Boolean := GEM.Getenv("PART", TRUE);  -- FALSE
       ImpMonth : constant Integer := GEM.Getenv("IMPMONTH", 0);
+      Clamp : constant Boolean := GEM.Getenv("CLAMP", FALSE); 
+      Vary_Initial : constant Boolean := GEM.Getenv("VI", FALSE); 
       RMS_Data : Long_Float := 0.0;
 
       function Metric (X, Y, Z : in Data_Pairs) return Long_Float is
@@ -303,14 +315,24 @@ package body GEM.LTE.Primitives.Solution is
             return CC(X,Y)*CID(X,Y);
          elsif ZC_Metric then
             return Xing(X,Y);
+         elsif DER_Metric then
+            return DER_CC(X,Y);
          elsif FT_Metric then
             return FT_CC(X,Y,Z);
          elsif DTW_Metric then
             return DTW_Distance(X,Y, DTW_Window ); 
+         elsif EMD_Metric then
+            return EMD(X,Y); 
          elsif DTW_CC then
             return Ada.Numerics.Long_Elementary_Functions.SQRT(DTW_Distance(X,Y, DTW_Window ) * CC(X,Y)); 
          elsif CTW_Metric then
             return Ada.Numerics.Long_Elementary_Functions.SQRT(long_float'Max(DTW_Distance(X,Y, DTW_Window),0.0) * CID(X,Y)) ; 
+         elsif EMD_CC then
+            return (EMD(X,Y) + CC(X,Y))*0.5; 
+         elsif EMD_DER then
+            return (EMD(X,Y, Derivative => TRUE) + CC(X,Y))*0.5; 
+         elsif SEM_Metric then
+            return Scaled_Error_Metric(X,Y);  -- Y should be data
          elsif MLR_On then
             return CC(X,Y) * Min_Entropy_Power_Spectrum(Z,Y);
          elsif Is_Minimum_Entropy then
@@ -368,15 +390,19 @@ package body GEM.LTE.Primitives.Solution is
 
       function Impulse_Sin (Time : Long_Float) return Long_Float is
          Pi : Long_Float := Ada.Numerics.Pi;
+         NPow : Long_Float := abs D.B.DelA;
          Value : Long_Float := 0.0;
          use Ada.Numerics.Long_Elementary_Functions;
       begin
-         Value := COS(4.0*Pi*(Time+D.B.ImpB)); --4.0
+         Value := COS(Pi*(Time+D.B.ImpB)); --4.0
          if Sin_Power = 1 then
-            Value := D.B.ImpA*(abs(Value))**(D.B.ImpC); -- all positive
+            Value := (abs(COS(Pi*(Time-D.B.DelB))))**(NPow) -
+                     D.B.Asym*(abs(COS(Pi*(Time-D.B.DelB-0.5))))**(NPow); 
          elsif Sin_Power = 2 then
-            Value := COS(4.0*Pi*(Time+D.B.ImpB/2.0));
-            Value := Impulse_Delta(Time);
+            Value := (abs(COS(0.5*Pi*(Time-D.B.DelB))))**(NPow) -
+                     D.B.Asym*(abs(COS(0.5*Pi*(Time-D.B.DelB-1.0))))**(NPow); 
+            --Value := COS(4.0*Pi*(Time+D.B.ImpB/2.0));
+            --Value := Impulse_Delta(Time);
          elsif Sin_Power < 0 then
             Value := D.B.ImpA*Value*(abs(Value))**(D.B.ImpC-1.0);
          else
@@ -401,11 +427,14 @@ package body GEM.LTE.Primitives.Solution is
                         Polarity : Long_Float := 1.0) return Data_Pairs is
       M : Data_Pairs := Model;
       Pi : Long_Float := Ada.Numerics.Pi;
-      aTwoPi : Long_Float := D.B.IR *2.0*Pi;
+      Value : Long_Float := 0.0;
       use Ada.Numerics.Long_Elementary_Functions;
    begin
+      if not Clamp and Ext_Forcing = "" then
+         Value := D.B.ImpA;
+      end if;
       for I in Model'Range loop
-            M(I).Value := M(I).Value + Polarity*D.B.ImpA*Cos(aTwoPi*M(I).Date + D.B.ImpB)
+            M(I).Value := M(I).Value + Polarity*Value*Cos(2.0*Pi*D.B.IR*M(I).Date + D.B.ImpB)
                                      + Polarity*D.B.Ann1*Cos(2.0*pi*M(I).Date + D.B.Ann2)
                                      + Polarity*D.B.Sem1*Cos(4.0*pi*M(I).Date + D.B.Sem2); 
       end loop;
@@ -494,7 +523,8 @@ package body GEM.LTE.Primitives.Solution is
       Pareto_Start : Positive;
       Accel : Long_Float;
       LagDelay : Long_Float;
-
+      Ramp : Long_Float := 0.0;
+      Keep_Initial_Value, Init_Value0 : Long_Float := 0.0;
    begin
       for I in First .. Last loop
          RMS_Data := RMS_Data + Data_Records(I).Value * Data_Records(I).Value;
@@ -510,6 +540,7 @@ package body GEM.LTE.Primitives.Solution is
       Text_IO.Put_Line("Catchup mode enabled:" & Boolean'Image(Catchup) );
       Keep := Set;
       Set0 := Set;
+      Init_Value0 := D.B.Init;
 
       for I in 1 .. Harms'Length loop
          exit when D.C(I) = 0;
@@ -529,18 +560,24 @@ package body GEM.LTE.Primitives.Solution is
 
          if Year_Trim then
             GEM.LTE.Year_Adjustment(D.B.Year, D.A.LP); -- should be a protected call?
+         else
+            Ramp := D.B.Year;
          end if;
          Impulses := Impulse_Amplify(
                             Raw     => Tide_Sum(Template     => Data_Records,
                                                 Constituents => D.B.LPAP,
                                                 Periods      => D.A.LP,
-                                                Ref_Time     => D.B.IR, 
+                                                Ref_Time     => 0.0, 
                                                 Scaling      => 0.0,
                                                 Year_Len     => Year_Length,
-                                                Integ        => 0.0
+                                                Integ        => 0.0,
+                                                Ext_Forcing  => Data_Ext,
+                                                Ext_Factor   => D.B.ImpA,
+                                                Ext_Phase    => D.B.ImpB,
+                                                Ext_Amp      => D.B.IR
                                                ),
                                      Offset => 0.0, 
-                                     Ramp => 0.0,
+                                     Ramp => Ramp,
                                      Start => Data_Records(Data_Records'First).Date);
 
          Forcing := IIR( Raw => Impulses,
@@ -638,7 +675,7 @@ package body GEM.LTE.Primitives.Solution is
                          Trend => Secular_Trend,
                          Accel => Accel,
                          NonLin => NonLin,
-                         Third => D.B.bg);  -- D.LT GEM.LTE.LT0
+                         Third => D.B.bg); 
             if Monotonic_Increase then
                Secular_Trend := abs Secular_Trend;
                Accel := abs Accel;
@@ -660,10 +697,6 @@ package body GEM.LTE.Primitives.Solution is
                 end loop;
             end if;
 
-            Model := Annual_Add(Model);
-
-         end if;
-
          if Diff_Delay_N > 0 then -- Delay_Difference > 0.0 then
             for I in reverse Model'First + Diff_Delay_N .. Model'Last loop
                if D.B.Offset /= 0.0 then
@@ -673,7 +706,17 @@ package body GEM.LTE.Primitives.Solution is
                end if;
             end loop;
          end if;
+               
+            Model := Annual_Add(Model);
+            --if Clamp then
+            --   for I in Model'Range loop
+            --      Model(I).Value := D.B.ImpA*Ada.Numerics.Long_Elementary_Functions.Sin(D.B.IR*Model(I).Value+ D.B.ImpB);
+            --   end loop;
+            --end if;
+         end if;
 
+            -- Diff Delay was here
+            
          if Filter9Pt > 0 then
             for F in 1..Filter9Pt loop
                Model := Filter9Point(Model);
@@ -752,8 +795,12 @@ package body GEM.LTE.Primitives.Solution is
             Prior_Best_CC := CorrCoeff;
          else
             -- Go back to starting point (Keep) if local max not retained
-            Set := Keep;
-            Harms := Harms_Keep;
+            if Vary_Initial then
+               D.B.Init := Keep_Initial_Value;
+            else
+               Set := Keep;
+               Harms := Harms_Keep;
+            end if;
          end if;
 
          if Singular or ((not Best) and Counter > Maximum_Loops and Percentage < Threshold) then
@@ -777,6 +824,9 @@ package body GEM.LTE.Primitives.Solution is
          else
             Spread := Spread_Min + Spread_Max*(1.0-LEF.Cos(Progress_Cycle/Spread_Cycle));
          end if;
+         if Vary_Initial then
+            Walker.Markov(D.B.Init, Keep_Initial_Value, Spread, Init_Value0);
+         else
          if Lock_Short_Tidal then
             declare
                DBLAP : constant Amp_Phases := D.B.LPAP;
@@ -798,13 +848,15 @@ package body GEM.LTE.Primitives.Solution is
          else
             Walker.Markov(Set, Keep, Spread, Set0);
          end if;
-         Walker.Random_Harmonic(Harms, Harms_Keep);
+            Walker.Random_Harmonic(Harms, Harms_Keep);
+        end if;
 
       end loop;
       Monitor.Stop;
       if Best_Client = ID then
 
 
+         -- Text_IO.Put_Line("### " & File_Name);
          -- Walker.Dump(Keep); -- Print results of last best evaluation,
          GEM.LTE.Primitives.Shared.Dump(DKeep);
 
@@ -839,7 +891,8 @@ package body GEM.LTE.Primitives.Solution is
          end if;
 
          CorrCoeff := CompareRef(D.A.LP, LPRef, D.B.LPAP);
-         Put(CorrCoeff, ":dLOD:");
+         Put(CorrCoeff, ":dLOD:   ");
+         Put(Year_Length, ":Yr: " & File_Name);
 
       else
          null; -- Text_IO.Put_Line("Exited " & ID'Img);

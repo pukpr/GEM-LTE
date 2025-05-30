@@ -60,7 +60,9 @@ begin
 
       Text_IO.Put_Line(N'Img & " processors available, timeout=" & Cycle'Img);
       GEM.LTE.Primitives.Shared.Load(D); -- if available
-      GEM.LTE.Year_Adjustment(D.B.Year, D.A.LP); -- should be a protected call?
+      if GEM.Getenv("YTRIM", FALSE) then
+         GEM.LTE.Year_Adjustment(D.B.Year, D.A.LP); -- should be a protected call?
+      end if;
       Text_IO.Put_Line("YA=" & D.B.Year'Img);
       if GEM.Command_Line_Option_Exists("r") or not GEM.Getenv("DLOD_REF", FALSE) then
          Text_IO.Put_Line("Loading dLOD");

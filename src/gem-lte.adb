@@ -19,7 +19,7 @@ package body GEM.LTE is
       else
          return 1.0/
         (Long_Float(D(I).s) / Tropical +
-         Long_Float(D(I).h) / Year_Length +
+         (Long_Float(D(I).h)*D(I).Period) / Year_Length +
          Long_Float(D(I).p) / p +
            Long_Float(D(I).N) / N );
       end if;

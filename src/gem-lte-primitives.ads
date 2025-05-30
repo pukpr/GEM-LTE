@@ -5,7 +5,8 @@ package GEM.LTE.Primitives is
          Date, Value : Long_Float;
       end record;
 
-   type Data_Pairs is array (Positive range <>) of Pair;
+   type Data_Pairs is array (Integer range <>) of Pair;
+   Empty_Data : constant Data_Pairs(1..0) := (1..0 => (0.0,0.0));
 
    -- corresponding to a climate index such as ENSO
    function Make_Data (Name : in String) return Data_Pairs;
@@ -43,7 +44,11 @@ package GEM.LTE.Primitives is
                       Scaling : in Long_Float := 1.0;
                       Cos_Phase : in Boolean := True;
                       Year_Len : in Long_Float := Year_Length;
-                      Integ: in Long_Float := 0.0
+                      Integ : in Long_Float := 0.0;
+                      Ext_Forcing : in Data_Pairs := Empty_Data;
+                      Ext_Factor  : in Long_Float := 0.0;
+                      Ext_Phase  : in Long_Float := 0.0;
+                      Ext_Amp  : in Long_Float := 0.0
                       ) return Data_Pairs;
 
 
@@ -86,12 +91,20 @@ package GEM.LTE.Primitives is
    -- Zero-crossing metric
    function Xing (X, Y : in Data_Pairs) return Long_Float;
 
+   -- Derivative CC
+   function DER_CC (Model, Data: in Data_Pairs) return LONG_FLOAT;
+
    -- Dynamic Time Warp, Sakoe_Chiba_Optimized
    function DTW_Distance(X, Y: in Data_Pairs; Window_Size: Positive) return Long_Float;
+
+   -- Earth-Mover Distance metric/Wasserstein
+   function EMD (X, Y : in Data_Pairs; Derivative : in Boolean := FALSE) return Long_Float;
 
    -- RMS
    function RMS (X, Y : in Data_Pairs;
                  Ref, Offset : in Long_Float) return Long_Float;
+   -- similar to RMS
+   function Scaled_Error_Metric (X, Y : in Data_Pairs) return Long_Float;
 
    -- Correlation coefficient on spectrum
    function FT_CC (Model, Data, Forcing : in Data_Pairs) return Long_Float;

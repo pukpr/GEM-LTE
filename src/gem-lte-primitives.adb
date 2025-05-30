@@ -17,6 +17,7 @@ package body GEM.LTE.Primitives is
    End_Year : constant LONG_FLOAT := GEM.Getenv("CC_END", 999999999.0);
    Sinc: constant LONG_FLOAT := GEM.Getenv("SINC", 0.0);
    Modulation : constant Boolean := GEM.Getenv("MODULATION", TRUE); -- FALSE
+   Ealign : constant Integer := GEM.Getenv("EALIGN", 24);
 
 
    function Is_Minimum_Entropy return Boolean is
@@ -61,6 +62,9 @@ package body GEM.LTE.Primitives is
       Data  : Text_IO.File_Type;
       Count : Integer :=0;
    begin
+      if Name = "" then
+         return 0;
+      end if;
       Text_IO.Open(File => Data,
                    Mode => Text_IO.In_File,
                    Name => Name);
@@ -84,6 +88,9 @@ package body GEM.LTE.Primitives is
       Arr                   : Data_Pairs(1..Lines);
       Val : Long_Float;
    begin
+      if Lines = 0 then
+         return Arr;
+      end if;
       Text_IO.Open(File => Data,
                    Mode => Text_IO.In_File,
                    Name => Name);
@@ -191,7 +198,7 @@ package body GEM.LTE.Primitives is
       Res : Data_Pairs := Raw;
    begin
       for I in Raw'Range loop
-         Res(I).Value := Offset + Ramp*(Raw(I).Date-Start) + Raw(I).Value * Impulse(Raw(I).Date);
+         Res(I).Value := Offset + Raw(I).Value * Impulse(Raw(I).Date + Ramp*(Raw(I).Date-Start));
       end loop;
       return Res;
    end;
@@ -204,14 +211,21 @@ package body GEM.LTE.Primitives is
                       Scaling : in Long_Float := 1.0;
                       Cos_Phase : in Boolean := True;
                       Year_Len : in Long_Float := Year_Length;
-                      Integ: in Long_Float := 0.0
+                      Integ: in Long_Float := 0.0;
+                      Ext_Forcing : in Data_Pairs := Empty_Data;
+                      Ext_Factor  : in Long_Float := 0.0;
+                      Ext_Phase  : in Long_Float := 0.0;
+                      Ext_Amp  : in Long_Float := 0.0
                       ) return Data_Pairs is
       Pi : Long_Float := Ada.Numerics.Pi;
       Time : Long_Float;
       Res : Data_Pairs := Template;
       One : constant Long_Float := 1.0;
       Partition : constant Integer := 7; -- 4
+      Pad : Integer;
+      pragma Unreferenced (Integ);
    begin
+      Pad := Integer(abs Ext_Factor*1000.0) mod EAlign;
       for I in Template'Range loop
          Time := Template(I).Date + Ref_Time;
          declare
@@ -249,6 +263,21 @@ package body GEM.LTE.Primitives is
                end;
             end loop;
             Res(I) := (Time, TF1 + TF2 + Scaling * TF1 * TF2 );
+            if Ext_Forcing /= Empty_Data then
+               for I in Res'First+Pad+1 .. Res'Last-Pad loop
+                  -- Res(I).Value := Res(I).Value + Ext_Factor * Ext_Forcing(I-2).Value + Ext_Phase * Ext_Forcing(I-1).Value;
+                  --Res(I).Value := Res(I).Value + Ext_Factor * (Ext_Forcing(I-12).Value + Ext_Forcing(I-11).Value + Ext_Forcing(I-10).Value  
+                  --                                             + Ext_Forcing(I-9).Value + Ext_Forcing(I-8).Value + Ext_Forcing(I-7).Value  
+                  --                                             + Ext_Forcing(I-6).Value + Ext_Forcing(I-5).Value + Ext_Forcing(I-4).Value  
+                  --                                             + Ext_Forcing(I-3).Value + Ext_Forcing(I-2).Value + Ext_Forcing(I-1).Value) 
+                  --  + Ext_Phase * Ext_Forcing(I).Value;
+                  if Ext_Factor > 0.0 then
+                     Res(I).Value := Res(I).Value + Ext_Phase*Ext_Forcing(I+Pad).Value + Ext_Amp*Ext_Forcing(I+Pad-1).Value; 
+                  else
+                     Res(I).Value := Res(I).Value + Ext_Phase*Ext_Forcing(I-Pad).Value + Ext_Amp*Ext_Forcing(I-Pad-1).Value; 
+                  end if;
+               end loop;
+            end if;
          end;
       end loop;
      return Res;
@@ -261,11 +290,16 @@ package body GEM.LTE.Primitives is
                       Scaling : in Long_Float := 1.0;
                       Cos_Phase : in Boolean := True;
                       Year_Len : in Long_Float := Year_Length;
-                      Integ: in Long_Float := 0.0
+                      Integ: in Long_Float := 0.0;
+                      Ext_Forcing : in Data_Pairs := Empty_Data;
+                      Ext_Factor  : in Long_Float := 0.0;
+                      Ext_Phase  : in Long_Float := 0.0;
+                      Ext_Amp  : in Long_Float := 0.0
                       ) return Data_Pairs is
       Res1 : Data_Pairs := Template;
+      pragma Unreferenced (Ref_Time);
    begin
-      Res1 := Tide_Sum_Diff (Template, Constituents, Periods, 0.0, Scaling, Cos_Phase, Year_Len, Integ);
+      Res1 := Tide_Sum_Diff (Template, Constituents, Periods, 0.0, Scaling, Cos_Phase, Year_Len, Integ, Ext_Forcing, Ext_Factor, Ext_Phase, Ext_Amp);
       return Res1;
    end Tide_Sum;
 
@@ -317,6 +351,7 @@ package body GEM.LTE.Primitives is
 
    -- some of the values may not be modifiesd so this is used to identify them
    function Is_Fixed (Value : in Long_Float) return Boolean is
+      pragma Unreferenced (Value);
    begin
       return False;
    end Is_Fixed;
@@ -402,6 +437,20 @@ package body GEM.LTE.Primitives is
       return sum_XY / sum_absXY;
    end Xing;
 
+   function Diff (Raw : in Data_Pairs) return Data_Pairs is
+      Res : Data_Pairs := Raw;
+   begin
+      Res(Raw'First).Value := 0.0;
+      for I in Raw'First + 1 .. Raw'Last loop
+         Res(I).Value := Raw(I).Value - Raw(I-1).Value;
+      end loop;
+      return Res;
+   end Diff;
+   
+   function DER_CC (Model, Data: in Data_Pairs) return LONG_FLOAT is
+   begin
+      return CC (X => Diff(Model), Y => Diff(Data));
+   end DER_CC;
 
   function RMS (X, Y : in Data_Pairs;
                 Ref, Offset : in Long_Float) return Long_Float is
@@ -486,8 +535,115 @@ package body GEM.LTE.Primitives is
     Max := Distance(Neg(Y), Y, Window_Size);
     return (Max-Distance(X, Y, Window_Size))/Max;
    end DTW_Distance;
+   
+   procedure Sort(Arr : in out Data_Pairs) is
+      Temp : Long_Float;
+      Swapped : Boolean;
+   begin
+      for I in Arr'First..Arr'Last-1 loop
+         Swapped := False;
+         for J in Arr'First..Arr'Last-I loop
+            if Arr(J).Value > Arr(J+1).Value then
+               Temp := Arr(J).Value;
+               Arr(J).Value := Arr(J+1).Value;
+               Arr(J+1).Value := Temp;
+               Swapped := True;
+            end if;
+         end loop;
+         exit when not Swapped;
+      end loop;
+   end Sort;
 
+function EMD (X, Y : in Data_Pairs; Derivative : in Boolean := FALSE) return Long_Float is
 
+   function Wasserstein1(Y1, Y2 : Data_Pairs) return Long_Float is
+      Sorted_Y1 : Data_Pairs := Y1;
+      Sorted_Y2 : Data_Pairs := Y2;
+      Distance : Long_Float := 0.0;
+   begin
+      -- Sort both arrays
+      Sort(Sorted_Y1);
+      Sort(Sorted_Y2);
+
+      -- Compute W1 distance (for equal-length arrays)
+      for I in Y1'Range loop
+         Distance := Distance + abs(Sorted_Y1(I).Value - Sorted_Y2(I).Value);
+      end loop;
+
+      return Distance / Long_Float(Y1'Length);
+   end Wasserstein1;
+
+begin
+   if Derivative then
+      return 1.0/(1.0+Wasserstein1(Diff(X), Diff(Y)));
+   else
+      return 1.0/(1.0+Wasserstein1(X, Y));
+   end if;
+end EMD;
+
+   function Median(Arr : in Data_Pairs) return Long_Float is
+      Temp : Data_Pairs := Arr;
+   begin
+      Sort(Temp);
+      return Temp((Arr'Last-Arr'First)/2 + Arr'First).Value;
+   end Median;
+   
+   function Mean(Arr : in Data_Pairs; Absolute : in Boolean := False) return Long_Float is
+      Temp : Long_Float := 0.0;
+   begin
+      for I in Arr'Range loop
+         if Absolute then
+            Temp := Temp + abs Arr(I).Value;
+         else
+            Temp := Temp + Arr(I).Value;
+         end if;            
+      end loop;
+      return Temp/Long_Float(Arr'Length);
+   end Mean;
+   
+function Scaled_Error_Metric (X, Y : in Data_Pairs) return Long_Float is
+
+   -- Function to compute the Median Absolute Deviation (MAD)
+   function Compute_MAD(Y : Data_Pairs) return Long_Float is
+      Median_Y : constant Long_Float := Median(Y);
+      Deviations : Data_Pairs := Y;
+   begin
+      for I in Y'Range loop
+         Deviations(I).Value := abs(Y(I).Value - Median_Y);
+      end loop;
+      return Median(Deviations);
+   end Compute_MAD;
+
+   -- Function to compute the global-scale
+   function Compute_Global_Scale(Y : Data_Pairs; Alpha : Long_Float := 0.01; Epsilon : Long_Float := 1.0e-10) return Long_Float is
+      MAD_Y : constant Long_Float := Compute_MAD(Y);
+      Mean_Abs_Y : constant Long_Float := Mean(Y, TRUE);
+      Scaled_Mean : constant Long_Float := Alpha * (if Mean_Abs_Y > Epsilon then Mean_Abs_Y else Epsilon);
+   begin
+      return Long_Float'Max(MAD_Y, Scaled_Mean);
+   end Compute_Global_Scale;
+
+   -- Function to compute the Score
+   function Compute_Score(X, Y : Data_Pairs; Alpha : Long_Float := 0.01) return Long_Float is
+      Global_Scale : constant Long_Float := Compute_Global_Scale(Y, Alpha);
+      Sum : Long_Float := 0.0;
+   begin
+      for I in Y'Range loop
+         declare
+            Error : constant Long_Float := X(I).value - Y(I).Value;
+            Scale : constant Long_Float := Long_Float'Max(Alpha * abs(Y(I).Value), Global_Scale);
+         begin
+            Sum := Sum + (Error ** 2) / (Scale ** 2);
+         end;
+      end loop;
+      return Sum / Long_Float(Y'Length);
+   end Compute_Score;
+
+   Alpha : constant Long_Float := 0.01;
+begin
+   return 1.0/(1.0+Compute_Score(X, Y, Alpha));
+end Scaled_Error_Metric;
+   
    Pi : constant Long_Float := Ada.Numerics.Pi;
    Mult : constant Long_Float := GEM.Getenv("FMULT", 1.006);
    Step : constant Long_Float := GEM.Getenv("FSTEP", 0.18);
@@ -614,7 +770,6 @@ package body GEM.LTE.Primitives is
       Data_S := Window(Data_S,2);
       return CC(Model_S, Data_S);
    end FT_CC;
-
 
    --
    procedure Dump (Model, Data : in Data_Pairs;

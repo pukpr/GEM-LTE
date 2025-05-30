@@ -12,11 +12,7 @@ package body GEM is
                     SCALING, SINPOW, SPLIT_LOW, SPLIT_TRAINING, SPREAD_CYCLE,
                     SPREAD_MIN, SPREAD_MAX, STARTING_METRIC, STEP, THRESHOLD,
                     THRESHOLD_ACTION, TRAIN_END, TRAIN_START, TREND, YEAR, F9,
-                    DECAY, FMULT, FSTART, LOCKF, R2M, SYM, YTRIM, NONLIN,
-                    -- typically temporary overrides
-                    LT1, LT2, LT3, LT4, LT5, LT6,
-                    OFFSET, SHIFTT, IMPAVALUE, IMPBVALUE,
-                    MA, MP, INIT, REF_TIME, BG
+                    DECAY, FMULT, FSTART, LOCKF, R2M, SYM, YTRIM, NONLIN
                    );
 
    type Option_Pair is
