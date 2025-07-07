@@ -13,7 +13,9 @@ package GEM.LTE is
 --   Anomalistic : constant Long_Float := 27.55454988;
 
    Draconic : constant Long_Float := 27.212_220_815;
+   --Draconic : constant Long_Float := 27.212_0;
    Tropical : constant Long_Float := 27.321_661_554; -- 27.32166155;
+ --Tropical : constant Long_Float := 27.321_582_252;
    Anomalistic : constant Long_Float := 27.554_549_886;
 
 
@@ -54,7 +56,7 @@ package GEM.LTE is
        ------ (1, 0, 0, 2.0, 0.0), --A   (3, 0,-1, 1.0, 0.0)  (3, 0,-3, 0.0, 0.0), -- (2, 0,-1, 0.0, 0.0),
        (0, 0, 0, 1.0, 1.0), --! (3, 0,-1, 0.0, 0.0),
       --(0, 0, 0, 10.23, 0.0), --
-       (2, 0, 2, 2.0, 1.0), --!!! (0, -1, 1, 0.0, 1.0), -- (2, 0,-1, 0.0, 0.0),
+       (0, 0, 2, 0.0, 1.0),                          --- (2, 0, 2, 2.0, 1.0), --!!! (0, -1, 1, 0.0, 1.0), -- (2, 0,-1, 0.0, 0.0),
        (1, 0, 1, 0.0, 1.0),  -- 26.985(1, 0, 1, 1.0, 0.0),  -- (1, 0, 1, 0.0, 0.0),
        (0, -2, 2, 0.0, 1.0),
 
@@ -75,7 +77,8 @@ package GEM.LTE is
        --  (3, 0, 0, 0.0, 0.0)
        --
       --(0, 0, 0, 6.36, 0.0), --
-      (0, 0, 4, 0.0, 1.0), -- (0, 2, -1, 2.0, 0.0),  --next
+      --(0, 0, 4, 0.0, 1.0), -- (0, 2, -1, 2.0, 0.0),  --next
+      (1, 0, 1, 1.0, 1.0), -- (0, 2, -1, 2.0, 0.0),  --next
        -- qbo(1, 0, 1, -1.0, 0.0),
 
        (0, 0, 1, -1.0, 1.0), --(0, 1, 0, 0.0, 0.5),
@@ -85,7 +88,16 @@ package GEM.LTE is
        --(4, 0, 0, 0.0, 0.0),
       --(0, 0, 0, 5.375, 0.0) --
        --   (0, 2, 0, 0.0, 0.0) -- (0, 2, 0, 1.0, 0.0)
-       (1, 0,-1, 2.0, 1.0)
+       (1, 0,-1, 2.0, 1.0), --,
+
+       --(3, 0,-1, 0.0, 1.0),
+       --(3, 0,-1, 1.0, 1.0)
+
+       (0, 0,-2, 1.0, 1.0),
+       (2, 0, 2, 1.0, 1.0),
+       (1, 0, 2, 1.0, 1.0),
+       (2, 0,-2, 1.0, 1.0),
+       (1, 0,-2, 1.0, 1.0)
 
      );
 
@@ -103,6 +115,78 @@ package GEM.LTE is
 
  );
 
+
+      Doodson_Set : Doodson_List :=
+     (
+       (1, 0, 0, 0.0, 1.0), -- T
+       (1, 0, 0, 1.0, 1.0), -- D
+--       (0, 0, 2, 2.0, 1.0), -- 3Y
+       (0, 0,-2, 2.0, 1.0), -- 8.5
+--       (0, 0, 0, 2.0, 1.0), -- N/2
+       (2, 0, 0, 1.0, 1.0), -- DT
+       (2, 0, 0, 0.0, 1.0), -- t
+       (2, 0, 0, 2.0, 1.0), -- d
+ --      (1, 0,-1, 0.0, 1.0), -- A
+      (2, 0,-2, 0.0, 1.0), -- a
+       (0, 0, 0, 1.0, 1.0), -- N
+       (0, 0, 2, 0.0, 1.0), -- p
+       (1, 0, 1, 0.0, 1.0), -- E
+       (2, 0,-1, 1.0, 1.0), -- AD
+       (0, 0, 2, 1.0, 1.0), -- 3.56
+--       (1, 0,-1, 1.0, 1.0), -- A+
+--       (1, 0,-1,-1.0, 1.0), -- A-
+       (0, 0, 1, 1.0, 1.0), -- 6Y
+--       (1, 0, 1, 1.0, 1.0), -- 26.985
+--       (0, 0, 1,-1.0, 1.0),-- 16.8y
+       (0, 0,-1, 0.0, 1.0), -- P
+       (2, 0, 2, 0.0, 1.0) -- Fake
+--       (4, 0,-2, 2.0, 1.0) -- A2D2
+--       (3, 0,-1, 1.0, 1.0), -- Mt'
+--       (3, 0,-1, 0.0, 1.0),  -- Mt
+--       (3, 0,-1, 2.0, 1.0)  -- Mtd
+     );
+
+      Doodson_RSet : Doodson_List :=
+     (
+       (1, 0, 0, 0.0, 1.0), -- T
+       (1, 0, 0, 1.0, 1.0), -- D
+--       (0, 0, 2, 2.0, 1.0), -- 3Y
+--       (0, 0,-2, 2.0, 1.0), -- 5.7
+--       (0, 0, 0, 2.0, 1.0), -- N/2
+       (2, 0, 0, 1.0, 1.0), -- DT
+       (2, 0, 0, 0.0, 1.0), -- t
+       (2, 0, 0, 2.0, 1.0), -- d
+       (1, 0,-1, 0.0, 1.0), -- A
+       (1, 0, 1, 0.0, 1.0), -- evect
+--       (0, 0, 0, 1.0, 1.0), -- N
+--       (0, 0, 2, 0.0, 1.0), -- p
+--       (1, 0, 1, 0.0, 1.0), -- E
+       (2, 0,-1, 1.0, 1.0) -- AD
+--       (0, 0, 2, 1.0, 1.0), -- 3.56
+--       (1, 0,-1, 1.0, 1.0), -- A+
+--       (1, 0,-1,-1.0, 1.0), -- A-
+--       (0, 0, 1, 1.0, 1.0), -- 6Y
+--       (1, 0, 1, 1.0, 1.0), -- 26.985
+--       (0, 0, 1,-1.0, 1.0),-- 16.8y
+--       (0, 0,-1, 0.0, 1.0) -- P
+     );
+
+      Doodson_QSet : Doodson_List :=
+     (
+       (1, 0, 0, 1.0, 1.0), -- D
+       (2, 0, 0, 2.0, 1.0), -- d
+       (2, 0, 0, 1.0, 1.0), -- DT
+       (2, 0,-1, 1.0, 1.0) -- AD
+     );
+
+     Annual_Set : Doodson_List :=
+     (
+       (0, 1, 0, 0.0, 365.242), -- annual
+       (0, 2, 0, 0.0, 365.242), -- semi
+       (0, 3, 0, 0.0, 365.242), -- tri
+       (0, 1, 0, 0.0, 365.242/2.0) -- biennial
+     );
+
    type Amp_Phase is
       record
          Amplitude, Phase : Long_Float;
@@ -119,6 +203,12 @@ package GEM.LTE is
    -- LTE modulation types
    subtype Modulations_Amp_Phase is Amp_Phases;
    subtype Modulations is Periods;
+
+   type Period_Set (N: Positive) is
+      record
+         LP : Periods(1..N);
+         AP : Amp_Phases(1..N);
+      end record;
 
    -- Default values that produce a fit to NINO34 of cc = ~0.83
    -- The period values can be derived from the constants above
@@ -159,6 +249,18 @@ package GEM.LTE is
 
    LPAP : Long_Periods_Amp_Phase (Doodson_Args'Range);
    LP : Long_Periods (Doodson_Args'Range);
+
+   LPAP_Set : Long_Periods_Amp_Phase (Doodson_Set'Range);
+   LP_Set : Long_Periods (Doodson_Set'Range);
+
+   LPAP_RSet : Long_Periods_Amp_Phase (Doodson_RSet'Range);
+   LP_RSet : Long_Periods (Doodson_RSet'Range);
+
+   LPAP_QSet : Long_Periods_Amp_Phase (Doodson_QSet'Range);
+   LP_QSet : Long_Periods (Doodson_QSet'Range);
+
+   LPAP_Annual : Long_Periods_Amp_Phase (Annual_Set'Range);
+   LP_Annual : Long_Periods (Annual_Set'Range);
 
    LPRef : Long_Periods_Amp_Phase (Doodson_Args'Range);
 

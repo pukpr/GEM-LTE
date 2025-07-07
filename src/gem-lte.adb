@@ -44,6 +44,30 @@ begin
       LPAP(I) := (0.01, 1.0);
    end loop;
 
+   for I in Doodson_Set'Range loop
+      Doodson_Set(I).Period := Doodson(I, Doodson_Set);
+      LP_Set(I) := Doodson_Set(I).Period;
+      LPAP_Set(I) := (0.01, 1.0);
+   end loop;
+
+   for I in Doodson_RSet'Range loop
+      Doodson_RSet(I).Period := Doodson(I, Doodson_RSet);
+      LP_RSet(I) := Doodson_RSet(I).Period;
+      LPAP_RSet(I) := (0.01, 1.0);
+   end loop;
+
+   for I in Doodson_QSet'Range loop
+      Doodson_QSet(I).Period := Doodson(I, Doodson_QSet);
+      LP_QSet(I) := Doodson_QSet(I).Period;
+      LPAP_QSet(I) := (0.01, 1.0);
+   end loop;
+
+   for I in Annual_Set'Range loop
+      Annual_Set(I).Period := Doodson(I, Annual_Set);
+      LP_Annual(I) := 1.0/Annual_Set(I).Period;
+      LPAP_Annual(I) := (0.01, 1.0);
+   end loop;
+
    for I in QBO_Args'Range loop
       QBO_Args(I).Period := Doodson(I, QBO_Args);
       QBO(I) := QBO_Args(I).Period;

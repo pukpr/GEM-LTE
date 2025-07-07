@@ -8,6 +8,7 @@ with System.Multiprocessors;
 with GEM.LTE.Primitives.Shared;
 with Ada.Exceptions;
 with Gnat.Traceback.Symbolic;
+with Gem.Mix_Regression;
 
 package body GEM.LTE.Primitives.Solution is
 
@@ -23,6 +24,9 @@ package body GEM.LTE.Primitives.Solution is
    Diff_Delay_N : constant INTEGER :=  GEM.Getenv("DDN", 23);
    Full_Wave_Rectification : constant Boolean :=  GEM.Getenv("FULL_WAVE", FALSE);
    Ext_Forcing : constant STRING := GEM.Getenv("EFF", "");
+   Mathieu : constant Boolean :=  GEM.Getenv("MATHIEU", FALSE);
+   Quad  : constant Boolean :=  GEM.Getenv("QUAD", FALSE);
+   Two_Stage : constant Boolean :=  GEM.Getenv("STAGES", TRUE);
 
    function CompareRef(LP : in Long_Periods;
                        LPRef, AP : in Long_Periods_Amp_Phase) return Long_Float is
@@ -68,6 +72,7 @@ package body GEM.LTE.Primitives.Solution is
    task type Thread(CPU : System.Multiprocessors.CPU;
                     N_Tides, N_Modulations : Integer) is
       pragma CPU (CPU);
+      pragma Storage_Size(1000000000);
       entry Start;
    end Thread;
    type Thread_Access is access Thread;
@@ -251,6 +256,7 @@ package body GEM.LTE.Primitives.Solution is
 
       Impulses : Data_Pairs := Data_Records;
       Forcing  : Data_Pairs := Data_Records;
+      --F_Model  : Data_Pairs := Data_Records;
       Model    : Data_Pairs := Data_Records;
       KeepModel: Data_Pairs := Data_Records;
 
@@ -366,7 +372,11 @@ package body GEM.LTE.Primitives.Solution is
          elsif Sin_Power < 1 then
             if Trunc = DPos then
                if Integer(Time) mod 4 = -Sin_Power then
-                   Value := D.B.delA;
+                  Value := D.B.delA;
+               elsif Quad and Integer(Time) mod 4 = -Sin_Power+1 then 
+                  Value := D.B.Sem1;
+               elsif Quad and Integer(Time) mod 4 = -Sin_Power+2 then 
+                  Value := D.B.Sem2;
                else
                    Value := D.B.Asym;
                end if;
@@ -399,10 +409,9 @@ package body GEM.LTE.Primitives.Solution is
             Value := (abs(COS(Pi*(Time-D.B.DelB))))**(NPow) -
                      D.B.Asym*(abs(COS(Pi*(Time-D.B.DelB-0.5))))**(NPow); 
          elsif Sin_Power = 2 then
-            Value := (abs(COS(0.5*Pi*(Time-D.B.DelB))))**(NPow) -
-                     D.B.Asym*(abs(COS(0.5*Pi*(Time-D.B.DelB-1.0))))**(NPow); 
-            --Value := COS(4.0*Pi*(Time+D.B.ImpB/2.0));
-            --Value := Impulse_Delta(Time);
+            Value := D.B.Sem2*COS(Pi*(Time+D.B.DelB))*(abs(COS(Pi*(Time+D.B.DelB))))**(NPow) 
+              + D.B.Asym*COS(2.0*Pi*(Time+0.5*D.B.DelB))*(abs(COS(2.0*Pi*(Time+0.5*D.B.DelB))))**(NPow)
+              + D.B.Sem1*COS(0.5*Pi*(Time+2.0*D.B.DelB))*(abs(COS(0.5*Pi*(Time+2.0*D.B.DelB))))**(NPow) ;
          elsif Sin_Power < 0 then
             Value := D.B.ImpA*Value*(abs(Value))**(D.B.ImpC-1.0);
          else
@@ -427,16 +436,23 @@ package body GEM.LTE.Primitives.Solution is
                         Polarity : Long_Float := 1.0) return Data_Pairs is
       M : Data_Pairs := Model;
       Pi : Long_Float := Ada.Numerics.Pi;
+      Annual_Factor, Semi_Factor : Long_Float := 1.0;   
       Value : Long_Float := 0.0;
       use Ada.Numerics.Long_Elementary_Functions;
    begin
       if not Clamp and Ext_Forcing = "" then
          Value := D.B.ImpA;
       end if;
+      if Mathieu then
+         Annual_Factor := 0.0;
+      end if;            
+      if Quad then
+         Semi_Factor := 0.0;
+      end if;            
       for I in Model'Range loop
             M(I).Value := M(I).Value + Polarity*Value*Cos(2.0*Pi*D.B.IR*M(I).Date + D.B.ImpB)
-                                     + Polarity*D.B.Ann1*Cos(2.0*pi*M(I).Date + D.B.Ann2)
-                                     + Polarity*D.B.Sem1*Cos(4.0*pi*M(I).Date + D.B.Sem2); 
+                                     + Polarity*Annual_Factor*D.B.Ann1*Cos(2.0*pi*M(I).Date + D.B.Ann2)
+                                     + Polarity*Annual_Factor*Semi_Factor*D.B.Sem1*Cos(4.0*pi*M(I).Date + D.B.Sem2); 
       end loop;
       return M;
    end;
@@ -525,6 +541,78 @@ package body GEM.LTE.Primitives.Solution is
       LagDelay : Long_Float;
       Ramp : Long_Float := 0.0;
       Keep_Initial_Value, Init_Value0 : Long_Float := 0.0;
+      Random_M : Long_Float := 0.0;
+      
+      function Calc_Forcing return Data_Pairs is
+         F : Data_Pairs := Forcing;
+      begin
+         if Revert_to_Mean = 0.0 then
+            D.B.mA := abs D.B.mA;
+         end if;
+         der := 1.0 - D.B.mA; -- - D.B.mP; -- keeps the integrator stable
+
+         if Year_Trim then
+            null; -- StartY := D.B.ImpC; -- GEM.LTE.Year_Adjustment(D.B.ImpC, D.A.LP); -- should be a protected call?
+         else
+            Ramp := D.B.Year;
+         end if;
+         Impulses := Impulse_Amplify(
+                            Raw     => Tide_Sum(Template     => Data_Records,
+                                                Constituents => D.B.LPAP,
+                                                Periods      => D.A.LP,
+                                                Ref_Time     => 0.0, 
+                                                Scaling      => 0.0,
+                                                Year_Len     => Year_Length,
+                                                Integ        => 0.0,
+                                                Ext_Forcing  => Data_Ext,
+                                                Ext_Factor   => D.B.ImpA,
+                                                Ext_Phase    => D.B.ImpB,
+                                                Ext_Amp      => D.B.IR
+                                               ),
+                                     Offset => D.B.bg, 
+                                     Ramp => Ramp,
+                                     Start => Data_Records(Data_Records'First).Date);
+
+         if Mathieu then
+            F := IIR( Raw => Impulses,
+                            lagA => der, lagB => Revert_to_Mean*D.B.mA, lagC => D.B.mP,
+                            iA => D.B.init, iB => D.B.Ann1, iC => D.B.ImpC,
+                            mA => D.B.Sem1, mB => D.B.Sem2); 
+            
+         else
+            F := IIR( Raw => Impulses,
+                            lagA => der, lagB => Revert_to_Mean*D.B.mA, lagC => D.B.mP,
+                            iA => D.B.init, iB => 0.0, iC => D.B.ImpC,
+                            mA => 0.0, mB => 0.0); 
+         end if;
+
+         
+         if LTE_Abs > 0.0 then
+            for I in F'Range loop
+               if LTE_Abs = 1.0 then
+                  F(I).Value := abs F(I).Value;
+               else
+                  F(I).Value := (abs F(I).Value) ** LTE_Abs;
+               end if;
+            end loop;
+         elsif LTE_Abs < 0.0 then
+            for I in Forcing'Range loop
+               F(I).Value := 10.0 * (1.0 - cos(LTE_Abs*F(I).Value)); 
+            end loop;
+         end if;
+               
+         if Full_Wave_Rectification and D.B.Offset /= 0.0 then
+            LagDelay := abs D.B.Offset;
+            for I in F'First .. F'Last -1 loop
+               F(I).Value := Sqrt(F(I).Value * ( (1.0-LagDelay)*F(I).Value + LagDelay*F(I+1).Value));
+            end loop;
+            Forcing(F'Last).Value := Sqrt(F(F'Last).Value * F(F'Last).Value);
+         end if;
+         return F;
+      end;   
+         
+          
+      
    begin
       for I in First .. Last loop
          RMS_Data := RMS_Data + Data_Records(I).Value * Data_Records(I).Value;
@@ -547,64 +635,40 @@ package body GEM.LTE.Primitives.Solution is
          Harms(I) := D.C(I);
       end loop;
 
+      if not Two_Stage then
+         if Exclude then
+            Forcing := Gem.Mix_Regression(Data_Records, -0.3, 0.6, -First, Last, not Quad);
+            --Forcing := Gem.Mix_Regression(Data_Records, -0.3, 0.6, 0, 0);
+         else
+            Forcing := Gem.Mix_Regression(Data_Records, -0.3, 0.6, First, Last, not Quad);
+            --Forcing := Gem.Mix_Regression(Data_Records, -0.3, 0.6, 0, 0);
+         end if;
+      end if;
+      
       loop
          Counter := Counter + 1;
          delay 0.0; -- context switching point if multi-processing not avilable
 
          -- Tidal constituents summed, amplified by impulse, and LTE modulated
-
-         if Revert_to_Mean = 0.0 then
-            D.B.mA := abs D.B.mA;
-         end if;
-         der := 1.0 - D.B.mA; -- - D.B.mP; -- keeps the integrator stable
-
-         if Year_Trim then
-            GEM.LTE.Year_Adjustment(D.B.Year, D.A.LP); -- should be a protected call?
+         if Two_Stage then
+            Forcing := Calc_Forcing;
          else
-            Ramp := D.B.Year;
-         end if;
-         Impulses := Impulse_Amplify(
-                            Raw     => Tide_Sum(Template     => Data_Records,
-                                                Constituents => D.B.LPAP,
-                                                Periods      => D.A.LP,
-                                                Ref_Time     => 0.0, 
-                                                Scaling      => 0.0,
-                                                Year_Len     => Year_Length,
-                                                Integ        => 0.0,
-                                                Ext_Forcing  => Data_Ext,
-                                                Ext_Factor   => D.B.ImpA,
-                                                Ext_Phase    => D.B.ImpB,
-                                                Ext_Amp      => D.B.IR
-                                               ),
-                                     Offset => 0.0, 
-                                     Ramp => Ramp,
-                                     Start => Data_Records(Data_Records'First).Date);
-
-         Forcing := IIR( Raw => Impulses,
-                         lagA => der, lagB => Revert_to_Mean*D.B.mA, lagC => D.B.mP,
-                         iA => D.B.init, iB => 0.0, iC => D.B.ImpC); 
-
-         
-         if LTE_Abs > 0.0 then
+            Random_M := 0.0; -- so it doesn't blow up
             for I in Forcing'Range loop
-               if LTE_Abs = 1.0 then
-                  Forcing(I).Value := abs Forcing(I).Value;
-               else
-                  Forcing(I).Value := (abs Forcing(I).Value) ** LTE_Abs;
-               end if;
+               Random_M := Walker.Small_Random(Random_M); -- /1000.0;
+               Forcing(I).Value := Forcing(I).Value + Random_M;
             end loop;
-         elsif LTE_Abs < 0.0 then
-            for I in Forcing'Range loop
-               Forcing(I).Value := 10.0 * (1.0 - cos(LTE_Abs*Forcing(I).Value)); 
-            end loop;
-         end if;
-               
-         if Full_Wave_Rectification and D.B.Offset /= 0.0 then
-            LagDelay := abs D.B.Offset;
-            for I in Forcing'First .. Forcing'Last -1 loop
-               Forcing(I).Value := Sqrt(Forcing(I).Value * ( (1.0-LagDelay)*Forcing(I).Value + LagDelay*Forcing(I+1).Value));
-            end loop;
-            Forcing(Forcing'Last).Value := Sqrt(Forcing(Forcing'Last).Value * Forcing(Forcing'Last).Value);
+            if Exclude then
+               Forcing := Gem.Mix_Regression(Forcing, -0.3, 0.6, -First, Last, not Quad);
+               --Forcing := Gem.Mix_Regression(Forcing, -0.3, 0.6, 0, 0);
+            else
+               Forcing := Gem.Mix_Regression(Forcing, -0.3, 0.6, First, Last, not Quad);
+               --Forcing := Gem.Mix_Regression(Forcing, -0.3, 0.6, 0, 0);
+            end if;
+            --F_Model := Calc_Forcing;
+            --for I in Forcing'Range loop
+            --   Forcing(I).Value := 0.01*Forcing(I).Value + 0.99*F_Model(I).Value;
+            --end loop;
          end if;
 
          M(1..NM) := D.B.LT(1..NM);
@@ -650,7 +714,7 @@ package body GEM.LTE.Primitives.Solution is
                                   Secular_Trend => Secular_Trend,
                                   Accel => Accel,
                                   Singular => Singular,
-                                  Third => D.B.bg
+                                  Third => 0.0 -- D.B.bg
                                  );
          else
             Singular := False;
@@ -675,7 +739,7 @@ package body GEM.LTE.Primitives.Solution is
                          Trend => Secular_Trend,
                          Accel => Accel,
                          NonLin => NonLin,
-                         Third => D.B.bg); 
+                         Third => 0.0);  --D.B.bg); 
             if Monotonic_Increase then
                Secular_Trend := abs Secular_Trend;
                Accel := abs Accel;

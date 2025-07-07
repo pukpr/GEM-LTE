@@ -18,6 +18,7 @@ package body GEM.LTE.Primitives is
    Sinc: constant LONG_FLOAT := GEM.Getenv("SINC", 0.0);
    Modulation : constant Boolean := GEM.Getenv("MODULATION", TRUE); -- FALSE
    Ealign : constant Integer := GEM.Getenv("EALIGN", 24);
+   Custom_Tide : constant Boolean := GEM.Getenv("CUSTOM", FALSE);
 
 
    function Is_Minimum_Entropy return Boolean is
@@ -129,7 +130,8 @@ package body GEM.LTE.Primitives is
    function IIR (Raw : in Data_Pairs;
                  lagA, lagB, lagC : in Long_Float;
                  iA, iB, iC : in Long_Float := 0.0;
-                 Start : in Long_Float := Long_Float'First) return  Data_Pairs is
+                 Start : in Long_Float := Long_Float'First;
+                 mA, mB : in Long_Float := 0.0) return  Data_Pairs is
       Res : Data_Pairs := Raw;
       Start_Index : Integer;
       Ramp : Long_Float;
@@ -149,7 +151,7 @@ package body GEM.LTE.Primitives is
       Res(Start_Index + 1).Value := 0.0;
       Res(Start_Index + 2).Value := 0.0; -- iB;
       Res(Start_Index + 3).Value := iA;
-      for I in Start_Index + 4 .. Raw'Last loop
+      for I in Start_Index + 4 .. Raw'Last-1 loop
          if Modulation then
             Ramp := Long_Float'Copy_Sign(lagC, Res(I-1).Value)*(1.0-cos(2.0*pi*Raw(I).Date+iC));
          else
@@ -160,8 +162,8 @@ package body GEM.LTE.Primitives is
          else
             FB2 := 0.0;
          end if;
-         Res(I).Value := Raw(I-1).Value
-           + lagA*Res(I-1).Value
+         Res(I).Value := (Raw(I-1).Value + Raw(I).Value + Raw(I-2).Value + Raw(I+1).Value + Raw(I-3).Value)/5.0
+           + (lagA + mA*cos(pi*Raw(I).Date+mB))*Res(I-1).Value
            + lagB*Res(I-2).Value
            - Ramp + FB2; 
       end loop;
@@ -171,8 +173,8 @@ package body GEM.LTE.Primitives is
          else
             Ramp := Long_Float'Copy_Sign(lagC, Res(I-1).Value);
          end if;
-         Res(I).Value := Raw(I-1).Value
-           + lagA*Res(I-1).Value
+         Res(I).Value := (Raw(I-1).Value + Raw(I).Value + Raw(I-2).Value + Raw(I+1).Value + Raw(I-3).Value)/5.0
+           + (lagA + mA*cos(pi*Raw(I).Date+mB))*Res(I-1).Value
            + lagB*Res(I-2).Value
            + Ramp;
       end loop;
@@ -198,7 +200,9 @@ package body GEM.LTE.Primitives is
       Res : Data_Pairs := Raw;
    begin
       for I in Raw'Range loop
-         Res(I).Value := Offset + Raw(I).Value * Impulse(Raw(I).Date + Ramp*(Raw(I).Date-Start));
+         -- Res(I).Value := Offset + Raw(I).Value * Impulse(Raw(I).Date + Ramp*(Raw(I).Date-Start));
+         Res(I).Value := Raw(I).Value * Impulse(Raw(I).Date + Ramp*(Raw(I).Date-Start) + 
+                                                              Offset/1_000_000.0*(Raw(I).Date-Start)**2);
       end loop;
       return Res;
    end;
@@ -283,6 +287,135 @@ package body GEM.LTE.Primitives is
      return Res;
    end Tide_Sum_Diff;
 
+-- Conventional tidal series summation or superposition of cycles
+   function Tide_Sum_Custom (Template : in Data_Pairs;
+                      Constituents : in Long_Periods_Amp_Phase;
+                      Periods : in Long_Periods;
+                      Ref_Time : in Long_Float := 0.0;
+                      Scaling : in Long_Float := 1.0;
+                      Cos_Phase : in Boolean := True;
+                      Year_Len : in Long_Float := Year_Length;
+                      Integ: in Long_Float := 0.0;
+                      Ext_Forcing : in Data_Pairs := Empty_Data;
+                      Ext_Factor  : in Long_Float := 0.0;
+                      Ext_Phase  : in Long_Float := 0.0;
+                      Ext_Amp  : in Long_Float := 0.0
+                      ) return Data_Pairs is
+      Pi : Long_Float := Ada.Numerics.Pi;
+      Time : Long_Float;
+      Res : Data_Pairs := Template;
+      D, A, T, DD, TD, FF, DPlain, N, F : Long_Float; 
+      TF : Long_Float;
+      pragma Unreferenced (Integ, Scaling, Cos_Phase, Ext_Forcing, Ext_Factor, Ext_Phase, Ext_Amp);
+   begin
+      for I in Template'Range loop
+         Time := Template(I).Date + Ref_Time;
+         declare -- uses 18.6y and 173
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(2);
+            Freq : Long_Float := Year_Len / Periods(2);
+            HF : Amp_Phase renames Constituents(5);
+            HP : Long_Float := Year_Len / Periods(5);
+            NF : Amp_Phase renames Constituents(11);
+            NP : Long_Float := Year_Len / Periods(11);
+         begin
+            D := L.Amplitude*(Cos(2.0*Pi*Freq*Time + L.Phase + 
+                                HF.Amplitude*Cos(2.0*Pi*HP*Time + HF.Phase) +
+                                NF.Amplitude*Cos(2.0*Pi*NP*Time + NF.Phase)
+                             ));
+         end;
+         declare
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(9);
+            Freq : Long_Float := Year_Len / Periods(9);
+            PF : Amp_Phase renames Constituents(14);
+            PP : Long_Float := Year_Len / (2.0*Periods(14));
+            EF : Amp_Phase renames Constituents(15);  -- arbitrary
+         begin --ampA*(ABS(SIN(freq*$A18+$E$13*ABS(SIN(freq*($A18+$E$14)))+phaseA))))
+            A := L.Amplitude*(Cos(2.0*Pi*Freq*Time + L.Phase +
+                                PF.Amplitude*Abs(Cos(2.0*Pi*PP*Time + 
+                                      EF.Amplitude*Abs(Cos(2.0*Pi*PP*Time + 
+                                      EF.Phase)) +
+                                      PF.Phase))
+                               ));
+         end;
+         declare
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(7);
+            Freq : Long_Float := Year_Len / Periods(7);
+         begin --ampA*(ABS(SIN(freq*$A18+$E$13*ABS(SIN(freq*($A18+$E$14)))+phaseA))))
+            T := L.Amplitude*Cos(2.0*Pi*Freq*Time + L.Phase);
+         end;
+         declare
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(12);
+            Freq : Long_Float := Year_Len / Periods(12);
+         begin --ampA*(ABS(SIN(freq*$A18+$E$13*ABS(SIN(freq*($A18+$E$14)))+phaseA))))
+            FF := L.Amplitude*Cos(2.0*Pi*Freq*Time + L.Phase);
+         end;
+         declare
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(6);
+            Freq : Long_Float := Year_Len / Periods(6);
+         begin --ampA*(ABS(SIN(freq*$A18+$E$13*ABS(SIN(freq*($A18+$E$14)))+phaseA))))
+            TD := L.Amplitude*Cos(2.0*Pi*Freq*Time + L.Phase);
+         end;
+         declare
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(8);
+            Freq : Long_Float := Year_Len / Periods(8);
+         begin --ampA*(ABS(SIN(freq*$A18+$E$13*ABS(SIN(freq*($A18+$E$14)))+phaseA))))
+            DD := L.Amplitude*Cos(2.0*Pi*Freq*Time + L.Phase);
+         end;
+         declare 
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(1);
+            Freq : Long_Float := Year_Len / Periods(2);
+         begin
+            DPlain := L.Amplitude*Cos(2.0*Pi*Freq*Time + L.Phase);
+         end;
+         declare 
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(10);
+            Freq : Long_Float := Year_Len / Periods(11);
+         begin
+            N := L.Amplitude*Cos(2.0*Pi*Freq*Time + L.Phase);
+         end;
+         declare 
+            use Ada.Numerics.Long_Elementary_Functions;
+            L : Amp_Phase renames Constituents(13);
+            Freq : Long_Float := Year_Len / Periods(22);
+         begin
+            F := L.Amplitude*Cos(2.0*Pi*Freq*Time + L.Phase);
+         end;
+         
+         declare
+            A1 : Long_Float renames Constituents(16).Amplitude;
+            A2 : Long_Float renames Constituents(17).Amplitude;
+            A3 : Long_Float renames Constituents(18).Amplitude;
+            A4 : Long_Float renames Constituents(19).Amplitude;
+            D1 : Long_Float renames Constituents(20).Amplitude;
+            D2 : Long_Float renames Constituents(21).Amplitude;
+            D3 : Long_Float renames Constituents(22).Amplitude;
+            D4 : Long_Float renames Constituents(23).Amplitude;
+            DA2 : Long_Float renames Constituents(24).Amplitude;
+            D2A2 : Long_Float renames Constituents(25).Amplitude;
+            D2A : Long_Float renames Constituents(26).Amplitude;
+            DA3 : Long_Float renames Constituents(27).Amplitude;
+            D3A : Long_Float renames Constituents(28).Amplitude;
+            DA : Long_Float renames Constituents(29).Amplitude;
+         begin
+            TF := F + N + DPlain + FF + TD + DD + T + A1*A + A2*A**2 + A3*A**3 + A4*A**4 +
+                  D1*D + D2*D**2 + D3*D**3 + D4*D**4 +
+                DA2*D*(A**2) + D2A2*(D**2)*(A**2) + D2A*(D**2)*A +
+                DA3*D*(A**3) + D3A*(D**3)*A +DA*D*A;
+            Res(I) := (Time, TF);
+         end;
+      end loop;
+      return Res;
+   end Tide_Sum_Custom;
+   
+   
    function Tide_Sum (Template : in Data_Pairs;
                       Constituents : in Long_Periods_Amp_Phase;
                       Periods : in Long_Periods;
@@ -296,11 +429,15 @@ package body GEM.LTE.Primitives is
                       Ext_Phase  : in Long_Float := 0.0;
                       Ext_Amp  : in Long_Float := 0.0
                       ) return Data_Pairs is
-      Res1 : Data_Pairs := Template;
+      Res : Data_Pairs := Template;
       pragma Unreferenced (Ref_Time);
    begin
-      Res1 := Tide_Sum_Diff (Template, Constituents, Periods, 0.0, Scaling, Cos_Phase, Year_Len, Integ, Ext_Forcing, Ext_Factor, Ext_Phase, Ext_Amp);
-      return Res1;
+      if Custom_Tide then
+         Res := Tide_Sum_Custom (Template, Constituents, Periods, 0.0, Scaling, Cos_Phase, Year_Len, Integ, Ext_Forcing, Ext_Factor, Ext_Phase, Ext_Amp);
+      else
+         Res := Tide_Sum_Diff (Template, Constituents, Periods, 0.0, Scaling, Cos_Phase, Year_Len, Integ, Ext_Forcing, Ext_Factor, Ext_Phase, Ext_Amp);
+      end if;
+      return Res;
    end Tide_Sum;
 
 
@@ -761,14 +898,19 @@ end Scaled_Error_Metric;
    function FT_CC (Model, Data, Forcing : in Data_Pairs) return LONG_FLOAT is
       Model_S : Data_Pairs := Model;
       Data_S : Data_Pairs := Data;
+      T : Data_Pairs := Forcing;
       RMS : LONG_FLOAT;
    begin
-      ME_Power_Spectrum (Forcing=>Forcing, Model=>Model, Data=>Data,
+      for I in T'Range loop
+         T(I).Value := T(I).Date;
+      end loop;
+      ME_Power_Spectrum (Forcing=>T, Model=>Model, Data=>Data,
                          Model_Spectrum=>Model_S, Data_Spectrum=>Data_S,
                          RMS => RMS);
       Model_S := Window(Model_S,2);
       Data_S := Window(Data_S,2);
-      return CC(Model_S, Data_S);
+      -- return CC(Model_S, Data_S);
+      return DTW_Distance(Model_S, Data_S, 9 );
    end FT_CC;
 
    --

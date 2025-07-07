@@ -33,4 +33,6 @@ package GEM.Random_Descent is
    -- Random number generator reset, otherwise it will start from fixed seed
    procedure Reset;
 
+   function Small_Random(Last: in Long_Float) return Long_Float;
+
 end GEM.Random_Descent;

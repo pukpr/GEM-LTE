@@ -11,25 +11,39 @@ begin
       Name : constant String := Ada.Command_Line.Argument(1);
       Flts : constant GEM.FS := Gem.S_to_LF(Ada.Command_Line.Argument(2));
       -- "dlod3.dat"
-      PS : constant Gem.LTE.Period_Set  :=  GEM.Mix_Regression(Name, Flts(1), Flts(2));
-      Freqs : Gem.Lte.Periods := Ps.LP;
-      TS : Gem.LTE.Primitives.Data_Pairs(1..1000);
-      Res : Gem.LTE.Primitives.Data_Pairs := TS;
-      T : Long_FLoat := 1900.0;
+      Target : GEM.LTE.Primitives.Data_Pairs := GEM.LTE.Primitives.Make_Data(Name);
+      Result : GEM.LTE.Primitives.Data_Pairs := GEM.Mix_Regression(Target, Flts(1), Flts(2), 0,0, false,TRUE);
+
+--      Freqs : Gem.Lte.Periods := Ps.LP;
+--      TS : Gem.LTE.Primitives.Data_Pairs(1..1000) := (others => (0.0, 0.0));
+--      Res : Gem.LTE.Primitives.Data_Pairs := TS;
+--      T : Long_FLoat := 1900.0;
    begin
-      for I in TS'Range loop
-         TS(I).Date := T;
-         T := T + 0.001;
-      end loop;
-      for I in Freqs'Range loop
-         Freqs(I) := 6.28/Freqs(I);
-      end loop;
-      Res := Gem.LTE.primitives.Tide_Sum(TS, PS.AP, Freqs);
-      Text_IO.Create(FT, Text_IO.Out_File,  "fine_results.csv");
-      for I in Res'Range loop
-         Text_IO.Put_Line(FT, Res(I).Date'Img & " " & Res(I).Value'Img);
-      end loop;
+      --  for I in TS'Range loop
+      --     TS(I).Date := T;
+      --     T := T + 0.001;
+      --  end loop;
+      --  for I in Freqs'Range loop
+      --     Freqs(I) := 6.28/Freqs(I);
+      --  end loop;
+      --  Res := Gem.LTE.primitives.Tide_Sum(TS, PS.AP, Freqs);
+      --  Text_IO.Create(FT, Text_IO.Out_File,  "fine_results.csv");
+      --  for I in Res'Range loop
+      --     Text_IO.Put_Line(FT, Res(I).Date'Img & " " & Res(I).Value'Img);
+      --  end loop;
+      --  Text_IO.Close(FT);
+
+      Text_IO.Create(FT, Text_IO.Out_File,  "lte_label.txt");
+      Text_IO.Put_Line(FT, Name);
+      if Flts(1) < 0.0 then
+         Text_IO.Put_Line(FT, "Fraction Exclude");
+      else
+         Text_IO.Put_Line(FT, "Fraction Include");
+      end if;
+      Text_IO.Put_Line(FT, Ada.Command_Line.Argument(2));
       Text_IO.Close(FT);
+      
+      -- return Result;
       
    end;
 

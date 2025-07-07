@@ -130,6 +130,14 @@ package body GEM.Random_Descent is
       FR.Reset(G);
       HR.Reset(H);
    end;
+
+   function Small_Random(Last: in Long_Float) return Long_Float is
+   begin
+      return Last + (Long_Float(FR.Random(G))-0.5) / 1000.0 ;
+   end;
+
+
+
 begin
    if GEM.Getenv("RESET", FALSE) then
       Reset;

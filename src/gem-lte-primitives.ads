@@ -23,7 +23,8 @@ package GEM.LTE.Primitives is
    function IIR (Raw : in Data_Pairs;
                  lagA, lagB, lagC : in Long_Float;
                  iA, iB, iC : in Long_Float := 0.0;
-                 Start : in Long_Float := Long_Float'First) return  Data_Pairs;
+                 Start : in Long_Float := Long_Float'First;
+                 mA, mB : in Long_Float := 0.0) return  Data_Pairs;
 
    -- Finite Impulse Response -- smoother
    function FIR (Raw : in Data_Pairs;
