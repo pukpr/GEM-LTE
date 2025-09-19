@@ -17,6 +17,7 @@ package GEM.LTE is
    Tropical : constant Long_Float := 27.321_661_554; -- 27.32166155;
  --Tropical : constant Long_Float := 27.321_582_252;
    Anomalistic : constant Long_Float := 27.554_549_886;
+   Extra : constant Long_Float := GEM.Getenv("EXTRA", 0.405);
 
 
    N : constant := 1.0/(1.0/Draconic - 1.0/Tropical);
@@ -133,8 +134,8 @@ package GEM.LTE is
        (1, 0, 1, 0.0, 1.0), -- E
        (2, 0,-1, 1.0, 1.0), -- AD
        (0, 0, 2, 1.0, 1.0), -- 3.56
---       (1, 0,-1, 1.0, 1.0), -- A+
---       (1, 0,-1,-1.0, 1.0), -- A-
+       (1, 0,-1, 1.0, 1.0), -- A+
+       (1, 0,-1,-1.0, 1.0), -- A-
        (0, 0, 1, 1.0, 1.0), -- 6Y
 --       (1, 0, 1, 1.0, 1.0), -- 26.985
 --       (0, 0, 1,-1.0, 1.0),-- 16.8y
@@ -185,8 +186,8 @@ package GEM.LTE is
      (
        (0, 1, 0, 0.0, 365.242), -- annual
        (0, 2, 0, 0.0, 365.242), -- semi
-       (0, 3, 0, 0.0, 365.242), -- tri
-       (0, 1, 0, 0.0, 365.242/2.0) -- biennial
+       (0, 1, 0, 0.0, 365.242*Extra) -- tri 2.47 0.405
+       --(0, 1, 0, 0.0, 365.242/2.0) -- biennial
      );
 
    type Amp_Phase is

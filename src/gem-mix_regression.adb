@@ -13,11 +13,11 @@ function GEM.Mix_Regression (Target : in LTE.Primitives.Data_Pairs;
    Singular : Boolean;
    Forcing : Data_Pairs := D;
    Model : Data_Pairs := D;
-   P_A1, P_A2, P_A3, P_A4, P_A5, P_A6, P_A7, P_A8 : Gem.LTE.Long_Periods := Gem.LTE.LP_Set;
+   P_A1, P_A2, P_A3, P_A4, P_A5, P_A6, P_A7, P_A8, P_A9, P_A10, P_A11, P_A12 : Gem.LTE.Long_Periods := Gem.LTE.LP_Set;
    P_B1                   : Gem.LTE.Long_Periods := Gem.LTE.LP_RSet;
    P_Q1                   : Gem.LTE.Long_Periods := Gem.LTE.LP_QSet;
    P_Annual                     : Gem.LTE.Long_Periods := Gem.LTE.LP_Annual;
-   A_A1, A_A2, A_A3, A_A4, A_A5, A_A6, A_A7, A_A8 : Gem.LTE.Long_Periods_Amp_Phase := Gem.LTE.LPAP_Set; 
+   A_A1, A_A2, A_A3, A_A4, A_A5, A_A6, A_A7, A_A8, A_A9, A_A10, A_A11, A_A12 : Gem.LTE.Long_Periods_Amp_Phase := Gem.LTE.LPAP_Set; 
    A_B1                   : Gem.LTE.Long_Periods_Amp_Phase := Gem.LTE.LPAP_RSet;
    A_Q1                   : Gem.LTE.Long_Periods_Amp_Phase := Gem.LTE.LPAP_QSet;
    A_Annual                     : Gem.LTE.Long_Periods_Amp_Phase := Gem.LTE.LPAP_Annual;
@@ -158,6 +158,10 @@ begin
       P_A6(I) := 3.0*One - Freq;
       P_A7(I) := 4.0*One - Freq;
       P_A8(I) := 5.0*One - Freq;
+      P_A9(I) := 3.0*One + Freq;
+      P_A10(I) := 4.0*One + Freq;
+      P_A11(I) := 5.0*One + Freq;
+      P_A12(I) := 6.0*One - Freq;
    end loop;
 
    for I in P_B1'Range loop -- to aliased frequency
@@ -211,9 +215,9 @@ begin
    
    
    declare
-      P : Gem.LTE.Long_Periods := P_A1 & P_A2 & P_A3 & P_A4 & P_A5 & P_A6 & P_A7 & P_A8
+      P : Gem.LTE.Long_Periods := P_A1 & P_A2 & P_A3 & P_A4 & P_A5 & P_A6 & P_A7 & P_A8   -- & P_A9 & P_A10 & P_A11 & P_A12
         & Ex(P_B1 & P_Q1) & P_Annual; -- & P_Q1;
-      A : Gem.LTE.Long_Periods_Amp_Phase := A_A1 & A_A2 & A_A3 & A_A4 & A_A5 & A_A6 & A_A7 & A_A8
+      A : Gem.LTE.Long_Periods_Amp_Phase := A_A1 & A_A2 & A_A3 & A_A4 & A_A5 & A_A6 & A_A7 & A_A8  --   & A_A9 & A_A10 & A_A11 & A_A12
         & Ex(A_B1 & A_Q1) & A_Annual; -- & A_Q1;
 
       procedure Print is
@@ -236,7 +240,8 @@ begin
       Put(CC(D,Model), "=CC " );
       Put(CC(Interval(D),Interval(Model)), "=CC(training) " );
       Put(CC(Interval(D, True),Interval(Model, True)), "=CC(validate) " );
-      
+      Put(DTW_Distance(Interval(D, True),Interval(Model, True),1), "=DTW(validate) " );
+       
       Put(Year_Length, "=Yr ", True);
       Put(Model(Index(Start)).Date, "=start ");
       Put(Model(Index(Finish)).Date, "=finish ");
