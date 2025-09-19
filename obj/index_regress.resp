@@ -1,0 +1,6 @@
+FMULT                          1.0042
+FSTART                         0.01
+YEAR                           0.02
+TREND                          FALSE
+STEP                           FALSE
+FSTEP                          0.002
