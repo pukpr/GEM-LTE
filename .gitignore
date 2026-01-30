@@ -16,6 +16,7 @@ b__*.ad?
 
 # runtime parameter files
 *.par
+*.json
 *.resp
 
 dlod_compare.csv

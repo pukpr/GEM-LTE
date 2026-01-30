@@ -4,6 +4,10 @@ with Ada.Text_IO;
 with GNAT.OS_Lib;
 with Ada.Long_Float_Text_IO;
 with Ada.Integer_Text_IO;
+with GNATCOLL.JSON;
+with Ada.Strings.Unbounded;
+with Ada.Characters.Latin_1;
+with Ada.IO_Exceptions;
 
 package body GEM.LTE.Primitives.Shared is
 
@@ -222,85 +226,352 @@ package body GEM.LTE.Primitives.Shared is
          Ada.Text_IO.Put_Line("Finished " & Str(1..N));
    end;
 
+   function File_To_String (Name : in String) return String is
+      FT : Ada.Text_IO.File_Type;
+      Line : String(1..1024);
+      Last : Natural;
+      Contents : Ada.Strings.Unbounded.Unbounded_String :=
+        Ada.Strings.Unbounded.Null_Unbounded_String;
+   begin
+      Ada.Text_IO.Open(FT, Ada.Text_IO.In_File, Name);
+      begin
+         while not Ada.Text_IO.End_Of_File(FT) loop
+            Ada.Text_IO.Get_Line(FT, Line, Last);
+            Ada.Strings.Unbounded.Append(Contents, Line(1..Last));
+            Ada.Strings.Unbounded.Append(Contents, Ada.Characters.Latin_1.LF);
+         end loop;
+         Ada.Text_IO.Close(FT);
+      exception
+         when others =>
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+            raise;
+      end;
+      return Ada.Strings.Unbounded.To_String(Contents);
+   end File_To_String;
+
+   function Get_Number (Value : in GNATCOLL.JSON.JSON_Value)
+                        return Long_Float is
+      use GNATCOLL.JSON;
+   begin
+      case Kind(Value) is
+         when JSON_Float_Type =>
+            return Get_Long_Float(Value);
+         when JSON_Int_Type =>
+            declare
+               Int_Value : constant Long_Long_Integer := Get(Value);
+            begin
+               return Long_Float(Int_Value);
+            end;
+         when others =>
+            Ada.Text_IO.Put_Line("JSON number error:" & Kind(Value)'Img);
+            GNAT.OS_Lib.Os_Exit(0);
+      end case;
+   end Get_Number;
+
+   function Get_Integer (Value : in GNATCOLL.JSON.JSON_Value) return Integer is
+      use GNATCOLL.JSON;
+   begin
+      case Kind(Value) is
+         when JSON_Int_Type =>
+            declare
+               Int_Value : constant Long_Long_Integer := Get(Value);
+            begin
+               return Integer(Int_Value);
+            end;
+         when JSON_Float_Type =>
+            return Integer(Get_Long_Float(Value));
+         when others =>
+            Ada.Text_IO.Put_Line("JSON integer error:" & Kind(Value)'Img);
+            GNAT.OS_Lib.Os_Exit(0);
+      end case;
+   end Get_Integer;
+
+   function Get_Float_Field (Data : in GNATCOLL.JSON.JSON_Value;
+                             Name : in String;
+                             Default : in Long_Float) return Long_Float is
+      use GNATCOLL.JSON;
+   begin
+      if Kind(Data) = JSON_Object_Type and then Has_Field(Data, Name) then
+         return Get_Number(Get(Data, Name));
+      end if;
+      return Default;
+   end Get_Float_Field;
+
+
+   procedure Read_JSON_Float_Array (Data : in GNATCOLL.JSON.JSON_Value;
+                                    Name : in String;
+                                    Target : in out Modulations) is
+      use GNATCOLL.JSON;
+      Arr : JSON_Array;
+      Count : Natural;
+   begin
+      if Kind(Data) /= JSON_Object_Type or else not Has_Field(Data, Name) then
+         return;
+      end if;
+      Arr := Get(Data, Name);
+      Count := Length(Arr);
+      declare
+         J : Positive := 1;
+      begin
+         for I in Target'Range loop
+            exit when J > Count;
+            Target(I) := Get_Number(Get(Arr, J));
+            J := J + 1;
+         end loop;
+      end;
+   exception
+      when others =>
+         Ada.Text_IO.Put_Line("JSON array error " & Name);
+         GNAT.OS_Lib.Os_Exit(0);
+   end Read_JSON_Float_Array;
+
+   procedure Read_JSON_Int_Array (Data : in GNATCOLL.JSON.JSON_Value;
+                                  Name : in String;
+                                  Target : in out NS) is
+      use GNATCOLL.JSON;
+      Arr : JSON_Array;
+      Count : Natural;
+   begin
+      if Kind(Data) /= JSON_Object_Type or else not Has_Field(Data, Name) then
+         return;
+      end if;
+      Arr := Get(Data, Name);
+      Count := Length(Arr);
+      declare
+         J : Positive := 1;
+      begin
+         for I in Target'Range loop
+            exit when J > Count;
+            Target(I) := Get_Integer(Get(Arr, J));
+            J := J + 1;
+         end loop;
+      end;
+   exception
+      when others =>
+         Ada.Text_IO.Put_Line("JSON array error " & Name);
+         GNAT.OS_Lib.Os_Exit(0);
+   end Read_JSON_Int_Array;
+
+   procedure Read_JSON_LPAP (Data : in GNATCOLL.JSON.JSON_Value;
+                             Name : in String;
+                             D : in out Param_S) is
+      use GNATCOLL.JSON;
+      Arr : JSON_Array;
+      Count : Natural;
+      procedure Apply (Period, Amp, Phase : in Long_Float) is
+      begin
+         for I in D.B.LPAP'Range loop
+            if abs(GEM.LTE.LP(I)) > 0.0 and then
+              abs(Period - GEM.LTE.LP(I)) <= abs(GEM.LTE.LP(I)) * 0.01 then
+               D.B.LPAP(I).Amplitude := Amp;
+               D.B.LPAP(I).Phase := Phase;
+               exit;
+            end if;
+         end loop;
+      end Apply;
+   begin
+      if Kind(Data) /= JSON_Object_Type or else not Has_Field(Data, Name) then
+         return;
+      end if;
+      Arr := Get(Data, Name);
+      Count := Length(Arr);
+      if Count = 0 then
+         return;
+      end if;
+      if Kind(Get(Arr, 1)) = JSON_Array_Type then
+         for I in 1 .. Count loop
+            declare
+               Triplet : constant JSON_Array := Get(Get(Arr, I));
+            begin
+               if Length(Triplet) >= 3 then
+                  Apply(Get_Number(Get(Triplet, 1)),
+                        Get_Number(Get(Triplet, 2)),
+                        Get_Number(Get(Triplet, 3)));
+               end if;
+            end;
+         end loop;
+      else
+         declare
+            Index : Positive := 1;
+         begin
+            while Index + 2 <= Count loop
+               Apply(Get_Number(Get(Arr, Index)),
+                     Get_Number(Get(Arr, Index + 1)),
+                     Get_Number(Get(Arr, Index + 2)));
+               Index := Index + 3;
+            end loop;
+         end;
+      end if;
+   exception
+      when others =>
+         Ada.Text_IO.Put_Line("JSON array error " & Name);
+         GNAT.OS_Lib.Os_Exit(0);
+   end Read_JSON_LPAP;
+
+   function Read_JSON (Name : in String;
+                       D : in out Param_S;
+                       Include_LPAP : in Boolean) return Boolean is
+      use GNATCOLL.JSON;
+      Result : Read_Result;
+      Data : JSON_Value;
+   begin
+      declare
+         Text : constant String := File_To_String(Name);
+      begin
+         Result := Read(Text);
+      exception
+         when Ada.Text_IO.Name_Error | Ada.IO_Exceptions.Name_Error =>
+            return False;
+         when others =>
+            return False;
+      end;
+      if not Result.Success then
+         Ada.Text_IO.Put_Line(Format_Parsing_Error(Result.Error));
+         GNAT.OS_Lib.Os_Exit(0);
+      end if;
+      Data := Result.Value;
+      D.B.Offset := Get_Float_Field(Data, "offs", D.B.Offset);
+      D.B.Bg := Get_Float_Field(Data, "bg", D.B.Bg);
+      D.B.ImpA := Get_Float_Field(Data, "impA", D.B.ImpA);
+      D.B.ImpB := Get_Float_Field(Data, "impB", D.B.ImpB);
+      D.B.ImpC := Get_Float_Field(Data, "impC", D.B.ImpC);
+      D.B.DelA := Get_Float_Field(Data, "delA", D.B.DelA);
+      D.B.DelB := Get_Float_Field(Data, "delB", D.B.DelB);
+      D.B.Asym := Get_Float_Field(Data, "asym", D.B.Asym);
+      D.B.Ann1 := Get_Float_Field(Data, "ann1", D.B.Ann1);
+      D.B.Ann2 := Get_Float_Field(Data, "ann2", D.B.Ann2);
+      D.B.Sem1 := Get_Float_Field(Data, "sem1", D.B.Sem1);
+      D.B.Sem2 := Get_Float_Field(Data, "sem2", D.B.Sem2);
+      D.B.Year := Get_Float_Field(Data, "year", D.B.Year);
+      D.B.IR := Get_Float_Field(Data, "IR", Get_Float_Field(Data, "ir", D.B.IR));
+      D.B.mA := Get_Float_Field(Data, "ma", D.B.mA);
+      D.B.mP := Get_Float_Field(Data, "mp", D.B.mP);
+      D.B.shiftT := Get_Float_Field(Data, "shfT", Get_Float_Field(Data, "shft", D.B.shiftT));
+      D.B.init := Get_Float_Field(Data, "init", D.B.init);
+      if Include_LPAP then
+         Read_JSON_LPAP(Data, "LPAP", D);
+         Read_JSON_LPAP(Data, "lpap", D);
+      end if;
+      Read_JSON_Float_Array(Data, "ltep", D.B.LT);
+      Read_JSON_Float_Array(Data, "LT", D.B.LT);
+      Read_JSON_Float_Array(Data, "lt", D.B.LT);
+      Read_JSON_Int_Array(Data, "harm", D.C);
+      Read_JSON_Int_Array(Data, "harmonics", D.C);
+      for I in D.A.LP'Range loop
+         D.A.LP(I) := Gem.LTE.LP(I);
+      end loop;
+      return True;
+   exception
+      when others =>
+         Ada.Text_IO.Put_Line("JSON read error " & Name);
+         GNAT.OS_Lib.Os_Exit(0);
+   end Read_JSON;
+
 
    procedure Read (D : in out Param_S) is
-      FN : constant String := Ada.Command_Line.Command_Name & ".par";
-      FN2 : constant String := Ada.Command_Line.Command_Name & "." & CI & ".par";
+      Exec : constant String := Ada.Command_Line.Command_Name;
+      Base : constant String := (if Exec'Length > 0 and then Exec(Exec'Last) = '.'
+                                 then Exec(Exec'First .. Exec'Last - 1)
+                                 else Exec);
+      FN : constant String := Base & ".par";
+      FN2 : constant String := Base & "." & CI & ".par";
+      FN_JSON : constant String := Base & ".json";
+      FN2_JSON : constant String := Base & "." & CI & ".json";
       FT : Ada.Text_IO.File_Type;
    begin
-      Ada.Text_IO.Open(FT, Ada.Text_IO.In_File, FN);
-      Read(FT, "offs", D.B.Offset);
-      Read(FT, "bg  ", D.B.Bg);
-      Read(FT, "impA", D.B.ImpA);
-      Read(FT, "impB", D.B.ImpB);
-      Read(FT, "impC", D.B.ImpC);
-      Read(FT, "delA", D.B.DelA);
-      Read(FT, "delB", D.B.DelB);
-      Read(FT, "asym", D.B.Asym);
-      Read(FT, "ann1", D.B.Ann1);
-      Read(FT, "ann2", D.B.Ann2);
-      Read(FT, "sem1", D.B.Sem1);
-      Read(FT, "sem2", D.B.Sem2);
-      Read(FT, "year", D.B.Year);
-      Read(FT, "IR  ", D.B.IR);
-      Read(FT, "ma  ", D.B.mA);
-      Read(FT, "mp  ", D.B.mP);
-      Read(FT, "shfT", D.B.shiftT);
-      Read(FT, "init", D.B.init);
-      for I in D.B.LPAP'Range loop
-         Read(FT,
-             D.A.LP(I),
-             D.B.LPAP(I).Amplitude,
-             D.B.LPAP(I).Phase);
-         D.A.LP(I) := Gem.LTE.LP(I); -- OVERRIDE!
-      end loop;
-      for I in D.B.LT'Range loop
-         Read(FT, "ltep", D.B.LT(I));
-      end loop;
+      if not Read_JSON(FN_JSON, D, True) then
+         Ada.Text_IO.Open(FT, Ada.Text_IO.In_File, FN);
+         Read(FT, "offs", D.B.Offset);
+         Read(FT, "bg  ", D.B.Bg);
+         Read(FT, "impA", D.B.ImpA);
+         Read(FT, "impB", D.B.ImpB);
+         Read(FT, "impC", D.B.ImpC);
+         Read(FT, "delA", D.B.DelA);
+         Read(FT, "delB", D.B.DelB);
+         Read(FT, "asym", D.B.Asym);
+         Read(FT, "ann1", D.B.Ann1);
+         Read(FT, "ann2", D.B.Ann2);
+         Read(FT, "sem1", D.B.Sem1);
+         Read(FT, "sem2", D.B.Sem2);
+         Read(FT, "year", D.B.Year);
+         Read(FT, "IR  ", D.B.IR);
+         Read(FT, "ma  ", D.B.mA);
+         Read(FT, "mp  ", D.B.mP);
+         Read(FT, "shfT", D.B.shiftT);
+         Read(FT, "init", D.B.init);
+         for I in D.B.LPAP'Range loop
+            Read(FT,
+                D.A.LP(I),
+                D.B.LPAP(I).Amplitude,
+                D.B.LPAP(I).Phase);
+            D.A.LP(I) := Gem.LTE.LP(I); -- OVERRIDE!
+         end loop;
+         for I in D.B.LT'Range loop
+            Read(FT, "ltep", D.B.LT(I));
+         end loop;
 
-   begin
-      for I in D.C'Range loop
-         Read(FT, "harm", D.C(I));
-      end loop;
-      Ada.Text_IO.Close(FT);
-   exception
-      when Ada.Text_IO.End_Error =>
-         Ada.Text_IO.Put_Line ("Closing" & FN);
+      begin
+         for I in D.C'Range loop
+            Read(FT, "harm", D.C(I));
+         end loop;
          Ada.Text_IO.Close(FT);
-   end;
+      exception
+         when Ada.Text_IO.End_Error =>
+            Ada.Text_IO.Put_Line ("Closing " & FN);
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+         when others =>
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+            raise;
+      end;
+      end if;
 
-      Ada.Text_IO.Open(FT, Ada.Text_IO.In_File, FN2);
-      Read(FT, "offs", D.B.Offset);
-      Read(FT, "bg  ", D.B.Bg);
-      Read(FT, "impA", D.B.ImpA);
-      Read(FT, "impB", D.B.ImpB);
-      Read(FT, "impC", D.B.ImpC);
-      Read(FT, "delA", D.B.DelA);
-      Read(FT, "delB", D.B.DelB);
-      Read(FT, "asym", D.B.Asym);
-      Read(FT, "ann1", D.B.Ann1);
-      Read(FT, "ann2", D.B.Ann2);
-      Read(FT, "sem1", D.B.Sem1);
-      Read(FT, "sem2", D.B.Sem2);
-      Read(FT, "year", D.B.Year);
-      Read(FT, "IR  ", D.B.IR);
-      Read(FT, "ma  ", D.B.mA);
-      Read(FT, "mp  ", D.B.mP);
-      Read(FT, "shfT", D.B.shiftT);
-      Read(FT, "init", D.B.init);
-      for I in D.B.LT'Range loop
-         Read(FT, "ltep", D.B.LT(I));
-      end loop;
-      for I in D.C'Range loop
-         Read(FT, "harm", D.C(I));
-      end loop;
-      Ada.Text_IO.Close(FT);
-   exception
-      when Ada.Text_IO.End_Error =>
-         Ada.Text_IO.Put_Line ("Closing" & FN2);
+      if not Read_JSON(FN2_JSON, D, False) then
+         Ada.Text_IO.Open(FT, Ada.Text_IO.In_File, FN2);
+         Read(FT, "offs", D.B.Offset);
+         Read(FT, "bg  ", D.B.Bg);
+         Read(FT, "impA", D.B.ImpA);
+         Read(FT, "impB", D.B.ImpB);
+         Read(FT, "impC", D.B.ImpC);
+         Read(FT, "delA", D.B.DelA);
+         Read(FT, "delB", D.B.DelB);
+         Read(FT, "asym", D.B.Asym);
+         Read(FT, "ann1", D.B.Ann1);
+         Read(FT, "ann2", D.B.Ann2);
+         Read(FT, "sem1", D.B.Sem1);
+         Read(FT, "sem2", D.B.Sem2);
+         Read(FT, "year", D.B.Year);
+         Read(FT, "IR  ", D.B.IR);
+         Read(FT, "ma  ", D.B.mA);
+         Read(FT, "mp  ", D.B.mP);
+         Read(FT, "shfT", D.B.shiftT);
+         Read(FT, "init", D.B.init);
+         for I in D.B.LT'Range loop
+            Read(FT, "ltep", D.B.LT(I));
+         end loop;
+      begin
+         for I in D.C'Range loop
+            Read(FT, "harm", D.C(I));
+         end loop;
          Ada.Text_IO.Close(FT);
-      when others =>
-         Ada.Text_IO.Put_Line ("? Opening" & FN2);
+      exception
+         when Ada.Text_IO.End_Error =>
+            Ada.Text_IO.Put_Line ("Closing " & FN2);
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+         when others =>
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+            Ada.Text_IO.Put_Line ("? Opening " & FN2);
+      end;
+      end if;
    end Read;
 
    procedure Load (P : in out Param_S) is
