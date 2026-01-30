@@ -12,7 +12,8 @@ begin
       Flts : constant GEM.FS := Gem.S_to_LF(Ada.Command_Line.Argument(2));
       -- "dlod3.dat"
       Target : GEM.LTE.Primitives.Data_Pairs := GEM.LTE.Primitives.Make_Data(Name);
-      Result : GEM.LTE.Primitives.Data_Pairs := GEM.Mix_Regression(Target, Flts(1), Flts(2), 0,0, false,TRUE);
+      Result : GEM.LTE.Primitives.Data_Pairs := GEM.Mix_Regression(Target, Flts(1), Flts(2), 0,0,
+                       GEM.Getenv("QUADEXCLUDE", FALSE),TRUE);
 
 --      Freqs : Gem.Lte.Periods := Ps.LP;
 --      TS : Gem.LTE.Primitives.Data_Pairs(1..1000) := (others => (0.0, 0.0));
