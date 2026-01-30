@@ -354,9 +354,9 @@ package body GEM.LTE.Primitives.Solution is
          Trunc : Integer := Integer(((Time - Long_Float'Floor(Time))*Sampling_Per_Year));
          DPos : Integer := Integer((abs(D.B.delB)*Sampling_Per_Year));
       begin
-         if ImpMonth > 2 then
-            DPos := ImpMonth;
-         end if;
+         --if ImpMonth > 2 then
+         --   DPos := ImpMonth;
+         --end if;
          if Sin_Power = 2 then
             if Trunc = DPos then
                if Integer(Time) mod 2 = 0 then
@@ -385,9 +385,11 @@ package body GEM.LTE.Primitives.Solution is
             end if;
          elsif Trunc = DPos then
             Value := D.B.delA;
-         elsif Trunc = DPos + Integer(Sampling_Per_Year)/2 then
+            --Text_IO.Put_Line("a" & Trunc'Img & Value'Img);
+         elsif Trunc = (DPos + Integer(Sampling_Per_Year)/2) mod 12 then
             if Symmetric = 0 then
                Value := D.B.Asym;
+               --Text_IO.Put_Line("b"  & Trunc'Img & Value'Img);
             else
                Value := -D.B.delA;
             end if;

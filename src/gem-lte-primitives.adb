@@ -162,7 +162,8 @@ package body GEM.LTE.Primitives is
          else
             FB2 := 0.0;
          end if;
-         Res(I).Value := (Raw(I-1).Value + Raw(I).Value + Raw(I-2).Value + Raw(I+1).Value + Raw(I-3).Value)/5.0
+         -- Res(I).Value := (Raw(I-1).Value + Raw(I).Value + Raw(I-2).Value + Raw(I+1).Value + Raw(I-3).Value)/5.0
+         Res(I).Value := (Raw(I).Value)/1.0
            + (lagA + mA*cos(pi*Raw(I).Date+mB))*Res(I-1).Value
            + lagB*Res(I-2).Value
            - Ramp + FB2; 
@@ -173,7 +174,8 @@ package body GEM.LTE.Primitives is
          else
             Ramp := Long_Float'Copy_Sign(lagC, Res(I-1).Value);
          end if;
-         Res(I).Value := (Raw(I-1).Value + Raw(I).Value + Raw(I-2).Value + Raw(I+1).Value + Raw(I-3).Value)/5.0
+         -- Res(I).Value := (Raw(I-1).Value + Raw(I).Value + Raw(I-2).Value + Raw(I+1).Value + Raw(I-3).Value)/5.0
+         Res(I).Value := (Raw(I).Value)/1.0
            + (lagA + mA*cos(pi*Raw(I).Date+mB))*Res(I-1).Value
            + lagB*Res(I-2).Value
            + Ramp;

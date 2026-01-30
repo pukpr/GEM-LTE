@@ -23,3 +23,5 @@ dlod_ref.dat
 lt.exe.parms
 lte_results.csv
 
+lt.exe.resp.*
+lt.exe.par.*
