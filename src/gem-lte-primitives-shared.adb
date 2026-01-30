@@ -7,6 +7,7 @@ with Ada.Integer_Text_IO;
 with GNATCOLL.JSON;
 with Ada.Strings.Unbounded;
 with Ada.Characters.Latin_1;
+with Ada.IO_Exceptions;
 
 package body GEM.LTE.Primitives.Shared is
 
@@ -233,12 +234,20 @@ package body GEM.LTE.Primitives.Shared is
         Ada.Strings.Unbounded.Null_Unbounded_String;
    begin
       Ada.Text_IO.Open(FT, Ada.Text_IO.In_File, Name);
-      while not Ada.Text_IO.End_Of_File(FT) loop
-         Ada.Text_IO.Get_Line(FT, Line, Last);
-         Ada.Strings.Unbounded.Append(Contents, Line(1..Last));
-         Ada.Strings.Unbounded.Append(Contents, Ada.Characters.Latin_1.LF);
-      end loop;
-      Ada.Text_IO.Close(FT);
+      begin
+         while not Ada.Text_IO.End_Of_File(FT) loop
+            Ada.Text_IO.Get_Line(FT, Line, Last);
+            Ada.Strings.Unbounded.Append(Contents, Line(1..Last));
+            Ada.Strings.Unbounded.Append(Contents, Ada.Characters.Latin_1.LF);
+         end loop;
+         Ada.Text_IO.Close(FT);
+      exception
+         when others =>
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+            raise;
+      end;
       return Ada.Strings.Unbounded.To_String(Contents);
    end File_To_String;
 
@@ -256,9 +265,8 @@ package body GEM.LTE.Primitives.Shared is
                return Long_Float(Int_Value);
             end;
          when others =>
-            Ada.Text_IO.Put_Line("JSON number error");
+            Ada.Text_IO.Put_Line("JSON number error:" & Kind(Value)'Img);
             GNAT.OS_Lib.Os_Exit(0);
-            return 0.0;
       end case;
    end Get_Number;
 
@@ -275,9 +283,8 @@ package body GEM.LTE.Primitives.Shared is
          when JSON_Float_Type =>
             return Integer(Get_Long_Float(Value));
          when others =>
-            Ada.Text_IO.Put_Line("JSON integer error");
+            Ada.Text_IO.Put_Line("JSON integer error:" & Kind(Value)'Img);
             GNAT.OS_Lib.Os_Exit(0);
-            return 0;
       end case;
    end Get_Integer;
 
@@ -305,10 +312,15 @@ package body GEM.LTE.Primitives.Shared is
       end if;
       Arr := Get(Data, Name);
       Count := Length(Arr);
-      for I in Target'Range loop
-         exit when I > Count;
-         Target(I) := Get_Number(Get(Arr, I));
-      end loop;
+      declare
+         J : Positive := 1;
+      begin
+         for I in Target'Range loop
+            exit when J > Count;
+            Target(I) := Get_Number(Get(Arr, J));
+            J := J + 1;
+         end loop;
+      end;
    exception
       when others =>
          Ada.Text_IO.Put_Line("JSON array error " & Name);
@@ -327,10 +339,15 @@ package body GEM.LTE.Primitives.Shared is
       end if;
       Arr := Get(Data, Name);
       Count := Length(Arr);
-      for I in Target'Range loop
-         exit when I > Count;
-         Target(I) := Get_Integer(Get(Arr, I));
-      end loop;
+      declare
+         J : Positive := 1;
+      begin
+         for I in Target'Range loop
+            exit when J > Count;
+            Target(I) := Get_Integer(Get(Arr, J));
+            J := J + 1;
+         end loop;
+      end;
    exception
       when others =>
          Ada.Text_IO.Put_Line("JSON array error " & Name);
@@ -405,7 +422,7 @@ package body GEM.LTE.Primitives.Shared is
       begin
          Result := Read(Text);
       exception
-         when Ada.Text_IO.Name_Error =>
+         when Ada.Text_IO.Name_Error | Ada.IO_Exceptions.Name_Error =>
             return False;
          when others =>
             return False;
@@ -413,7 +430,6 @@ package body GEM.LTE.Primitives.Shared is
       if not Result.Success then
          Ada.Text_IO.Put_Line(Format_Parsing_Error(Result.Error));
          GNAT.OS_Lib.Os_Exit(0);
-         return False;
       end if;
       Data := Result.Value;
       D.B.Offset := Get_Float_Field(Data, "offs", D.B.Offset);
@@ -451,15 +467,18 @@ package body GEM.LTE.Primitives.Shared is
       when others =>
          Ada.Text_IO.Put_Line("JSON read error " & Name);
          GNAT.OS_Lib.Os_Exit(0);
-         return False;
    end Read_JSON;
 
 
    procedure Read (D : in out Param_S) is
-      FN : constant String := Ada.Command_Line.Command_Name & ".par";
-      FN2 : constant String := Ada.Command_Line.Command_Name & "." & CI & ".par";
-      FN_JSON : constant String := Ada.Command_Line.Command_Name & ".json";
-      FN2_JSON : constant String := Ada.Command_Line.Command_Name & "." & CI & ".json";
+      Exec : constant String := Ada.Command_Line.Command_Name;
+      Base : constant String := (if Exec'Length > 0 and then Exec(Exec'Last) = '.'
+                                 then Exec(Exec'First .. Exec'Last - 1)
+                                 else Exec);
+      FN : constant String := Base & ".par";
+      FN2 : constant String := Base & "." & CI & ".par";
+      FN_JSON : constant String := Base & ".json";
+      FN2_JSON : constant String := Base & "." & CI & ".json";
       FT : Ada.Text_IO.File_Type;
    begin
       if not Read_JSON(FN_JSON, D, True) then
@@ -500,8 +519,15 @@ package body GEM.LTE.Primitives.Shared is
          Ada.Text_IO.Close(FT);
       exception
          when Ada.Text_IO.End_Error =>
-            Ada.Text_IO.Put_Line ("Closing" & FN);
-            Ada.Text_IO.Close(FT);
+            Ada.Text_IO.Put_Line ("Closing " & FN);
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+         when others =>
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+            raise;
       end;
       end if;
 
@@ -535,10 +561,15 @@ package body GEM.LTE.Primitives.Shared is
          Ada.Text_IO.Close(FT);
       exception
          when Ada.Text_IO.End_Error =>
-            Ada.Text_IO.Put_Line ("Closing" & FN2);
-            Ada.Text_IO.Close(FT);
+            Ada.Text_IO.Put_Line ("Closing " & FN2);
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
          when others =>
-            Ada.Text_IO.Put_Line ("? Opening" & FN2);
+            if Ada.Text_IO.Is_Open(FT) then
+               Ada.Text_IO.Close(FT);
+            end if;
+            Ada.Text_IO.Put_Line ("? Opening " & FN2);
       end;
       end if;
    end Read;
