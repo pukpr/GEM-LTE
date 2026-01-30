@@ -1,3 +1,5 @@
+with "gnatcoll.gpr";
+
 project LTE is
    -- Laplace's Tidal Equation solution and optimization/fitting algorithms
 
@@ -26,4 +28,3 @@ project LTE is
    end Binder;
 
 end LTE;
-
