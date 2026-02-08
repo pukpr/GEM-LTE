@@ -120,6 +120,9 @@ class App(tk.Tk):
 
         self.root_dir: Path = Path.cwd().resolve()
         self.selected_index: str | None = None
+        self.interval_begin_var = tk.StringVar(value="1940")
+        self.interval_end_var = tk.StringVar(value="1970")
+        self.metric_var = tk.StringVar(value="CC")  # internal values: "CC" or "DTW"
 
         # Load ID.yml from the same directory as this GUI script
         script_dir = Path(__file__).resolve().parent
@@ -182,7 +185,7 @@ class App(tk.Tk):
 
         ttk.Label(run_frame, text="TIMEOUT (seconds):").grid(row=0, column=0, sticky="w")
         self.time_var = tk.DoubleVar(value=1000.0)
-        ttk.Scale(run_frame, from_=0.0, to=10000.0, variable=self.time_var).grid(
+        ttk.Scale(run_frame, from_=0.0, to=36000.0, variable=self.time_var).grid(
             row=0, column=1, sticky="we", padx=8
         )
         run_frame.columnconfigure(1, weight=1)
@@ -194,9 +197,51 @@ class App(tk.Tk):
         btns = ttk.Frame(run_frame)
         btns.grid(row=1, column=0, columnspan=3, pady=10, sticky="w")
 
-        ttk.Button(btns, text="Run lt", command=self.run_lt).pack(side="left")
-        ttk.Button(btns, text="Run plot", command=self.run_plot).pack(side="left", padx=8)
-        ttk.Button(btns, text="Refresh PNG", command=self.show_png).pack(side="left", padx=8)
+        # ttk.Button(btns, text="Run lt", command=self.run_lt).pack(side="left")
+        # ttk.Button(btns, text="Run plot", command=self.run_plot).pack(side="left", padx=8)
+        # ttk.Button(btns, text="Refresh PNG", command=self.show_png).pack(side="left", padx=8)
+
+        btns = ttk.Frame(run_frame)
+        btns.grid(row=1, column=0, columnspan=3, pady=10, sticky="we")
+        btns.columnconfigure(0, weight=1)
+
+        # Left side: buttons
+        left_btns = ttk.Frame(btns)
+        left_btns.grid(row=0, column=0, sticky="w")
+
+        ttk.Button(left_btns, text="Run lt", command=self.run_lt).pack(side="left")
+        ttk.Button(left_btns, text="Run plot", command=self.run_plot).pack(side="left", padx=8)
+        ttk.Button(left_btns, text="Refresh PNG", command=self.show_png).pack(side="left", padx=8)
+
+        # Right side: interval begin/end editors (LAST on the row)
+        # right_fields = ttk.Frame(btns)
+        # right_fields.grid(row=0, column=1, sticky="e")
+
+        # ttk.Label(right_fields, text="Interval:").pack(side="left", padx=(8, 6))
+        # ttk.Entry(right_fields, textvariable=self.interval_begin_var, width=6).pack(side="left")
+        # ttk.Label(right_fields, text="to").pack(side="left", padx=6)
+        # ttk.Entry(right_fields, textvariable=self.interval_end_var, width=6).pack(side="left")
+
+        right_fields = ttk.Frame(btns)
+        right_fields.grid(row=0, column=1, sticky="e")
+
+        # Metric radios (right before Interval boxes)
+        ttk.Label(right_fields, text="Metric:").pack(side="left", padx=(8, 6))
+
+        ttk.Radiobutton(
+            right_fields, text="CC", variable=self.metric_var, value="CC"
+        ).pack(side="left")
+
+        ttk.Radiobutton(
+            right_fields, text="DTW", variable=self.metric_var, value="DTW"
+        ).pack(side="left", padx=(6, 0))
+
+        # Interval editors (LAST on the row)
+        ttk.Label(right_fields, text="  Test Interval:").pack(side="left", padx=(12, 6))
+        ttk.Entry(right_fields, textvariable=self.interval_begin_var, width=6).pack(side="left")
+        ttk.Label(right_fields, text="to").pack(side="left", padx=6)
+        ttk.Entry(right_fields, textvariable=self.interval_end_var, width=6).pack(side="left")
+
 
         img_frame = ttk.LabelFrame(right, text="PNG preview (from selected dir)", padding=8)
         img_frame.pack(fill="both", expand=True)
@@ -245,6 +290,7 @@ class App(tk.Tk):
         self.sel_var.set(str((self.root_dir / self.selected_index).resolve()))
         self._clear_image()
         self._update_id_fields()
+        self.show_loc_png_for_selected()
 
     def _run_dir(self) -> Path:
         if not self.selected_index:
@@ -290,12 +336,20 @@ class App(tk.Tk):
         except Exception as e:
             messagebox.showerror("Missing lt", str(e))
             return
+        b = self.interval_begin_var.get().strip()
+        e = self.interval_end_var.get().strip()
+        if not b or not e:
+            messagebox.showerror("Bad interval", "Interval begin/end must be non-empty.")
+            return
 
         env = os.environ.copy()
-        env["METRIC"] = "cc"
+        # env["METRIC"] = "cc"
+        env["METRIC"] = self.metric_var.get().strip().upper()
         env["TIMEOUT"] = f"{timeout:.6f}"
-        env["TRAIN_START"] = "1940"
-        env["TRAIN_STOP"] = "1970"
+        # env["TRAIN_START"] = "1940"
+        # env["TRAIN_STOP"] = "1970"
+        env["TRAIN_START"] = b # self.interval_begin_var.get().strip()
+        env["TRAIN_STOP"] = e # self.interval_end_var.get().strip()
         env["CLIMATE_INDEX"] = f"{index}.dat"
         env["IDATE"] = "1920.9"
 
@@ -328,8 +382,10 @@ class App(tk.Tk):
             str(plot_path),
             index,
             "Feb2026",
-            "1940",
-            "1970",
+            # "1940",
+            # "1970",
+            self.interval_begin_var.get().strip(),
+            self.interval_end_var.get().strip(),
             "0",
         ]
 
@@ -390,6 +446,33 @@ class App(tk.Tk):
         self._image_ref = ImageTk.PhotoImage(img)
         self.canvas.create_image(cw // 2, ch // 2, image=self._image_ref, anchor="center")
 
+    def show_loc_png_for_selected(self) -> None:
+        """
+        Auto-preview: show locs/<index>_loc.png for the selected index.
+        Expected location relative to selected index dir:
+          ../locs/<index>_loc.png
+        """
+        try:
+            run_dir = self._run_dir()
+        except Exception:
+            return
+
+        index = run_dir.name.strip().strip('"').strip("'")
+
+        # Primary intended location: parent/locs/<index>_loc.png
+        candidates = [
+            run_dir.parent / "locs" / f"{index}_loc.png",
+            run_dir / "locs" / f"{index}_loc.png",            # fallback
+            self.root_dir / "locs" / f"{index}_loc.png",      # fallback
+        ]
+
+        for p in candidates:
+            if p.exists():
+                self._load_image(p)
+                return
+
+        # If not found, just clear the preview (don’t popup)
+        self._clear_image()
 
 def main() -> None:
     App().mainloop()

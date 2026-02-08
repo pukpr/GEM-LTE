@@ -142,7 +142,7 @@
   Quality: 100.0
   I: 0
   Country: WORLD
-'darwin':
+'darwin1880':
   Code: '-13'
   Name: Darwin SOI
   Latitude: 10.8
@@ -238,6 +238,18 @@
   Quality: 100.0
   I: 0
   Country: PACIFIC
+'brestexcl':
+  Code: '-20'
+  Name: BREST from 1880
+  Latitude: 48.38285
+  N/S: N
+  Longitude: 4.494838
+  E/W: W
+  Start: 1807
+  Stop: 2019
+  Quality: 89.75
+  I: 90
+  Country: FRANCE
 '1':
   Code: '190'
   Name: BREST
