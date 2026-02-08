@@ -77,6 +77,9 @@ package body GEM.LTE.Primitives is
       when Text_IO.End_Error =>
          Text_IO.Close(File => Data);
          return Count;
+      when Text_IO.Name_Error =>
+         Text_IO.Put_Line(Name & " not found?");
+         raise Text_IO.Name_Error;
       when E : Others =>
          Text_IO.Put_Line(Ada.Exceptions.Exception_Information(E));
          return 0;

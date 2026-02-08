@@ -9,6 +9,9 @@ with GEM.LTE.Primitives.Shared;
 with Ada.Exceptions;
 with Gnat.Traceback.Symbolic;
 with Gem.Mix_Regression;
+with Ada.IO_Exceptions;
+with GNAT.OS_Lib;
+
 
 package body GEM.LTE.Primitives.Solution is
 
@@ -232,6 +235,10 @@ package body GEM.LTE.Primitives.Solution is
          Continue;
 
       end loop;
+   exception
+      when Ada.IO_Exceptions.Name_Error =>
+         Text_IO.Put_Line(Name & " index not found?");
+         GNAT.OS_Lib.Os_Exit(0);
    end Thread;
 
    --
@@ -618,6 +625,11 @@ package body GEM.LTE.Primitives.Solution is
           
       
    begin
+      if Data_Records'Length = 0 then
+         Text_IO.Put_Line(File_Name & " empty or not found");
+         GNAT.OS_Lib.Os_Exit(0);
+      end if;
+
       for I in First .. Last loop
          RMS_Data := RMS_Data + Data_Records(I).Value * Data_Records(I).Value;
       end loop;
