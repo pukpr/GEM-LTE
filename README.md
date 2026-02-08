@@ -22,7 +22,10 @@ Linux/macOS) via the GNAT project file `lte.gpr`.
      `1`–`9` trigger stored solution outputs.
    - The `TIMEOUT` cycle stops the run when the elapsed time is exceeded.
 
-For a more detailed walkthrough, see the [wiki page](wiki/Operation.md).
+For a more detailed walkthrough, see the
+[GEM-LTE wiki](https://github.com/pukpr/GEM-LTE/wiki):
+
+- [Operation Overview](https://github.com/pukpr/GEM-LTE/wiki/Operation)
 
 ## GUI workflow (Windows command line)
 
