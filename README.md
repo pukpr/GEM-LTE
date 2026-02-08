@@ -33,20 +33,26 @@ sites to model and simulate.
 
 1. Run the GUI from the `experiments\Feb2026` level (the script expects to run
    at that level and searches subdirectories):
-   `python experiments\Feb2026\lte_gui.py`.
+   `python .\lte_gui.py`.
 2. Choose the root directory that contains index folders (for example,
    `experiments\Feb2026`). The GUI lists each directory except `locs`,
    `scripts`, and `rlr_data`.
 3. Select an index directory. If the directory name matches an entry in
-   `ID.yml`, the GUI shows the MSL site name/country metadata.
-4. Configure the `TIMEOUT`, metric (CC/DTW), and training interval.
+   `ID.yml`, the GUI shows the MSL site name/country metadata (or climate index).
+4. Configure the `TIMEOUT`, metric (CC/DTW), and test/training interval.
 5. Click **Run lt** to launch `lt.exe` in a new console with environment
    variables (`METRIC`, `TIMEOUT`, `TRAIN_START`, `TRAIN_STOP`, `CLIMATE_INDEX`,
-   `IDATE`) set for the run.
+   `IDATE`) set for the run. Once finished, can close it.
 6. Click **Run plot** to execute `plot.py` for the selected index and
    **Refresh PNG** to preview the newest plot in the GUI.
 
-> Screenshot placeholder: insert GUI screenshot here.
+> Selecting the Warnemunde MSL station, index #11
+<img width="1652" height="1218" alt="image" src="https://github.com/user-attachments/assets/57349659-79d8-47b6-aefc-c422ffd05097" />
+
+> after **Refresh PNG** 
+
+<img width="1652" height="1218" alt="image" src="https://github.com/user-attachments/assets/c05621c3-a516-4c72-80c5-06f5580f699b" />
+
 
 ## Release notes / packaging
 
