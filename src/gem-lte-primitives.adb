@@ -135,10 +135,109 @@ package body GEM.LTE.Primitives is
       Res : Data_Pairs := Raw;
       Start_Index : Integer;
       Ramp : Long_Float;
+
+   begin
+      for I in Raw'Range loop
+         Start_Index := I;
+         exit when Raw(I).Date > Start;
+      end loop;
+
+      -- The first few values are sensitive to prior information so can adjust
+      -- these for better fits in the early part of the time series.
+      Res(Start_Index).Value := iA;
+      for I in Start_Index+1 .. Raw'Last loop
+         Ramp := Long_Float'Copy_Sign(lagC, Res(I-1).Value);
+         Res(I).Value := Raw(I).Value + Res(I-1).Value - Ramp; 
+      end loop;
+
+      -- If Start is inside the series, create "pre-history" by running backwards
+      for I in reverse (Raw'First+1) .. Start_Index loop
+         Ramp := Long_Float'Copy_Sign(lagC, Res(I).Value);
+         Res(I-1).Value := -Raw(I-1).Value + Res(I).Value + Ramp; 
+      end loop;
+
+      return Res;
+   end IIR;
+
+   -- a running mean filter, used to damp the inpulse response
+   function IIR_1 (Raw : in Data_Pairs;
+                 lagA, lagB, lagC : in Long_Float;
+                 iA, iB, iC : in Long_Float := 0.0;
+                 Start : in Long_Float := Long_Float'First;
+                 mA, mB : in Long_Float := 0.0) return  Data_Pairs is
+      Res : Data_Pairs := Raw;
+      Start_Index : Integer;
+      Ramp : Long_Float;
+
+   begin
+      for I in Raw'Range loop
+         Start_Index := I;
+         exit when Raw(I).Date > Start;
+      end loop;
+
+      -- The first few values are sensitive to prior information so can adjust
+      -- these for better fits in the early part of the time series.
+      Res(Start_Index).Value := 0.0;
+      Res(Start_Index + 1).Value := 0.0;
+      Res(Start_Index + 2).Value := iA; 
+      Res(Start_Index + 3).Value := iA;
+      for I in Start_Index+4 .. Raw'Last loop
+         Ramp := Long_Float'Copy_Sign(lagC, Res(I-1).Value);
+         Res(I).Value := Raw(I).Value + Res(I-1).Value - Ramp; 
+      end loop;
+
+      -- If Start is inside the series, create "pre-history" by running backwards
+      for I in reverse (Raw'First+2) .. (Start_Index+3) loop
+         Ramp := Long_Float'Copy_Sign(lagC, Res(I).Value);
+         Res(I-1).Value := -Raw(I-1).Value + Res(I).Value + Ramp; 
+      end loop;
+
+      return Res;
+   end IIR_1;
+
+
+   function IIR_0 (Raw : in Data_Pairs;
+                 lagA, lagB, lagC : in Long_Float;
+                 iA, iB, iC : in Long_Float := 0.0;
+                 Start : in Long_Float := Long_Float'First;
+                 mA, mB : in Long_Float := 0.0) return  Data_Pairs is
+      Res : Data_Pairs := Raw;
+      Start_Index : Integer;
+      Ramp : Long_Float;
       FB2 : Long_Float;
       Pi : Long_Float := Ada.Numerics.Pi;
       use Ada.Numerics.Long_Elementary_Functions;
       Annual_Delay : constant := 13; -- months
+
+   function Back_Step (Cur : Long_Float; RawV : Long_Float) return Long_Float is
+      C    : constant Long_Float := abs lagC;
+      D    : constant Long_Float := Cur - RawV;
+      Pos  : constant Long_Float := D + C;  -- candidate with Prev >= 0
+      Neg  : constant Long_Float := D - C;  -- candidate with Prev <  0
+   begin
+      -- If only one candidate is sign-consistent, take it.
+      if Pos < 0.0 then
+         return Neg;
+      elsif Neg >= 0.0 then
+         return Pos;
+      end if;
+
+      -- Ambiguous zone (both sign-consistent): pick a stable preference.
+      -- Here: prefer keeping the same sign as the current value.
+      if Cur > 0.0 then
+         return Pos;
+      elsif Cur < 0.0 then
+         return Neg;
+      else
+         -- Cur == 0: pick the smaller magnitude to avoid a jump.
+         if abs Pos <= abs Neg then
+            return Pos;
+         else
+            return Neg;
+         end if;
+      end if;
+   end Back_Step;
+
    begin
       for I in Raw'Range loop
          Start_Index := I;
@@ -149,7 +248,7 @@ package body GEM.LTE.Primitives is
       -- The first few values are sensitive to prior information so can adjust
       -- these for better fits in the early part of the time series.
       Res(Start_Index + 1).Value := 0.0;
-      Res(Start_Index + 2).Value := 0.0; -- iB;
+      Res(Start_Index + 2).Value := iA; -- iB;
       Res(Start_Index + 3).Value := iA;
       for I in Start_Index + 4 .. Raw'Last-1 loop
          if Modulation then
@@ -168,20 +267,19 @@ package body GEM.LTE.Primitives is
            + lagB*Res(I-2).Value
            - Ramp + FB2; 
       end loop;
-      for I in Raw'First+4 .. Start_Index-1 loop
-         if Modulation then
-            Ramp := Long_Float'Copy_Sign(lagC, Res(I-1).Value)*(1.0-cos(2.0*pi*Raw(I).Date));
-         else
-            Ramp := Long_Float'Copy_Sign(lagC, Res(I-1).Value);
-         end if;
-         -- Res(I).Value := (Raw(I-1).Value + Raw(I).Value + Raw(I-2).Value + Raw(I+1).Value + Raw(I-3).Value)/5.0
-         Res(I).Value := (Raw(I).Value)/1.0
-           + (lagA + mA*cos(pi*Raw(I).Date+mB))*Res(I-1).Value
-           + lagB*Res(I-2).Value
-           + Ramp;
-      end loop;
+
+      -- If Start is inside the series, create "pre-history" by running backwards
+      -- using inverted lag factors and inverted ramp sign.
+      if Start_Index - 1 in Raw'Range
+         and then Start_Index + 2 in Raw'Range
+      then
+         for I in reverse (Raw'First + 2) .. (Start_Index + 3) loop
+            Res(I - 1).Value := Back_Step (Res(I).Value, Raw(I).Value);
+         end loop;
+      end if;
+
       return Res;
-   end IIR;
+   end IIR_0;
 
    -- also called a boxcar filter, a moving average w/ window of 3 points
    function FIR (Raw : in Data_Pairs;

@@ -3,6 +3,7 @@ with Ada.Command_Line.Response_File;
 with Text_IO;
 with Ada.Integer_Text_IO;
 with Ada.Long_Float_Text_IO;
+with Ada.Directories;
 
 package body GEM is
 
@@ -131,7 +132,7 @@ package body GEM is
 
 
    procedure Read_Response_File is
-      FN : constant String := Ada.Command_Line.Command_Name & ".resp";
+      FN : constant String := Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & ".resp";
       use type Ada.Command_Line.Response_File.String_Access;
    begin
       Text_IO.Put_Line("RESPONSE FILE");
