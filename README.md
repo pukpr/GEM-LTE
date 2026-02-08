@@ -27,6 +27,10 @@ For a more detailed walkthrough, see the
 
 - [Operation Overview](https://github.com/pukpr/GEM-LTE/wiki/Operation)
 
+The Markdown sources for the wiki live in `/wiki` so they can be published to
+the GitHub wiki repository (`GEM-LTE.wiki`) and referenced as first-class wiki
+pages such as `[[Operation]]`.
+
 ## GUI workflow (Windows command line)
 
 The interactive GUI lives in `experiments/Feb2026/lte_gui.py` and is launched
