@@ -310,6 +310,7 @@ package body GEM.LTE.Primitives.Solution is
       ImpMonth : constant Integer := GEM.Getenv("IMPMONTH", 0);
       Clamp : constant Boolean := GEM.Getenv("CLAMP", FALSE); 
       Vary_Initial : constant Boolean := GEM.Getenv("VI", FALSE); 
+      Initial_Conditions_Date : constant Long_Float := GEM.Getenv("IDATE", 0.0); 
       RMS_Data : Long_Float := 0.0;
 
       function Metric (X, Y, Z : in Data_Pairs) return Long_Float is
@@ -585,6 +586,7 @@ package body GEM.LTE.Primitives.Solution is
             F := IIR( Raw => Impulses,
                             lagA => der, lagB => Revert_to_Mean*D.B.mA, lagC => D.B.mP,
                             iA => D.B.init, iB => 0.0, iC => D.B.ImpC,
+                            Start => Initial_Conditions_Date,
                             mA => 0.0, mB => 0.0); 
          end if;
 

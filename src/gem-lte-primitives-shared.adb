@@ -8,6 +8,7 @@ with GNATCOLL.JSON;
 with Ada.Strings.Unbounded;
 with Ada.Characters.Latin_1;
 with Ada.IO_Exceptions;
+with Ada.Directories;
 
 package body GEM.LTE.Primitives.Shared is
 
@@ -96,8 +97,8 @@ package body GEM.LTE.Primitives.Shared is
    end;
 
    procedure Write (D : in Param_S) is
-      FN : constant String := Ada.Command_Line.Command_Name & ".par";
-      FN2 : constant String := Ada.Command_Line.Command_Name & "." & CI & ".par";
+      FN : constant String := Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & ".par";
+      FN2 : constant String := Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & "." & CI & ".par";
       FT : Ada.Text_IO.File_Type;
    begin
       Ada.Text_IO.Create(FT, Ada.Text_IO.Out_File, FN);
@@ -167,7 +168,7 @@ package body GEM.LTE.Primitives.Shared is
    procedure Save (P : in Param_S) is
       subtype PS is Param_S(P.NLP,P.NLT);
       package DIO is new Ada.Direct_IO(PS);
-      FN : constant String := Ada.Command_Line.Command_Name & ".parms";
+      FN : constant String := Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & ".parms";
       use DIO;
       FT : File_Type;
    begin
@@ -466,12 +467,13 @@ package body GEM.LTE.Primitives.Shared is
    exception
       when others =>
          Ada.Text_IO.Put_Line("JSON read error " & Name);
-         GNAT.OS_Lib.Os_Exit(0);
+         return False;
+         -- GNAT.OS_Lib.Os_Exit(0);
    end Read_JSON;
 
 
    procedure Read (D : in out Param_S) is
-      Exec : constant String := Ada.Command_Line.Command_Name;
+      Exec : constant String := Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name);
       Base : constant String := (if Exec'Length > 0 and then Exec(Exec'Last) = '.'
                                  then Exec(Exec'First .. Exec'Last - 1)
                                  else Exec);
@@ -572,12 +574,18 @@ package body GEM.LTE.Primitives.Shared is
             Ada.Text_IO.Put_Line ("? Opening " & FN2);
       end;
       end if;
+   exception
+      when others =>
+         if Ada.Text_IO.Is_Open(FT) then
+            Ada.Text_IO.Close(FT);
+         end if;
+         Ada.Text_IO.Put_Line ("? Opening " & FN2);
    end Read;
 
    procedure Load (P : in out Param_S) is
       subtype PS is Param_S(P.NLP,P.NLT);
       package DIO is new Ada.Direct_IO(PS);
-      FN : constant String := Ada.Command_Line.Command_Name & ".parms";
+      FN : constant String := Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & ".parms";
       use DIO;
       FT : File_Type;
    begin

@@ -1,0 +1,5 @@
+# Each non-comment line: REGEX<TAB>SEND<TAB>[once]
+# SEND supports escapes: \n \r \t \x1b (ESC) \x03 (Ctrl+C)
+# Examples (edit these to match lt prompts):
+press any key	 
+continue\?\s*$	y\r	once

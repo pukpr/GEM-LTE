@@ -1,0 +1,1176 @@
+'nino34':
+  Code: '-1'
+  Name: NINO34
+  Latitude: 0.0
+  N/S: N
+  Longitude: 142.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'nino4':
+  Code: '-2'
+  Name: NINO4
+  Latitude: 0.0
+  N/S: N
+  Longitude: 175.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'amo':
+  Code: '-3'
+  Name: AMO
+  Latitude: 35.0
+  N/S: N
+  Longitude: 41.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: ATLANTIC
+'ao':
+  Code: '-4'
+  Name: AO
+  Latitude: 72.0
+  N/S: N
+  Longitude: 15.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: ARCTIC
+'denison':
+  Code: '-5'
+  Name: Ft Denison
+  Latitude: 33.0
+  N/S: S
+  Longitude: 151.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'iod':
+  Code: '-6'
+  Name: IOD
+  Latitude: 5.0
+  N/S: S
+  Longitude: 75.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: INDIAN
+'iodw':
+  Code: '-7'
+  Name: IOD West
+  Latitude: 5.0
+  N/S: S
+  Longitude: 60.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: INDIAN
+'iode':
+  Code: '-8'
+  Name: IOD East
+  Latitude: 5.0
+  N/S: S
+  Longitude: 100.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: INDIAN
+'nao':
+  Code: '-9'
+  Name: NAO
+  Latitude: 55.0
+  N/S: N
+  Longitude: 25.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: ATLANTIC
+'tna':
+  Code: '-10'
+  Name: TNA Tropical N. Atlantic
+  Latitude: 40.0
+  N/S: N
+  Longitude: 35.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: ATLANTIC
+'tsa':
+  Code: '-11'
+  Name: TSA Tropical S. Atlantic
+  Latitude: 10.0
+  N/S: S
+  Longitude: 25.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: ATLANTIC
+'qbo30':
+  Code: '-12'
+  Name: QBO 30 Equatorial
+  Latitude: 0.5
+  N/S: N
+  Longitude: 20.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: WORLD
+'darwin':
+  Code: '-13'
+  Name: Darwin SOI
+  Latitude: 10.8
+  N/S: S
+  Longitude: 132.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'emi':
+  Code: '-14'
+  Name: EMI ENSO Modoki Index
+  Latitude: 0.5
+  N/S: N
+  Longitude: 145.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'ic3tsfc':
+  Code: '-15'
+  Name: ic3tsfc (Reconstruction)
+  Latitude: 10.5
+  N/S: N
+  Longitude: 215.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'m6':
+  Code: '-16'
+  Name: M6, Atlantic Nino
+  Latitude: 0.0
+  N/S: N
+  Longitude: 35.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: ATLANTIC
+'m4':
+  Code: '-17'
+  Name: M4, N. Pacific Gyre Oscillation
+  Latitude: 30.0
+  N/S: N
+  Longitude: 150.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'pdo':
+  Code: '-18'
+  Name: PDO
+  Latitude: 45.0
+  N/S: N
+  Longitude: 160.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'nino3':
+  Code: '-19'
+  Name: NINO3
+  Latitude: 0.0
+  N/S: N
+  Longitude: 120.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'nino12':
+  Code: '-20'
+  Name: NINO12
+  Latitude: 5.0
+  N/S: S
+  Longitude: 100.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'1':
+  Code: '190'
+  Name: BREST
+  Latitude: 48.38285
+  N/S: N
+  Longitude: 4.494838
+  E/W: W
+  Start: 1807
+  Stop: 2019
+  Quality: 89.75
+  I: 90
+  Country: FRANCE
+'7':
+  Code: '140'
+  Name: CUXHAVEN 2
+  Latitude: 53.866667
+  N/S: N
+  Longitude: 8.716667
+  E/W: E
+  Start: 1843
+  Stop: 2018
+  Quality: 100.0
+  I: 40
+  Country: GERMANY
+'8':
+  Code: '120'
+  Name: WISMAR 2
+  Latitude: 53.898889
+  N/S: N
+  Longitude: 11.458056
+  E/W: E
+  Start: 1848
+  Stop: 2018
+  Quality: 99.61
+  I: 20
+  Country: GERMANY
+'10':
+  Code: '823'
+  Name: SAN FRANCISCO
+  Latitude: 37.806667
+  N/S: N
+  Longitude: 122.465
+  E/W: W
+  Start: 1854
+  Stop: 2020
+  Quality: 99.6
+  I: 23
+  Country: UNITED STATES
+'11':
+  Code: '120'
+  Name: WARNEMUNDE 2
+  Latitude: 54.169722
+  N/S: N
+  Longitude: 12.103333
+  E/W: E
+  Start: 1855
+  Stop: 2019
+  Quality: 99.75
+  I: 20
+  Country: GERMANY
+'14':
+  Code: '060'
+  Name: HELSINKI
+  Latitude: 60.153633
+  N/S: N
+  Longitude: 24.956217
+  E/W: E
+  Start: 1857
+  Stop: 2019
+  Quality: 89.93
+  I: 60
+  Country: FINLAND
+'41':
+  Code: '305'
+  Name: POTI
+  Latitude: 42.166667
+  N/S: N
+  Longitude: 41.683333
+  E/W: E
+  Start: 1874
+  Stop: 2018
+  Quality: 94.14
+  I: 5
+  Country: GEORGIA
+'42':
+  Code: '305'
+  Name: SEVASTOPOL
+  Latitude: 44.6166
+  N/S: N
+  Longitude: 33.5254
+  E/W: E
+  Start: 1910
+  Stop: 1995
+  Quality: 50.0
+  I: 5
+  Country: UKRAINE
+'65':
+  Code: '680'
+  Name: SYDNEY, FORT DENISON
+  Latitude: 33.85
+  N/S: S
+  Longitude: 151.233333
+  E/W: E
+  Start: 1886
+  Stop: 1993
+  Quality: 100.0
+  I: 80
+  Country: AUSTRALIA
+'76':
+  Code: '130'
+  Name: AARHUS
+  Latitude: 56.147222
+  N/S: N
+  Longitude: 10.223889
+  E/W: E
+  Start: 1888
+  Stop: 2017
+  Quality: 97.82
+  I: 30
+  Country: DENMARK
+'78':
+  Code: '050'
+  Name: STOCKHOLM
+  Latitude: 59.324167
+  N/S: N
+  Longitude: 18.081667
+  E/W: E
+  Start: 1889
+  Stop: 2020
+  Quality: 100.0
+  I: 50
+  Country: SWEDEN
+'111':
+  Code: '680'
+  Name: FREMANTLE
+  Latitude: 32.055833
+  N/S: S
+  Longitude: 115.739444
+  E/W: E
+  Start: 1897
+  Stop: 2020
+  Quality: 92.61
+  I: 80
+  Country: AUSTRALIA
+'127':
+  Code: '823'
+  Name: SEATTLE
+  Latitude: 47.601667
+  N/S: N
+  Longitude: 122.338333
+  E/W: W
+  Start: 1899
+  Stop: 2020
+  Quality: 99.93
+  I: 23
+  Country: UNITED STATES
+'154':
+  Code: '270'
+  Name: TRIESTE
+  Latitude: 45.647361
+  N/S: N
+  Longitude: 13.758472
+  E/W: E
+  Start: 1875
+  Stop: 2020
+  Quality: 86.87
+  I: 70
+  Country: ITALY
+'155':
+  Code: '760'
+  Name: HONOLULU
+  Latitude: 21.306667
+  N/S: N
+  Longitude: 157.866667
+  E/W: W
+  Start: 1905
+  Stop: 2020
+  Quality: 100.0
+  I: 60
+  Country: UNITED STATES
+'158':
+  Code: '823'
+  Name: SAN DIEGO (QUARANTINE STATION)
+  Latitude: 32.713333
+  N/S: N
+  Longitude: 117.173333
+  E/W: W
+  Start: 1906
+  Stop: 2020
+  Quality: 98.48
+  I: 23
+  Country: UNITED STATES
+'161':
+  Code: '940'
+  Name: GALVESTON II, PIER 21, TX
+  Latitude: 29.31
+  N/S: N
+  Longitude: 94.793333
+  E/W: W
+  Start: 1908
+  Stop: 2020
+  Quality: 99.19
+  I: 40
+  Country: UNITED STATES
+'163':
+  Code: '840'
+  Name: BALBOA
+  Latitude: 8.966667
+  N/S: N
+  Longitude: 79.566667
+  E/W: W
+  Start: 1908
+  Stop: 2018
+  Quality: 99.4
+  I: 40
+  Country: PANAMA
+'183':
+  Code: '960'
+  Name: PORTLAND (MAINE)
+  Latitude: 43.656667
+  N/S: N
+  Longitude: 70.246667
+  E/W: W
+  Start: 1912
+  Stop: 2020
+  Quality: 99.77
+  I: 60
+  Country: UNITED STATES
+'188':
+  Code: '940'
+  Name: KEY WEST
+  Latitude: 24.555
+  N/S: N
+  Longitude: 81.806667
+  E/W: W
+  Start: 1913
+  Stop: 2020
+  Quality: 99.23
+  I: 40
+  Country: UNITED STATES
+'196':
+  Code: '680'
+  Name: SYDNEY, FORT DENISON 2
+  Latitude: 33.854667
+  N/S: S
+  Longitude: 151.225778
+  E/W: E
+  Start: 1914
+  Stop: 2020
+  Quality: 98.21
+  I: 80
+  Country: AUSTRALIA
+'202':
+  Code: '170'
+  Name: NEWLYN
+  Latitude: 50.103
+  N/S: N
+  Longitude: 5.542833
+  E/W: W
+  Start: 1915
+  Stop: 2019
+  Quality: 98.1
+  I: 70
+  Country: UNITED KINGDOM
+'225':
+  Code: '821'
+  Name: KETCHIKAN
+  Latitude: 55.331667
+  N/S: N
+  Longitude: 131.625
+  E/W: W
+  Start: 1919
+  Stop: 2020
+  Quality: 99.02
+  I: 21
+  Country: UNITED STATES
+'229':
+  Code: '060'
+  Name: KEMI
+  Latitude: 65.673367
+  N/S: N
+  Longitude: 24.51525
+  E/W: E
+  Start: 1920
+  Stop: 2019
+  Quality: 96.67
+  I: 60
+  Country: FINLAND
+'234':
+  Code: '960'
+  Name: CHARLESTON I
+  Latitude: 32.781667
+  N/S: N
+  Longitude: 79.925
+  E/W: W
+  Start: 1921
+  Stop: 2020
+  Quality: 99.25
+  I: 60
+  Country: UNITED STATES
+'235':
+  Code: '960'
+  Name: BOSTON
+  Latitude: 42.353333
+  N/S: N
+  Longitude: 71.053333
+  E/W: W
+  Start: 1921
+  Stop: 2020
+  Quality: 99.08
+  I: 60
+  Country: UNITED STATES
+'245':
+  Code: '823'
+  Name: LOS ANGELES
+  Latitude: 33.72
+  N/S: N
+  Longitude: 118.271667
+  E/W: W
+  Start: 1923
+  Stop: 2020
+  Quality: 98.13
+  I: 23
+  Country: UNITED STATES
+'246':
+  Code: '940'
+  Name: PENSACOLA
+  Latitude: 30.403333
+  N/S: N
+  Longitude: 87.21
+  E/W: W
+  Start: 1923
+  Stop: 2020
+  Quality: 98.3
+  I: 40
+  Country: UNITED STATES
+'256':
+  Code: '823'
+  Name: LA JOLLA (SCRIPPS PIER)
+  Latitude: 32.866667
+  N/S: N
+  Longitude: 117.256667
+  E/W: W
+  Start: 1924
+  Stop: 2020
+  Quality: 96.13
+  I: 23
+  Country: UNITED STATES
+'2':
+  Code: '110'
+  Name: SWINOUJSCIE
+  Latitude: 53.916667
+  N/S: N
+  Longitude: 14.233333
+  E/W: E
+  Start: 1811
+  Stop: 1999
+  Quality: 96.47
+  I: 10
+  Country: POLAND
+'3':
+  Code: '170'
+  Name: SHEERNESS
+  Latitude: 51.445639
+  N/S: N
+  Longitude: 0.743444
+  E/W: E
+  Start: 1832
+  Stop: 2018
+  Quality: 55.61
+  I: 70
+  Country: UNITED KINGDOM
+'5':
+  Code: '170'
+  Name: HOLYHEAD
+  Latitude: 53.313944
+  N/S: N
+  Longitude: 4.620444
+  E/W: W
+  Start: 1838
+  Stop: 2019
+  Quality: 38.97
+  I: 70
+  Country: UNITED KINGDOM
+'9':
+  Code: '150'
+  Name: MAASSLUIS
+  Latitude: 51.9175
+  N/S: N
+  Longitude: 4.249722
+  E/W: E
+  Start: 1848
+  Stop: 2019
+  Quality: 100.0
+  I: 50
+  Country: NETHERLANDS
+'12':
+  Code: '960'
+  Name: NEW YORK (THE BATTERY)
+  Latitude: 40.7
+  N/S: N
+  Longitude: 74.013333
+  E/W: W
+  Start: 1856
+  Stop: 2020
+  Quality: 90.4
+  I: 60
+  Country: UNITED STATES
+'13':
+  Code: '125'
+  Name: TRAVEMUNDE
+  Latitude: 53.958056
+  N/S: N
+  Longitude: 10.872222
+  E/W: E
+  Start: 1856
+  Stop: 2018
+  Quality: 95.09
+  I: 25
+  Country: GERMANY
+'20':
+  Code: '150'
+  Name: VLISSINGEN
+  Latitude: 51.442222
+  N/S: N
+  Longitude: 3.596111
+  E/W: E
+  Start: 1862
+  Stop: 2019
+  Quality: 100.0
+  I: 50
+  Country: NETHERLANDS
+'22':
+  Code: '150'
+  Name: HOEK VAN HOLLAND
+  Latitude: 51.9775
+  N/S: N
+  Longitude: 4.12
+  E/W: E
+  Start: 1864
+  Stop: 2019
+  Quality: 100.0
+  I: 50
+  Country: NETHERLANDS
+'23':
+  Code: '150'
+  Name: DEN HELDER
+  Latitude: 52.964444
+  N/S: N
+  Longitude: 4.745
+  E/W: E
+  Start: 1865
+  Stop: 2019
+  Quality: 100.0
+  I: 50
+  Country: NETHERLANDS
+'24':
+  Code: '150'
+  Name: DELFZIJL
+  Latitude: 53.326389
+  N/S: N
+  Longitude: 6.933056
+  E/W: E
+  Start: 1865
+  Stop: 2019
+  Quality: 100.0
+  I: 50
+  Country: NETHERLANDS
+'25':
+  Code: '150'
+  Name: HARLINGEN
+  Latitude: 53.175556
+  N/S: N
+  Longitude: 5.409444
+  E/W: E
+  Start: 1865
+  Stop: 2019
+  Quality: 100.0
+  I: 50
+  Country: NETHERLANDS
+'32':
+  Code: '150'
+  Name: IJMUIDEN
+  Latitude: 52.462222
+  N/S: N
+  Longitude: 4.554722
+  E/W: E
+  Start: 1871
+  Stop: 2019
+  Quality: 99.78
+  I: 50
+  Country: NETHERLANDS
+'33':
+  Code: '040'
+  Name: OSCARSBORG
+  Latitude: 59.678073
+  N/S: N
+  Longitude: 10.604861
+  E/W: E
+  Start: 1872
+  Stop: 2020
+  Quality: 47.32
+  I: 40
+  Country: NORWAY
+'34':
+  Code: '040'
+  Name: TRONDHEIM
+  Latitude: 63.433333
+  N/S: N
+  Longitude: 10.433333
+  E/W: E
+  Start: 1872
+  Stop: 1989
+  Quality: 39.83
+  I: 40
+  Country: NORWAY
+'47':
+  Code: '040'
+  Name: STAVANGER
+  Latitude: 58.974339
+  N/S: N
+  Longitude: 5.730121
+  E/W: E
+  Start: 1881
+  Stop: 2020
+  Quality: 69.23
+  I: 40
+  Country: NORWAY
+'57':
+  Code: '060'
+  Name: VAASA / VASA
+  Latitude: 63.081533
+  N/S: N
+  Longitude: 21.571183
+  E/W: E
+  Start: 1883
+  Stop: 2019
+  Quality: 94.89
+  I: 60
+  Country: FINLAND
+'58':
+  Code: '040'
+  Name: BERGEN
+  Latitude: 60.398046
+  N/S: N
+  Longitude: 5.320487
+  E/W: E
+  Start: 1883
+  Stop: 2020
+  Quality: 76.03
+  I: 40
+  Country: NORWAY
+'59':
+  Code: '250'
+  Name: GENOVA
+  Latitude: 44.4
+  N/S: N
+  Longitude: 8.9
+  E/W: E
+  Start: 1884
+  Stop: 1997
+  Quality: 78.29
+  I: 50
+  Country: ITALY
+'62':
+  Code: '040'
+  Name: OSLO
+  Latitude: 59.908559
+  N/S: N
+  Longitude: 10.73451
+  E/W: E
+  Start: 1885
+  Stop: 2020
+  Quality: 78.92
+  I: 40
+  Country: NORWAY
+'68':
+  Code: '050'
+  Name: LANDSORT
+  Latitude: 58.742222
+  N/S: N
+  Longitude: 17.865278
+  E/W: E
+  Start: 1887
+  Stop: 2006
+  Quality: 99.72
+  I: 50
+  Country: SWEDEN
+'69':
+  Code: '050'
+  Name: OLANDS NORRA UDDE
+  Latitude: 57.366111
+  N/S: N
+  Longitude: 17.097222
+  E/W: E
+  Start: 1887
+  Stop: 2020
+  Quality: 100.0
+  I: 50
+  Country: SWEDEN
+'70':
+  Code: '050'
+  Name: KUNGSHOLMSFORT
+  Latitude: 56.105278
+  N/S: N
+  Longitude: 15.589444
+  E/W: E
+  Start: 1887
+  Stop: 2020
+  Quality: 99.94
+  I: 50
+  Country: SWEDEN
+'71':
+  Code: '060'
+  Name: HANKO / HANGO
+  Latitude: 59.822867
+  N/S: N
+  Longitude: 22.976583
+  E/W: E
+  Start: 1887
+  Stop: 2019
+  Quality: 88.72
+  I: 60
+  Country: FINLAND
+'72':
+  Code: '050'
+  Name: YSTAD
+  Latitude: 55.416667
+  N/S: N
+  Longitude: 13.816667
+  E/W: E
+  Start: 1887
+  Stop: 1986
+  Quality: 100.0
+  I: 50
+  Country: SWEDEN
+'73':
+  Code: '050'
+  Name: VARBERG
+  Latitude: 57.1
+  N/S: N
+  Longitude: 12.216667
+  E/W: E
+  Start: 1887
+  Stop: 1981
+  Quality: 99.82
+  I: 50
+  Country: SWEDEN
+'79':
+  Code: '060'
+  Name: OULU / ULEABORG
+  Latitude: 65.040317
+  N/S: N
+  Longitude: 25.418233
+  E/W: E
+  Start: 1889
+  Stop: 2019
+  Quality: 95.67
+  I: 60
+  Country: FINLAND
+'80':
+  Code: '130'
+  Name: ESBJERG
+  Latitude: 55.460833
+  N/S: N
+  Longitude: 8.441111
+  E/W: E
+  Start: 1889
+  Stop: 2017
+  Quality: 98.77
+  I: 30
+  Country: DENMARK
+'81':
+  Code: '130'
+  Name: FREDERICIA
+  Latitude: 55.560833
+  N/S: N
+  Longitude: 9.754444
+  E/W: E
+  Start: 1889
+  Stop: 2017
+  Quality: 98.71
+  I: 30
+  Country: DENMARK
+'82':
+  Code: '130'
+  Name: KOBENHAVN
+  Latitude: 55.705
+  N/S: N
+  Longitude: 12.6
+  E/W: E
+  Start: 1889
+  Stop: 2017
+  Quality: 97.61
+  I: 30
+  Country: DENMARK
+'88':
+  Code: '050'
+  Name: RATAN
+  Latitude: 63.986111
+  N/S: N
+  Longitude: 20.895
+  E/W: E
+  Start: 1892
+  Stop: 2020
+  Quality: 99.81
+  I: 50
+  Country: SWEDEN
+'89':
+  Code: '130'
+  Name: HIRTSHALS
+  Latitude: 57.595556
+  N/S: N
+  Longitude: 9.963889
+  E/W: E
+  Start: 1892
+  Stop: 2017
+  Quality: 95.97
+  I: 30
+  Country: DENMARK
+'91':
+  Code: '130'
+  Name: FREDERIKSHAVN
+  Latitude: 57.436389
+  N/S: N
+  Longitude: 10.548889
+  E/W: E
+  Start: 1893
+  Stop: 2017
+  Quality: 97.07
+  I: 30
+  Country: DENMARK
+'95':
+  Code: '170'
+  Name: NORTH SHIELDS
+  Latitude: 55.007444
+  N/S: N
+  Longitude: 1.439778
+  E/W: W
+  Start: 1895
+  Stop: 2019
+  Quality: 92.67
+  I: 70
+  Country: UNITED KINGDOM
+'98':
+  Code: '130'
+  Name: SLIPSHAVN
+  Latitude: 55.288333
+  N/S: N
+  Longitude: 10.827778
+  E/W: E
+  Start: 1896
+  Stop: 2017
+  Quality: 97.95
+  I: 30
+  Country: DENMARK
+'113':
+  Code: '130'
+  Name: KORSOR
+  Latitude: 55.332222
+  N/S: N
+  Longitude: 11.142222
+  E/W: E
+  Start: 1897
+  Stop: 2017
+  Quality: 98.28
+  I: 30
+  Country: DENMARK
+'119':
+  Code: '130'
+  Name: HORNBAEK
+  Latitude: 56.091111
+  N/S: N
+  Longitude: 12.458333
+  E/W: E
+  Start: 1891
+  Stop: 2017
+  Quality: 98.43
+  I: 30
+  Country: DENMARK
+'120':
+  Code: '130'
+  Name: GEDSER
+  Latitude: 54.572778
+  N/S: N
+  Longitude: 11.925556
+  E/W: E
+  Start: 1892
+  Stop: 2017
+  Quality: 99.21
+  I: 30
+  Country: DENMARK
+'172':
+  Code: '060'
+  Name: MANTYLUOTO
+  Latitude: 61.594383
+  N/S: N
+  Longitude: 21.463433
+  E/W: E
+  Start: 1910
+  Stop: 2019
+  Quality: 98.03
+  I: 60
+  Country: FINLAND
+'179':
+  Code: '050'
+  Name: SMOGEN
+  Latitude: 58.353611
+  N/S: N
+  Longitude: 11.217778
+  E/W: E
+  Start: 1911
+  Stop: 2020
+  Quality: 100.0
+  I: 50
+  Country: SWEDEN
+'194':
+  Code: '060'
+  Name: PIETARSAARI / JAKOBSTAD
+  Latitude: 63.708567
+  N/S: N
+  Longitude: 22.689583
+  E/W: E
+  Start: 1914
+  Stop: 2019
+  Quality: 97.96
+  I: 60
+  Country: FINLAND
+'203':
+  Code: '050'
+  Name: FURUOGRUND
+  Latitude: 64.915833
+  N/S: N
+  Longitude: 21.230556
+  E/W: E
+  Start: 1916
+  Stop: 2020
+  Quality: 99.76
+  I: 50
+  Country: SWEDEN
+'236':
+  Code: '150'
+  Name: WEST-TERSCHELLING
+  Latitude: 53.363056
+  N/S: N
+  Longitude: 5.22
+  E/W: E
+  Start: 1921
+  Stop: 2019
+  Quality: 100.0
+  I: 50
+  Country: NETHERLANDS
+'239':
+  Code: '060'
+  Name: TURKU / ABO
+  Latitude: 60.428283
+  N/S: N
+  Longitude: 22.100533
+  E/W: E
+  Start: 1922
+  Stop: 2019
+  Quality: 98.21
+  I: 60
+  Country: FINLAND
+'240':
+  Code: '060'
+  Name: RAAHE / BRAHESTAD
+  Latitude: 64.666333
+  N/S: N
+  Longitude: 24.40705
+  E/W: E
+  Start: 1922
+  Stop: 2019
+  Quality: 93.11
+  I: 60
+  Country: FINLAND
+'249':
+  Code: '060'
+  Name: FOGLO / DEGERBY
+  Latitude: 60.031883
+  N/S: N
+  Longitude: 20.384817
+  E/W: E
+  Start: 1923
+  Stop: 2019
+  Quality: 94.85
+  I: 60
+  Country: Ã…LAND ISLANDS
+'285':
+  Code: '060'
+  Name: KASKINEN / KASKO
+  Latitude: 62.34395
+  N/S: N
+  Longitude: 21.214833
+  E/W: E
+  Start: 1926
+  Stop: 2019
+  Quality: 97.25
+  I: 60
+  Country: FINLAND
+'302':
+  Code: '040'
+  Name: TREGDE
+  Latitude: 58.006377
+  N/S: N
+  Longitude: 7.554759
+  E/W: E
+  Start: 1927
+  Stop: 2020
+  Quality: 96.9
+  I: 40
+  Country: NORWAY
+'330':
+  Code: '050'
+  Name: KLAGSHAMN
+  Latitude: 55.522222
+  N/S: N
+  Longitude: 12.893611
+  E/W: E
+  Start: 1929
+  Stop: 2020
+  Quality: 98.91
+  I: 50
+  Country: SWEDEN
+'413':
+  Code: '160'
+  Name: OOSTENDE
+  Latitude: 51.233333
+  N/S: N
+  Longitude: 2.916667
+  E/W: E
+  Start: 1937
+  Stop: 2019
+  Quality: 93.57
+  I: 60
+  Country: BELGIUM
