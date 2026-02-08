@@ -76,7 +76,7 @@ sites to model and simulate.
 
 ## Release notes / packaging
 
-Releases should package the compiled `lt.exe`, the `run/` data/parameter files,
+Notes to mmyself and potential maintainers. Releases should package the compiled `lt.exe`, the `run/` data/parameter files,
 and the experiment directories used with `lte_gui.py`, including the staged
-`experiments/Feb2026/lt.exe` copy. If you want a new GitHub Release, tag the
+`experiments/Feb2026/lt.exe` copy. Probbaly should tag the
 commit and create a release from the tag in GitHub.
