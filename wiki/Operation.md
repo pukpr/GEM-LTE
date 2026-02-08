@@ -52,7 +52,7 @@ climate indices and MSL sites.
 
 1. Launch from **Windows Command Prompt** at the `experiments\Feb2026` level
    (the script expects to run from there and searches subdirectories):
-   - `python experiments\Feb2026\lte_gui.py`
+   - `python .\lte_gui.py`
 2. Choose a root folder containing index directories (e.g.,
    `experiments\Feb2026`). The GUI lists all child directories except
    `locs`, `scripts`, and `rlr_data`.
