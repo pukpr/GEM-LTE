@@ -2,14 +2,31 @@
 
 GeoEnergyMath Laplace's Tidal Equation modeling and fitting software.
 
+## Windows setup (GNAT script)
+
+Use the bundled PowerShell script to install/build on Windows (GNAT Community
+2021 at `C:\GNAT\2021\bin`) and to stage the executable for both the CLI and GUI.
+
+1. Install GNAT Community 2021 (the script can open the download page).
+2. Run `.\setup_with_gnat.ps1` from the repository root.
+3. The script builds `enso_opt` and deploys:
+   - `run\lt.exe` (CLI/runtime)
+   - `experiments\Feb2026\lt.exe` (GUI launcher)
+
+The `experiments/Feb2026` directory already ships with a precompiled `lt.exe` so
+you can launch the GUI immediately, but rebuilding with the script keeps the
+binary current with source changes.
+
 ## Essential operation (ENSO_OPT ➜ LT.EXE)
 
 The main Ada driver is `src/enso_opt.adb`. It is built into `lt.exe` (or `lt` on
 Linux/macOS) via the GNAT project file `lte.gpr`.
 
-1. **Build**: `gprbuild -P lte.gpr enso_opt` (or `gprbuild -P lte.gpr`).
-2. **Stage the executable**: copy `obj/enso_opt.exe` to `run/lt.exe`
-   (see `update_exe.bat` or `update_exe.ps1`).
+1. **Build**: `gprbuild -P lte.gpr enso_opt` (or `gprbuild -P lte.gpr`), or run
+   `setup_with_gnat.ps1` on Windows.
+2. **Stage the executable**: copy `obj/enso_opt.exe` to `run/lt.exe` and (for the
+   GUI) `experiments/Feb2026/lt.exe` (see `update_exe.bat`,
+   `update_exe.ps1`, or `setup_with_gnat.ps1`).
 3. **Runtime flow**:
    - Reads environment configuration such as `NUMBER_OF_PROCESSORS`, `DLOD_DAT`,
      `TIMEOUT`, `DLOD_SCALE`, and `EXPECT`.
@@ -33,7 +50,9 @@ uses `cmd.exe`). It helps you select climate indices and mean sea level (MSL)
 sites to model and simulate.
 
 1. Run the GUI from the `experiments\Feb2026` level (the script expects to run
-   at that level and searches subdirectories):
+   at that level and searches subdirectories). The GUI launches the
+   `experiments\Feb2026\lt.exe` binary that ships with the dataset or is updated
+   by `setup_with_gnat.ps1`:
    `python .\lte_gui.py`.
 2. Choose the root directory that contains index folders (for example,
    `experiments\Feb2026`). The GUI lists each directory except `locs`,
@@ -58,5 +77,6 @@ sites to model and simulate.
 ## Release notes / packaging
 
 Releases should package the compiled `lt.exe`, the `run/` data/parameter files,
-and the experiment directories used with `lte_gui.py`. If you want a new GitHub
-Release, tag the commit and create a release from the tag in GitHub.
+and the experiment directories used with `lte_gui.py`, including the staged
+`experiments/Feb2026/lt.exe` copy. If you want a new GitHub Release, tag the
+commit and create a release from the tag in GitHub.
