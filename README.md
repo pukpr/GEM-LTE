@@ -23,13 +23,7 @@ Linux/macOS) via the GNAT project file `lte.gpr`.
    - The `TIMEOUT` cycle stops the run when the elapsed time is exceeded.
 
 For a more detailed walkthrough, see the
-[GEM-LTE wiki](https://github.com/pukpr/GEM-LTE/wiki):
-
-- [Operation Overview](https://github.com/pukpr/GEM-LTE/wiki/Operation)
-
-The Markdown sources for the wiki live in `/wiki` so they can be published to
-the GitHub wiki repository (`GEM-LTE.wiki`) and referenced as first-class wiki
-pages such as `[[Operation]]`.
+[GEM-LTE wiki](https://github.com/pukpr/GEM-LTE/blob/main/wiki/Operation.md):
 
 ## GUI workflow (Windows command line)
 
