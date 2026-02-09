@@ -347,9 +347,9 @@ class App(tk.Tk):
         env["METRIC"] = self.metric_var.get().strip().upper()
         env["TIMEOUT"] = f"{timeout:.6f}"
         # env["TRAIN_START"] = "1940"
-        # env["TRAIN_STOP"] = "1970"
+        # env["TRAIN_END"] = "1970"
         env["TRAIN_START"] = b # self.interval_begin_var.get().strip()
-        env["TRAIN_STOP"] = e # self.interval_end_var.get().strip()
+        env["TRAIN_END"] = e # self.interval_end_var.get().strip()
         env["CLIMATE_INDEX"] = f"{index}.dat"
         env["IDATE"] = "1920.9"
 
