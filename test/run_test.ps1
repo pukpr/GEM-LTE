@@ -1,10 +1,47 @@
 # GEM-LTE Test Script
 # Runs lt.exe and compares last 2 lines of output against reference
+# 
+# Usage:
+#   .\run_test.ps1          # Test with .par files (default)
+#   .\run_test.ps1 -json    # Test with .p (JSON) files
 
-Write-Host "Running GEM-LTE test..."
+param(
+    [switch]$json = $false
+)
 
-# Run lt.exe and capture output
-.\lt.exe > current_output.txt 2>&1
+if ($json) {
+    Write-Host "Running GEM-LTE test with JSON (.p) files..."
+    
+    # Ensure JSON files exist
+    if (-not (Test-Path "lt.exe.p")) {
+        Write-Host "Creating lt.exe.p from lt.exe.par..." -ForegroundColor Yellow
+        python par_to_json.py lt.exe.par lt.exe.p
+    }
+    if (-not (Test-Path "lt.exe.nino4.dat.p")) {
+        Write-Host "Creating lt.exe.nino4.dat.p from lt.exe.nino4.dat.par..." -ForegroundColor Yellow
+        python par_to_json.py lt.exe.nino4.dat.par lt.exe.nino4.dat.p
+    }
+    
+    # Backup .par files and remove them so JSON is used
+    Copy-Item lt.exe.par lt.exe.par.bak -Force
+    Copy-Item lt.exe.nino4.dat.par lt.exe.nino4.dat.par.bak -Force
+    Remove-Item lt.exe.par -ErrorAction SilentlyContinue
+    Remove-Item lt.exe.nino4.dat.par -ErrorAction SilentlyContinue
+    
+    try {
+        # Run lt.exe with JSON files
+        .\lt.exe > current_output.txt 2>&1
+    } finally {
+        # Restore .par files
+        Move-Item lt.exe.par.bak lt.exe.par -Force
+        Move-Item lt.exe.nino4.dat.par.bak lt.exe.nino4.dat.par -Force
+    }
+} else {
+    Write-Host "Running GEM-LTE test with .par files..."
+    
+    # Run lt.exe with .par files (standard test)
+    .\lt.exe > current_output.txt 2>&1
+}
 
 # Get last 2 lines
 Get-Content current_output.txt -Tail 2 > current_last2.txt
