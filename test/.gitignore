@@ -1,0 +1,12 @@
+# Executable (copied from obj/)
+lt.exe
+
+# Output files
+*.csv
+lte_results.csv
+dlod_compare.csv
+
+# Test output files
+*_output.txt
+current_last2.txt
+test_output.txt
