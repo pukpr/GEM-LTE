@@ -8,12 +8,15 @@ procedure index_regress is
 begin
 
    declare
-      Name : constant String := Ada.Command_Line.Argument(1);
-      Flts : constant GEM.FS := Gem.S_to_LF(Ada.Command_Line.Argument(2));
+      Name : constant String := Ada.Command_Line.Argument (1);
+      Flts : constant GEM.Fs := GEM.S_to_LF (Ada.Command_Line.Argument (2));
       -- "dlod3.dat"
-      Target : GEM.LTE.Primitives.Data_Pairs := GEM.LTE.Primitives.Make_Data(Name);
-      Result : GEM.LTE.Primitives.Data_Pairs := GEM.Mix_Regression(Target, Flts(1), Flts(2), 0,0,
-                       GEM.Getenv("QUADEXCLUDE", FALSE),TRUE);
+      Target : GEM.LTE.Primitives.Data_Pairs :=
+        GEM.LTE.Primitives.Make_Data (Name);
+      Result : GEM.LTE.Primitives.Data_Pairs :=
+        GEM.Mix_Regression
+          (Target, Flts (1), Flts (2), 0, 0, GEM.Getenv ("QUADEXCLUDE", False),
+           True);
 
 --      Freqs : Gem.Lte.Periods := Ps.LP;
 --      TS : Gem.LTE.Primitives.Data_Pairs(1..1000) := (others => (0.0, 0.0));
@@ -34,21 +37,21 @@ begin
       --  end loop;
       --  Text_IO.Close(FT);
 
-      Text_IO.Create(FT, Text_IO.Out_File,  "lte_label.txt");
-      Text_IO.Put_Line(FT, Name);
-      if Flts(1) < 0.0 then
-         Text_IO.Put_Line(FT, "Fraction Exclude");
+      Text_IO.Create (FT, Text_IO.Out_File, "lte_label.txt");
+      Text_IO.Put_Line (FT, Name);
+      if Flts (1) < 0.0 then
+         Text_IO.Put_Line (FT, "Fraction Exclude");
       else
-         Text_IO.Put_Line(FT, "Fraction Include");
+         Text_IO.Put_Line (FT, "Fraction Include");
       end if;
-      Text_IO.Put_Line(FT, Ada.Command_Line.Argument(2));
-      Text_IO.Close(FT);
-      
+      Text_IO.Put_Line (FT, Ada.Command_Line.Argument (2));
+      Text_IO.Close (FT);
+
       -- return Result;
-      
+
    end;
 
-end;
+end index_regress;
 
 -- 0.99064132219=CC  365.24123840000=Yr
 -- 0.99064647703=CC  365.24223840000=Yr

@@ -1,21 +1,18 @@
-
 package GEM.LTE.Primitives.Solution is
 
    -- Processing thread starter
-   procedure Start (N_Tides, N_Modulations : in Integer;
-                    Number_of_Threads : Positive := 1);
+   procedure Start
+     (N_Tides, N_Modulations : in Integer; Number_of_Threads : Positive := 1);
 
    -- For a monitoring thread to indicate the current status
    -- Will block until the optmizer is incremented
    function Status return String;
 
    -- can call w/o multiprocessing, set ID=0
-   procedure Dipole_Model (N_Tides, N_Modulations : in Integer;
-                           ID : in Integer := 0;
-                           File_Name : in String := "nino4.dat";
-                           Split_Training : in BOOLEAN := FALSE;
-                           Exclude : in BOOLEAN := FALSE);
-
+   procedure Dipole_Model
+     (N_Tides, N_Modulations : in Integer; ID : in Integer := 0;
+      File_Name : in String := "nino4.dat";
+      Split_Training : in Boolean := False; Exclude : in Boolean := False);
 
    -- Should also add interfaces such as
    -- 1. Load default parameter set, using streaming format
@@ -24,7 +21,6 @@ package GEM.LTE.Primitives.Solution is
    -- 4.
 
    function Check_Every_N_Loops return Integer;
-   procedure Set_Trigger (Level: Integer);
-
+   procedure Set_Trigger (Level : Integer);
 
 end GEM.LTE.Primitives.Solution;
