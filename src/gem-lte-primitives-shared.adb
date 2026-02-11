@@ -231,10 +231,97 @@ package body GEM.LTE.Primitives.Shared is
    end Write;
 
    --  =========================================================================
-   --  Save: Persist parameters to binary .parms file and text .par files
+   --  Write_JSON: Save parameters to JSON .p files
+   --
+   --  Generates two files:
+   --    1. <executable>.p - General parameters for all climate indices
+   --    2. <executable>.<climate_index>.p - Index-specific parameters
+   --
+   --  Format: JSON with same structure as Read_JSON expects
+   --  =========================================================================
+   procedure Write_JSON (D : in Param_S) is
+      use GNATCOLL.JSON;
+      FN : constant String :=
+        Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & ".p";
+      FN2 : constant String :=
+        Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & "." &
+        CI & ".p";
+      
+      procedure Write_To_File (Filename : String; Include_LPAP : Boolean) is
+         Obj : constant JSON_Value := Create_Object;
+         LPAP_Arr : JSON_Array := Empty_Array;
+         LT_Arr : JSON_Array := Empty_Array;
+         Harm_Arr : JSON_Array := Empty_Array;
+      begin
+         -- Scalar parameters
+         Set_Field (Obj, "offs", Create (D.B.Offset));
+         Set_Field (Obj, "bg", Create (D.B.bg));
+         Set_Field (Obj, "impA", Create (D.B.ImpA));
+         Set_Field (Obj, "impB", Create (D.B.ImpB));
+         Set_Field (Obj, "impC", Create (D.B.ImpC));
+         Set_Field (Obj, "delA", Create (D.B.DelA));
+         Set_Field (Obj, "delB", Create (D.B.DelB));
+         Set_Field (Obj, "asym", Create (D.B.Asym));
+         Set_Field (Obj, "ann1", Create (D.B.Ann1));
+         Set_Field (Obj, "ann2", Create (D.B.Ann2));
+         Set_Field (Obj, "sem1", Create (D.B.Sem1));
+         Set_Field (Obj, "sem2", Create (D.B.Sem2));
+         Set_Field (Obj, "year", Create (D.B.Year));
+         Set_Field (Obj, "IR", Create (D.B.IR));
+         Set_Field (Obj, "ma", Create (D.B.mA));
+         Set_Field (Obj, "mp", Create (D.B.mP));
+         Set_Field (Obj, "shfT", Create (D.B.shiftT));
+         Set_Field (Obj, "init", Create (D.B.init));
+         
+         -- LPAP array (tidal constituents) - only in primary file
+         if Include_LPAP then
+            for I in D.B.LPAP'Range loop
+               declare
+                  Triplet : JSON_Array := Empty_Array;
+               begin
+                  Append (Triplet, Create (D.A.LP (I)));
+                  Append (Triplet, Create (D.B.LPAP (I).Amplitude));
+                  Append (Triplet, Create (D.B.LPAP (I).Phase));
+                  Append (LPAP_Arr, Create (Triplet));
+               end;
+            end loop;
+            Set_Field (Obj, "lpap", Create (LPAP_Arr));
+         end if;
+         
+         -- ltep array (LT modulation periods)
+         for I in D.B.LT'Range loop
+            Append (LT_Arr, Create (D.B.LT (I)));
+         end loop;
+         Set_Field (Obj, "ltep", Create (LT_Arr));
+         
+         -- harm array (harmonics) - only non-zero values
+         for I in D.C'Range loop
+            exit when D.C (I) = 0;
+            Append (Harm_Arr, Create (Long_Float (D.C (I))));
+         end loop;
+         Set_Field (Obj, "harm", Create (Harm_Arr));
+         
+         -- Write to file
+         declare
+            JSON_Text : constant String := Write (Obj, Compact => False);
+            FT : Ada.Text_IO.File_Type;
+         begin
+            Ada.Text_IO.Create (FT, Ada.Text_IO.Out_File, Filename);
+            Ada.Text_IO.Put_Line (FT, JSON_Text);
+            Ada.Text_IO.Close (FT);
+         end;
+      end Write_To_File;
+      
+   begin
+      Write_To_File (FN, Include_LPAP => True);   -- Primary file with LPAP
+      Write_To_File (FN2, Include_LPAP => False); -- Secondary file without LPAP
+   end Write_JSON;
+
+   --  =========================================================================
+   --  Save: Persist parameters to binary .parms file, text .par, and JSON .p files
    --
    --  Uses Ada.Direct_IO for fast binary serialization (legacy format).
-   --  Also writes human-readable .par files via Write() procedure.
+   --  Also writes human-readable .par files and JSON .p files to keep all formats in sync.
    --  =========================================================================
    procedure Save (P : in Param_S) is
       subtype PS is Param_S (P.NLP, P.NLT);
@@ -250,7 +337,8 @@ package body GEM.LTE.Primitives.Shared is
       --  TODO: Can remove - Command-line flag 'r' was intended for conditional
       --  writing but Write() is now always called. The flag check is redundant.
       --if GEM.Command_Line_Option_Exists("r") then
-      Write (P);
+      Write (P);       -- Write text .par files
+      Write_JSON (P);  -- Write JSON .p files (keep in sync with .par)
       --end if;
       -- Server.Put (P);
    end Save;
