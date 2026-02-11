@@ -666,16 +666,36 @@ package body GEM.LTE.Primitives.Shared is
       FN : constant String := Base & ".par";
       FN2 : constant String := Base & "." & CI & ".par";
       FN_JSON : constant String := Base & ".p";
-      FN2_JSON : constant String := Base & "." & CI & ".dat.p";
+      FN2_JSON : constant String := Base & "." & CI & ".p";
       FT : Ada.Text_IO.File_Type;
       D_JSON : Param_S (D.NLP, D.NLT);
       JSON_Exists : Boolean;
+      JSON_Only_Mode : constant Boolean := GEM.Command_Line_Option_Exists ("-j");
    begin
       -- Initialize D.A.LP with canonical Doodson-calculated periods BEFORE any JSON reading
       for I in D.A.LP'Range loop
          D.A.LP (I) := GEM.LTE.LP (I);
       end loop;
       
+      -- JSON-only mode (-j flag): Read ONLY from JSON files, fail if not found
+      if JSON_Only_Mode then
+         Ada.Text_IO.Put_Line ("*** JSON-ONLY MODE (-j flag) ***");
+         Ada.Text_IO.Put_Line ("Reading primary file: " & FN_JSON);
+         if not Read_JSON (FN_JSON, D, True) then
+            raise Ada.Text_IO.Name_Error with "JSON file not found: " & FN_JSON;
+         end if;
+         Ada.Text_IO.Put_Line ("Successfully loaded: " & FN_JSON);
+         
+         Ada.Text_IO.Put_Line ("Reading secondary file: " & FN2_JSON);
+         if not Read_JSON (FN2_JSON, D, False) then
+            raise Ada.Text_IO.Name_Error with "JSON file not found: " & FN2_JSON;
+         end if;
+         Ada.Text_IO.Put_Line ("Successfully loaded: " & FN2_JSON);
+         Ada.Text_IO.Put_Line ("*** JSON FILES LOADED SUCCESSFULLY ***");
+         return;  -- Exit early, don't read .par files
+      end if;
+      
+      -- Standard mode: Read .par files with optional JSON validation
       Ada.Text_IO.Open (FT, Ada.Text_IO.In_File, FN);
       Read (FT, "offs", D.B.Offset);
       Read (FT, "bg  ", D.B.bg);
@@ -785,6 +805,7 @@ package body GEM.LTE.Primitives.Shared is
    --  Load: Initialize parameters from file or legacy binary format
    --
    --  Command-line flags control behavior:
+   --    -j : JSON-only mode - read only .p files, fail if not found (for debugging)
    --    -l : Load from legacy .parms binary file
    --    -p : Dump parameters and exit
    --    -w : Write parameters to .par files and exit
