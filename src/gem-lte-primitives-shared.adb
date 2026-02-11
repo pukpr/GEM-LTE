@@ -454,62 +454,33 @@ package body GEM.LTE.Primitives.Shared is
       use GNATCOLL.JSON;
       Arr : JSON_Array;
       Count : Natural;
-      Matches_Found : Natural := 0;
       
       procedure Apply (Period, Amp, Phase : in Long_Float) is
-         Found : Boolean := False;
       begin
-         Ada.Text_IO.Put_Line ("  Searching for period:" & Long_Float'Image (Period));
          for I in D.B.LPAP'Range loop
+            -- Match using absolute values to handle negative periods from Doodson calculations
+            -- Negative periods are mathematically valid (phase-adjusted frequencies)
             if abs (D.A.LP (I)) > 0.0
-              and then abs (Period - D.A.LP (I)) <=
+              and then abs (abs (Period) - abs (D.A.LP (I))) <=
                 abs (D.A.LP (I)) * 0.01
             then
-               Ada.Text_IO.Put_Line 
-                 ("    MATCH at index" & Integer'Image (I) &
-                  " D.A.LP=" & Long_Float'Image (D.A.LP (I)) &
-                  " Amp=" & Long_Float'Image (Amp) &
-                  " Phase=" & Long_Float'Image (Phase));
                D.B.LPAP (I).Amplitude := Amp;
                D.B.LPAP (I).Phase := Phase;
-               Found := True;
-               Matches_Found := Matches_Found + 1;
                exit;
             end if;
          end loop;
-         if not Found then
-            Ada.Text_IO.Put_Line ("    NO MATCH for period" & Long_Float'Image (Period));
-            Ada.Text_IO.Put_Line ("    First 5 D.A.LP values:");
-            for I in 1 .. Integer'Min (5, D.B.LPAP'Last) loop
-               Ada.Text_IO.Put_Line 
-                 ("      LP(" & Integer'Image (I) & ")=" & Long_Float'Image (D.A.LP (I)));
-            end loop;
-         end if;
       end Apply;
    begin
-      Ada.Text_IO.Put_Line ("DEBUG: Read_JSON_LPAP called for: " & Name);
-      Ada.Text_IO.Put_Line ("DEBUG: D.B.LPAP'Range =" & 
-                           Integer'Image (D.B.LPAP'First) & " .." &
-                           Integer'Image (D.B.LPAP'Last));
-      Ada.Text_IO.Put_Line ("DEBUG: First 3 GEM.LTE.LP values:");
-      for I in 1 .. Integer'Min (3, GEM.LTE.LP'Last) loop
-         Ada.Text_IO.Put_Line ("  LP(" & Integer'Image (I) & ") =" & 
-                              Long_Float'Image (GEM.LTE.LP (I)));
-      end loop;
-      
       if Kind (Data) /= JSON_Object_Type or else not Has_Field (Data, Name)
       then
-         Ada.Text_IO.Put_Line ("DEBUG: No field '" & Name & "' in JSON");
          return;
       end if;
       Arr := Get (Data, Name);
       Count := Length (Arr);
-      Ada.Text_IO.Put_Line ("DEBUG: Array length =" & Natural'Image (Count));
       if Count = 0 then
          return;
       end if;
       if Kind (Get (Arr, 1)) = JSON_Array_Type then
-         Ada.Text_IO.Put_Line ("DEBUG: Processing LPAP triplets...");
          for I in 1 .. Count loop
             declare
                Triplet : constant JSON_Array := Get (Get (Arr, I));
