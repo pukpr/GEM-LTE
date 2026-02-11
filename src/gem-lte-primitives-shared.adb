@@ -585,6 +585,74 @@ package body GEM.LTE.Primitives.Shared is
    --
    --  Validates tag names and exits on mismatch to catch file corruption.
    --  =========================================================================
+   procedure Validate_JSON_vs_PAR (D_PAR, D_JSON : in Param_S; FN : in String) is
+      Tolerance : constant Long_Float := 1.0e-10;
+      Errors : Natural := 0;
+      
+      procedure Check (Name : in String; PAR_Val, JSON_Val : in Long_Float) is
+      begin
+         if abs (PAR_Val - JSON_Val) > Tolerance then
+            Ada.Text_IO.Put_Line 
+              ("MISMATCH " & Name & ": PAR=" & Long_Float'Image (PAR_Val) &
+               " JSON=" & Long_Float'Image (JSON_Val));
+            Errors := Errors + 1;
+         end if;
+      end Check;
+      
+      procedure Check_Int (Name : in String; PAR_Val, JSON_Val : in Integer) is
+      begin
+         if PAR_Val /= JSON_Val then
+            Ada.Text_IO.Put_Line 
+              ("MISMATCH " & Name & ": PAR=" & Integer'Image (PAR_Val) &
+               " JSON=" & Integer'Image (JSON_Val));
+            Errors := Errors + 1;
+         end if;
+      end Check_Int;
+   begin
+      Ada.Text_IO.Put_Line ("=== Validating JSON vs PAR for " & FN & " ===");
+      
+      Check ("offs", D_PAR.B.Offset, D_JSON.B.Offset);
+      Check ("bg  ", D_PAR.B.bg, D_JSON.B.bg);
+      Check ("impA", D_PAR.B.ImpA, D_JSON.B.ImpA);
+      Check ("impB", D_PAR.B.ImpB, D_JSON.B.ImpB);
+      Check ("impC", D_PAR.B.ImpC, D_JSON.B.ImpC);
+      Check ("delA", D_PAR.B.DelA, D_JSON.B.DelA);
+      Check ("delB", D_PAR.B.DelB, D_JSON.B.DelB);
+      Check ("asym", D_PAR.B.Asym, D_JSON.B.Asym);
+      Check ("ann1", D_PAR.B.Ann1, D_JSON.B.Ann1);
+      Check ("ann2", D_PAR.B.Ann2, D_JSON.B.Ann2);
+      Check ("sem1", D_PAR.B.Sem1, D_JSON.B.Sem1);
+      Check ("sem2", D_PAR.B.Sem2, D_JSON.B.Sem2);
+      Check ("year", D_PAR.B.Year, D_JSON.B.Year);
+      Check ("IR  ", D_PAR.B.IR, D_JSON.B.IR);
+      Check ("ma  ", D_PAR.B.mA, D_JSON.B.mA);
+      Check ("mp  ", D_PAR.B.mP, D_JSON.B.mP);
+      Check ("shfT", D_PAR.B.shiftT, D_JSON.B.shiftT);
+      Check ("init", D_PAR.B.init, D_JSON.B.init);
+      
+      for I in D_PAR.B.LPAP'Range loop
+         Check ("LPAP(" & Integer'Image (I) & ").Amplitude", 
+                D_PAR.B.LPAP (I).Amplitude, D_JSON.B.LPAP (I).Amplitude);
+         Check ("LPAP(" & Integer'Image (I) & ").Phase", 
+                D_PAR.B.LPAP (I).Phase, D_JSON.B.LPAP (I).Phase);
+      end loop;
+      
+      for I in D_PAR.B.LT'Range loop
+         Check ("ltep(" & Integer'Image (I) & ")", D_PAR.B.LT (I), D_JSON.B.LT (I));
+      end loop;
+      
+      for I in D_PAR.C'Range loop
+         Check_Int ("harm(" & Integer'Image (I) & ")", D_PAR.C (I), D_JSON.C (I));
+      end loop;
+      
+      if Errors = 0 then
+         Ada.Text_IO.Put_Line ("*** ALL FIELDS MATCH - JSON LOADING IS CORRECT ***");
+      else
+         Ada.Text_IO.Put_Line ("*** TOTAL MISMATCHES: " & Natural'Image (Errors) & " ***");
+      end if;
+      Ada.Text_IO.Put_Line ("");
+   end Validate_JSON_vs_PAR;
+
    procedure Read (D : in out Param_S) is
       Exec : constant String :=
         Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name);
@@ -594,58 +662,69 @@ package body GEM.LTE.Primitives.Shared is
          else Exec);
       FN : constant String := Base & ".par";
       FN2 : constant String := Base & "." & CI & ".par";
-      FN_JSON : constant String := Base & ".json";
-      FN2_JSON : constant String := Base & "." & CI & ".json";
+      FN_JSON : constant String := Base & ".p";
+      FN2_JSON : constant String := Base & "." & CI & ".dat.p";
       FT : Ada.Text_IO.File_Type;
+      D_JSON : Param_S (D.NLP, D.NLT);
+      JSON_Exists : Boolean;
    begin
-      if not Read_JSON (FN_JSON, D, True) then
-         Ada.Text_IO.Open (FT, Ada.Text_IO.In_File, FN);
-         Read (FT, "offs", D.B.Offset);
-         Read (FT, "bg  ", D.B.bg);
-         Read (FT, "impA", D.B.ImpA);
-         Read (FT, "impB", D.B.ImpB);
-         Read (FT, "impC", D.B.ImpC);
-         Read (FT, "delA", D.B.DelA);
-         Read (FT, "delB", D.B.DelB);
-         Read (FT, "asym", D.B.Asym);
-         Read (FT, "ann1", D.B.Ann1);
-         Read (FT, "ann2", D.B.Ann2);
-         Read (FT, "sem1", D.B.Sem1);
-         Read (FT, "sem2", D.B.Sem2);
-         Read (FT, "year", D.B.Year);
-         Read (FT, "IR  ", D.B.IR);
-         Read (FT, "ma  ", D.B.mA);
-         Read (FT, "mp  ", D.B.mP);
-         Read (FT, "shfT", D.B.shiftT);
-         Read (FT, "init", D.B.init);
-         for I in D.B.LPAP'Range loop
-            Read (FT, D.A.LP (I), D.B.LPAP (I).Amplitude, D.B.LPAP (I).Phase);
-            D.A.LP (I) := GEM.LTE.LP (I); -- OVERRIDE!
-         end loop;
-         for I in D.B.LT'Range loop
-            Read (FT, "ltep", D.B.LT (I));
-         end loop;
+      Ada.Text_IO.Open (FT, Ada.Text_IO.In_File, FN);
+      Read (FT, "offs", D.B.Offset);
+      Read (FT, "bg  ", D.B.bg);
+      Read (FT, "impA", D.B.ImpA);
+      Read (FT, "impB", D.B.ImpB);
+      Read (FT, "impC", D.B.ImpC);
+      Read (FT, "delA", D.B.DelA);
+      Read (FT, "delB", D.B.DelB);
+      Read (FT, "asym", D.B.Asym);
+      Read (FT, "ann1", D.B.Ann1);
+      Read (FT, "ann2", D.B.Ann2);
+      Read (FT, "sem1", D.B.Sem1);
+      Read (FT, "sem2", D.B.Sem2);
+      Read (FT, "year", D.B.Year);
+      Read (FT, "IR  ", D.B.IR);
+      Read (FT, "ma  ", D.B.mA);
+      Read (FT, "mp  ", D.B.mP);
+      Read (FT, "shfT", D.B.shiftT);
+      Read (FT, "init", D.B.init);
+      for I in D.B.LPAP'Range loop
+         Read (FT, D.A.LP (I), D.B.LPAP (I).Amplitude, D.B.LPAP (I).Phase);
+         D.A.LP (I) := GEM.LTE.LP (I);
+      end loop;
+      for I in D.B.LT'Range loop
+         Read (FT, "ltep", D.B.LT (I));
+      end loop;
 
-         begin
-            for I in D.C'Range loop
-               Read (FT, "harm", D.C (I));
-            end loop;
-            Ada.Text_IO.Close (FT);
-         exception
-            when Ada.Text_IO.End_Error =>
-               Ada.Text_IO.Put_Line ("Closing " & FN);
-               if Ada.Text_IO.Is_Open (FT) then
-                  Ada.Text_IO.Close (FT);
-               end if;
-            when others =>
-               if Ada.Text_IO.Is_Open (FT) then
-                  Ada.Text_IO.Close (FT);
-               end if;
-               raise;
-         end;
+      begin
+         for I in D.C'Range loop
+            Read (FT, "harm", D.C (I));
+         end loop;
+         Ada.Text_IO.Close (FT);
+      exception
+         when Ada.Text_IO.End_Error =>
+            Ada.Text_IO.Put_Line ("Closing " & FN);
+            if Ada.Text_IO.Is_Open (FT) then
+               Ada.Text_IO.Close (FT);
+            end if;
+         when others =>
+            if Ada.Text_IO.Is_Open (FT) then
+               Ada.Text_IO.Close (FT);
+            end if;
+            raise;
+      end;
+
+      JSON_Exists := Read_JSON (FN_JSON, D_JSON, True);
+      if JSON_Exists then
+         for I in D_JSON.A.LP'Range loop
+            D_JSON.A.LP (I) := GEM.LTE.LP (I);
+         end loop;
+         Validate_JSON_vs_PAR (D, D_JSON, FN_JSON);
       end if;
 
-      if not Read_JSON (FN2_JSON, D, False) then
+      JSON_Exists := Read_JSON (FN2_JSON, D_JSON, False);
+      if JSON_Exists then
+         Validate_JSON_vs_PAR (D, D_JSON, FN2_JSON);
+      else
          Ada.Text_IO.Open (FT, Ada.Text_IO.In_File, FN2);
          Read (FT, "offs", D.B.Offset);
          Read (FT, "bg  ", D.B.bg);
