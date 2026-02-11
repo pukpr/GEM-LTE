@@ -35,6 +35,35 @@ package GEM.LTE.Primitives.Shared is
       LPAP : Long_Periods_Amp_Phase (1 .. NLP);
       LT : Modulations (1 .. NLT);
    end record;
+   
+   --  ==========================================================================
+   --  MEMORY LAYOUT DOCUMENTATION
+   --  ==========================================================================
+   --  Param_B is designed for contiguous memory layout to support array overlay
+   --  in the random descent optimization algorithm.
+   --
+   --  STRUCTURE (for NLP=29, NLT=11):
+   --    - 18 scalar Long_Float fields (Offset through init)
+   --    - LPAP array: NLP Amp_Phase records = NLP * 2 Long_Floats (58 floats)
+   --    - LT array: NLT Long_Floats (11 floats)
+   --    TOTAL: 18 + 58 + 11 = 87 Long_Float values
+   --
+   --  SIZE CALCULATION:
+   --    With GNAT compiler, unconstrained arrays have dope information (bounds)
+   --    Record size = discriminants + scalar fields + array data
+   --    For overlay: Size_Shared = Record'Size / Long_Float'Size - 1
+   --      The -1 accounts for discriminant storage (NLP, NLT)
+   --
+   --  REPRESENTATION:
+   --    No explicit representation clause is added because GNAT naturally
+   --    packs arrays contiguously with no gaps. Adding explicit component
+   --    clauses would require compile-time knowledge of NLP and NLT, which
+   --    are runtime discriminants.
+   --
+   --  VERIFICATION:
+   --    The Size_Shared calculation in gem-lte-primitives-solution.adb
+   --    verifies at runtime that the layout is as expected.
+   --  ==========================================================================
 
    -- Record structure used for optimization sharing
    -- This could use the benefit of Ada record representation clauses,

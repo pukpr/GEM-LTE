@@ -43,6 +43,7 @@ with GNAT.Ctrl_C;
 with System.Task_Info;
 with System.Multiprocessors;
 with GEM.LTE.Primitives.Shared;
+with GEM.LTE.Primitives.Param_B_Overlay;
 with Ada.Exceptions;
 with GNAT.Traceback.Symbolic;
 with GEM.Mix_Regression;
@@ -682,22 +683,25 @@ package body GEM.LTE.Primitives.Solution is
       Max_Harmonics : Positive := GEM.Getenv ("MAXH", 1_000);
 
       ------------------------------------------------------------------------
-   -- This is close to a violtion of encapsulation, as we need a way
-   -- to modify all float parameters without having knowledge of the abstract
-   -- objects, so the data record D is overlaid with a plain array Set
+   -- Array overlay for random descent optimization (Type-Safe Version)
+   -- The Param_B record is overlaid with an array to allow Walker.Markov
+   -- to randomly modify parameters. This is documented and verified via
+   -- the Param_B_Overlay package for maximum safety.
       ------------------------------------------------------------------------
       Size_Shared : Positive :=
         GEM.Getenv
           ("DSIZE",
-           D.B'Size / Long_Float'Size - 1); -- subtract header=2 ints
+           GEM.LTE.Primitives.Param_B_Overlay.Overlay_Size (D.B.NLP, D.B.NLT));
 
       package Walker is new GEM.Random_Descent
         (Fixed => Is_Fixed, Set_Range => Size_Shared,
          Harmonic_Range => Max_Harmonics);
 
       Set, Keep, Set0 : Walker.LF_Array (1 .. Size_Shared);
-      for Set'Address use D.B.Offset'
-          Address; -- This may require Ada rec rep clauses
+      for Set'Address use D.B.Offset'Address;
+      --  SAFETY NOTE: This address clause creates an array view of Param_B.
+      --  The layout is verified by Param_B_Overlay.Verify_Layout below.
+      --  Field positions are documented via named constants in the overlay package.
       ------------------------------------------------------------------------
       NM : Integer := GEM.Getenv ("NM", N_Modulations);
       Harms : Ns := S_to_I (GEM.Getenv ("NH", ""));
@@ -805,6 +809,10 @@ package body GEM.LTE.Primitives.Solution is
       end loop;
       RMS_Data := Ada.Numerics.Long_Elementary_Functions.Sqrt (RMS_Data);
       Old_CC := 0.0;
+      
+      -- Verify overlay layout before optimization begins
+      GEM.LTE.Primitives.Param_B_Overlay.Verify_Layout (D.B, Size_Shared);
+      
       Walker.Reset;
       if Filter9Pt > 0 then
          for F in 1 .. Filter9Pt loop
