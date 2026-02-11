@@ -1,3 +1,45 @@
+--  ============================================================================
+--  GEM.LTE.Primitives.Shared - Parameter Storage and I/O Management
+--  ============================================================================
+--
+--  PURPOSE:
+--    Manages the shared parameter state for multi-threaded GEM-LTE optimization.
+--    Provides thread-safe storage, persistence (read/write), and serialization
+--    (text .par files and JSON) of model parameters.
+--
+--  KEY RESPONSIBILITIES:
+--    1. Protected Server: Thread-safe parameter sharing across worker threads
+--    2. Parameter Persistence: Save/load from .par files (text format)
+--    3. JSON Serialization: Load parameters from JSON format
+--    4. Parameter Validation: Read with format checking and error handling
+--
+--  DATA STRUCTURES:
+--    - Param_S: Main parameter record (defined in .ads)
+--      - B: Variable parameters (offsets, impulses, LTE coefficients)
+--      - A: Constant parameters (tidal periods, amplitudes, phases)
+--      - C: Harmonic configuration array
+--    - Protected Server: Manages single shared instance with mutex access
+--
+--  FILE FORMATS:
+--    - .par files: Human-readable text format (4-char tags + values)
+--      Example: "offs  0.12345", "impA  1.23456", "ltep  2.71828"
+--    - .json files: JSON format for easier configuration management
+--      Example: {"offs": 0.12345, "impA": 1.23456, "ltep": [2.71828, ...]}
+--    - .parms files: Binary Direct_IO format (legacy, fast but not portable)
+--
+--  NAMING CONVENTION:
+--    Files are named after the executable:
+--    - enso_opt.exe.par (general parameters)
+--    - enso_opt.exe.nino4.dat.par (climate-index-specific parameters)
+--    - enso_opt.exe.json (JSON format)
+--
+--  THREAD SAFETY:
+--    Server protected object ensures only one thread can modify shared
+--    parameters at a time. Get() blocks until Put() has been called at
+--    least once.
+--
+--  ============================================================================
+
 with Ada.Direct_IO;
 with Ada.Command_Line;
 with Ada.Text_IO;
@@ -14,9 +56,23 @@ package body GEM.LTE.Primitives.Shared is
 
    CI : constant String := GEM.Getenv (Name => "CLIMATE_INDEX", Default => "");
 
-   -- Can only access the info via a pointer
+   --  Access type required for protected object storage
+   --  (cannot directly store discriminated record in protected object)
    type Param_P is access all Param_S;
 
+   --  =========================================================================
+   --  Server: Protected object for thread-safe parameter sharing
+   --
+   --  PATTERN:
+   --    Single-writer-multiple-reader with blocking Get(). First Put()
+   --    allocates storage and sets Available flag, subsequent Put() calls
+   --    reuse the allocated space. Get() blocks until Available is true.
+   --
+   --  USAGE:
+   --    - Put() called by optimization thread when better parameters found
+   --    - Get() called by worker threads to initialize or update their state
+   --    - One-time allocation on first Put() avoids repeated heap allocation
+   --  =========================================================================
    protected Server is
       procedure Put (P : in Param_S);
       entry Get (P : in out Param_S);
@@ -31,10 +87,7 @@ package body GEM.LTE.Primitives.Shared is
 
    protected body Server is
 
-      ---------
-      -- Put --
-      ---------
-
+      --  Store parameters (allocates on first call, updates thereafter)
       procedure Put (P : in Param_S) is
       begin
          if not Available then -- only do once to allocate
@@ -45,10 +98,7 @@ package body GEM.LTE.Primitives.Shared is
          Available := True;
       end Put;
 
-      ---------
-      -- Get --
-      ---------
-
+      --  Retrieve parameters (blocks until first Put() completes)
       entry Get (P : in out Param_S) when Available is
       begin
          P := Params.all;
@@ -56,6 +106,7 @@ package body GEM.LTE.Primitives.Shared is
 
    end Server;
 
+   --  Public wrappers for Server access
    procedure Put (P : in Param_S) is
    begin
       Server.Put (P);
@@ -68,6 +119,11 @@ package body GEM.LTE.Primitives.Shared is
       return P;
    end Get;
 
+   --  =========================================================================
+   --  Output Formatting Helpers
+   --  =========================================================================
+
+   --  Write parameter name + Long_Float value in fixed format
    procedure Put
      (FT : in Ada.Text_IO.File_Type; Text : in String; Value : in Long_Float)
    is
@@ -77,6 +133,7 @@ package body GEM.LTE.Primitives.Shared is
       Ada.Text_IO.New_Line (FT);
    end Put;
 
+   --  Write parameter name + Integer value
    procedure Put
      (FT : in Ada.Text_IO.File_Type; Text : in String; Value : in Integer)
    is
@@ -85,6 +142,7 @@ package body GEM.LTE.Primitives.Shared is
       Ada.Text_IO.New_Line (FT);
    end Put;
 
+   --  Write triplet (period, amplitude, phase) for tidal constituents
    procedure Put (FT : Ada.Text_IO.File_Type; V1, V2, V3 : in Long_Float) is
    begin
       Ada.Long_Float_Text_IO.Put (FT, V1, Fore => 4, Aft => 11, Exp => 0);
@@ -93,6 +151,16 @@ package body GEM.LTE.Primitives.Shared is
       Ada.Text_IO.New_Line (FT);
    end Put;
 
+   --  =========================================================================
+   --  Write: Save parameters to text .par files
+   --
+   --  Generates two files:
+   --    1. <executable>.par - General parameters for all climate indices
+   --    2. <executable>.<climate_index>.par - Index-specific parameters
+   --
+   --  Format: 4-character tag followed by space and value
+   --  Example: "offs  0.12345678901"
+   --  =========================================================================
    procedure Write (D : in Param_S) is
       FN : constant String :=
         Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & ".par";
@@ -162,6 +230,12 @@ package body GEM.LTE.Primitives.Shared is
       Ada.Text_IO.Close (FT);
    end Write;
 
+   --  =========================================================================
+   --  Save: Persist parameters to binary .parms file and text .par files
+   --
+   --  Uses Ada.Direct_IO for fast binary serialization (legacy format).
+   --  Also writes human-readable .par files via Write() procedure.
+   --  =========================================================================
    procedure Save (P : in Param_S) is
       subtype PS is Param_S (P.NLP, P.NLT);
       package DIO is new Ada.Direct_IO (PS);
@@ -173,12 +247,19 @@ package body GEM.LTE.Primitives.Shared is
       Create (FT, Out_File, FN);
       Write (FT, P);
       Close (FT);
+      --  TODO: Can remove - Command-line flag 'r' was intended for conditional
+      --  writing but Write() is now always called. The flag check is redundant.
       --if GEM.Command_Line_Option_Exists("r") then
       Write (P);
       --end if;
       -- Server.Put (P);
    end Save;
 
+   --  =========================================================================
+   --  Input Parsing Helpers - Read parameters from text files
+   --  =========================================================================
+
+   --  Read 4-char tag + Long_Float value, validate tag matches expected
    procedure Read
      (FT : in Ada.Text_IO.File_Type; Text : in String;
       Value : in out Long_Float)
@@ -195,6 +276,7 @@ package body GEM.LTE.Primitives.Shared is
       end if;
    end Read;
 
+   --  Read 4-char tag + Integer value, validate tag matches expected
    procedure Read
      (FT : in Ada.Text_IO.File_Type; Text : in String; Value : in out Integer)
    is
@@ -357,6 +439,15 @@ package body GEM.LTE.Primitives.Shared is
          GNAT.OS_Lib.OS_Exit (0);
    end Read_JSON_Int_Array;
 
+   --  =========================================================================
+   --  JSON Reading Functions - Modern configuration format
+   --
+   --  Provides flexible JSON-based parameter loading with fallback to
+   --  text .par format. JSON format is easier to edit and validate.
+   --  =========================================================================
+
+   --  Read JSON array of Long_Float triplets (period, amplitude, phase)
+   --  Used for LPAP (Long Period Amplitude Phase) tidal constituent data
    procedure Read_JSON_LPAP
      (Data : in GNATCOLL.JSON.JSON_Value; Name : in String; D : in out Param_S)
    is
@@ -418,6 +509,9 @@ package body GEM.LTE.Primitives.Shared is
          GNAT.OS_Lib.OS_Exit (0);
    end Read_JSON_LPAP;
 
+   --  Read complete parameter set from JSON file
+   --  Returns True on success, False if file not found or parse error
+   --  Include_LPAP flag controls whether tidal constituent data is loaded
    function Read_JSON
      (Name : in String; D : in out Param_S; Include_LPAP : in Boolean)
       return Boolean
@@ -482,6 +576,15 @@ package body GEM.LTE.Primitives.Shared is
          -- GNAT.OS_Lib.Os_Exit(0);
    end Read_JSON;
 
+   --  =========================================================================
+   --  Read: Load parameters from text .par files (fallback to JSON)
+   --
+   --  Tries JSON first, falls back to text .par format. Loads:
+   --    1. General parameters from <executable>.par or .json
+   --    2. Index-specific overrides from <executable>.<climate_index>.par
+   --
+   --  Validates tag names and exits on mismatch to catch file corruption.
+   --  =========================================================================
    procedure Read (D : in out Param_S) is
       Exec : constant String :=
         Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name);
@@ -591,6 +694,14 @@ package body GEM.LTE.Primitives.Shared is
          Ada.Text_IO.Put_Line ("? Opening " & FN2);
    end Read;
 
+   --  =========================================================================
+   --  Load: Initialize parameters from file or legacy binary format
+   --
+   --  Command-line flags control behavior:
+   --    -l : Load from legacy .parms binary file
+   --    -p : Dump parameters and exit
+   --    -w : Write parameters to .par files and exit
+   --  =========================================================================
    procedure Load (P : in out Param_S) is
       subtype PS is Param_S (P.NLP, P.NLT);
       package DIO is new Ada.Direct_IO (PS);
@@ -623,11 +734,19 @@ package body GEM.LTE.Primitives.Shared is
       elsif GEM.Command_Line_Option_Exists ("w") then
          Write (P);
          GNAT.OS_Lib.OS_Exit (0);
+         --  TODO: Can remove - Command-line flag 'r' for Read was planned but
+         --  never implemented. Read() is called automatically in normal flow.
          --elsif GEM.Command_Line_Option_Exists("r") then
          --   Read(P);
       end if;
    end Load;
 
+   --  =========================================================================
+   --  Dump: Print all parameters in human-readable markdown format
+   --
+   --  Outputs parameters with percentage differences from reference values.
+   --  Used with -p command-line flag for parameter inspection.
+   --  =========================================================================
    procedure Dump (D : in Param_S) is
       function Percent (A, B : in Long_Float) return String is
       begin
@@ -664,6 +783,9 @@ package body GEM.LTE.Primitives.Shared is
             ", " & GEM.LTE.LPRef (I).Amplitude'Img,
             NL);
       end loop;
+      --  TODO: Can remove - Debug output for LTE static parameters was used
+      --  during development to verify parameter loading. Now redundant as main
+      --  Dump output shows all critical parameters.
       --Ada.Text_IO.Put_Line("---- LTE static ----");
       --for I in D.B.LT'Range loop
       --   Put(D.B.LT(I), "", NL);

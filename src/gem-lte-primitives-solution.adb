@@ -1,3 +1,40 @@
+--  ============================================================================
+--  GEM.LTE.Primitives.Solution - Parallel Optimization Solver
+--  ============================================================================
+--
+--  PURPOSE:
+--    Implements a multi-threaded parameter optimization engine for climate
+--    modeling using GEM-LTE (Laplace's Tidal Equation). Spawns worker threads
+--    that search parameter space in parallel, with a monitor for inter-thread
+--    coordination and best-result tracking.
+--
+--  ARCHITECTURE:
+--    - Thread-based parallelism: Maps worker tasks to available CPU cores
+--    - Protected Monitor: Thread-safe coordination of best metric tracking
+--    - Random Descent: Stochastic optimization algorithm for parameter search
+--    - Dipole Model: Core climate modeling procedure (ENSO, IOD, etc.)
+--
+--  OPTIMIZATION STRATEGY:
+--    Each thread performs random descent search in parameter space, testing
+--    different tidal forcing configurations and LTE coefficients. The Monitor
+--    tracks the globally best metric (typically correlation coefficient) and
+--    allows threads to coordinate without explicit locking. When a thread
+--    finds a better solution, it updates the Monitor, which triggers other
+--    threads to potentially adjust their search strategy.
+--
+--  KEY ALGORITHMS:
+--    1. CompareRef: Validates model against reference tidal data (dlod)
+--    2. Thread Task: Worker thread mapped to specific CPU core
+--    3. Monitor Protected Object: Thread-safe best-metric tracking
+--    4. Dipole_Model: Main climate modeling computation with parameter fitting
+--
+--  CONFIGURATION:
+--    Extensive environment variable configuration system (via GEM.Getenv)
+--    controls all aspects: metrics (CC/RMS/DTW/EMD), training intervals,
+--    optimization thresholds, LTE parameters, filtering, etc.
+--
+--  ============================================================================
+
 with Text_IO;
 with Ada.Numerics.Long_Elementary_Functions;
 with Ada.Long_Float_Text_IO;
@@ -34,6 +71,9 @@ package body GEM.LTE.Primitives.Solution is
    Two_Stage : constant Boolean := GEM.Getenv ("STAGES", True);
    Test_Only : constant Boolean := GEM.Getenv ("TEST_ONLY", False);
 
+   --  Compare model output against reference tidal data (dLOD - day length)
+   --  Used for validation rather than optimization - generates CSV files
+   --  showing how well the tidal reconstruction matches reference data.
    function CompareRef
      (LP : in Long_Periods; LPRef, AP : in Long_Periods_Amp_Phase)
       return Long_Float
@@ -76,7 +116,10 @@ package body GEM.LTE.Primitives.Solution is
          return 0.0;
    end CompareRef;
 
-   -- Map task threads to multicore processors if available
+   --  Worker task type: Maps to specific CPU core for true parallelism
+   --  Each thread performs independent parameter search with periodic
+   --  coordination via the Monitor. Uses large stack (1GB) for deep
+   --  recursive calculations and large data arrays.
    task type Thread
      (CPU : System.Multiprocessors.CPU; N_Tides, N_Modulations : Integer) is
       pragma CPU (CPU);
@@ -85,7 +128,9 @@ package body GEM.LTE.Primitives.Solution is
    end Thread;
    type Thread_Access is access Thread;
 
--- Start the task threads with a remote handler to cleanly stopping mechanism
+   --  Spawns N worker threads and maps them round-robin to available CPU cores
+   --  Installs Ctrl+C handler for clean shutdown. Each thread gets assigned
+   --  a CPU and starts in deferred mode (waits for Start entry call).
    procedure Start
      (N_Tides, N_Modulations : in Integer; Number_of_Threads : Positive := 1)
    is
@@ -108,10 +153,22 @@ package body GEM.LTE.Primitives.Solution is
 
    Worst_Case : constant Long_Float := GEM.Getenv ("STARTING_METRIC", 0.001);
 
+   --  =========================================================================
+   --  Monitor: Protected object for inter-thread coordination
    --
-   -- This is the passive monitoring object with mutual exclusve access
-   -- to the best metric provided by the executing threads
+   --  PURPOSE:
+   --    Provides thread-safe tracking of the globally best metric found by
+   --    any thread. Threads report their results via Check(), and can query
+   --    current best via Status(). Uses entry barrier to efficiently notify
+   --    waiting threads only when state changes (avoiding busy-wait).
    --
+   --  COORDINATION STRATEGY:
+   --    - Threads compete to find best metric (typically correlation coeff)
+   --    - Only metric improvements trigger Status entry release
+   --    - Percentage calculation allows threads to gauge their relative quality
+   --    - Optional trigger threshold (TRIGGER env var) can halt all threads
+   --      when target metric reached
+   --  =========================================================================
    protected Monitor is
       procedure Check
         (Metric : in Long_Float;
@@ -131,7 +188,7 @@ package body GEM.LTE.Primitives.Solution is
       procedure Stop;
       procedure Reset;
    private
-      --  Value of current best metric stored internally
+      --  Current best metric and associated metadata
       Best_Metric : Long_Float :=
         Worst_Case; -- so doesn't cause overflow for %
       Best_OOB : Long_Float := Worst_Case;
@@ -142,6 +199,8 @@ package body GEM.LTE.Primitives.Solution is
    end Monitor;
 
    protected body Monitor is
+      --  Check if this thread's metric is the new best
+      --  Implements trigger-based early termination if metric exceeds threshold
       procedure Check
         (Metric : in Long_Float;
          OOB : in Long_Float; -- Out-of-band
@@ -177,12 +236,15 @@ package body GEM.LTE.Primitives.Solution is
             Percentage := 0;
       end Check;
 
+      --  Assign unique ID to registering thread
       procedure Client (ID : out Integer) is
       begin
          ID := Client_Index;
          Client_Index := Client_Index + 1;
       end Client;
 
+      --  Blocking call - only releases when best metric improves
+      --  Used by monitoring thread (main) to track progress without polling
       entry Status
         (Metric : out Long_Float;
          OOB : out Long_Float; -- Out-of-band
@@ -197,12 +259,14 @@ package body GEM.LTE.Primitives.Solution is
          Cycle := Best_Count;
       end Status;
 
+      --  Force Status entry to release (for clean shutdown)
       procedure Stop is
       begin
          Waiting :=
            False; -- necesary to allow a clean exit when program halted
       end Stop;
 
+      --  Reset best metric tracking (used in alternating exclude mode)
       procedure Reset is
       begin
          Best_Metric := 0.0;
@@ -211,13 +275,14 @@ package body GEM.LTE.Primitives.Solution is
 
    end Monitor;
 
+   --  Query current best metric (blocking call - waits for improvement)
+   --  Returns formatted string with thread ID, iteration count, metrics
    function Status return String is
       Metric, OOB : Long_Float;
       Client : Integer;
       Cycle : Long_Integer;
       S1, S2 : String (1 .. 10);
    begin
-      -- Blocking call to monitor, will only return when state changes
       Monitor.Status (Metric, OOB, Client, Cycle);
       Ada.Long_Float_Text_IO.Put (S1, Metric, Aft => 5, Exp => 0);
       Ada.Long_Float_Text_IO.Put (S2, OOB, Aft => 5, Exp => 0);
@@ -225,7 +290,10 @@ package body GEM.LTE.Primitives.Solution is
    end Status;
 
    -----------------------------------
-
+   --  Thread body: Continuously runs Dipole_Model optimization
+   --  Optional ALTERNATE mode switches between include/exclude training
+   --  data on each iteration (for validation testing)
+   -----------------------------------
    task body Thread is
       ID : Integer;
       Name : String :=
@@ -236,7 +304,6 @@ package body GEM.LTE.Primitives.Solution is
    begin
       Monitor.Client (ID);
       Text_IO.Put_Line (Name & " for Thread #" & ID'Img & Thread.CPU'Img);
-      -- Assume default for File_Name
       accept Start;
       loop
          Dipole_Model
@@ -256,11 +323,39 @@ package body GEM.LTE.Primitives.Solution is
          GNAT.OS_Lib.OS_Exit (0);
    end Thread;
 
+   --  =========================================================================
+   --  Dipole_Model: Core climate modeling and parameter optimization procedure
    --
-   -- This is the main computation for modeling a dipole, configured
-   -- with default parameters that fit to an ENSO NINO34/SOI data set
-   -- at a CC of > 0.83.
+   --  PURPOSE:
+   --    Fits a climate dipole model (e.g., ENSO, IOD, AMO) to observed data
+   --    using tidal forcing + Laplace's Tidal Equation. Performs stochastic
+   --    search through parameter space to maximize correlation coefficient
+   --    (or minimize RMS, or other configurable metrics).
    --
+   --  ALGORITHM:
+   --    1. Load climate index data (e.g., NINO3.4 SST anomalies)
+   --    2. Initialize parameters from shared state or defaults
+   --    3. Main optimization loop:
+   --       a. Generate tidal forcing from long-period constituents
+   --       b. Apply LTE modulation (wave equation solution)
+   --       c. Perform multivariate regression for modulation harmonics
+   --       d. Calculate metric (CC, RMS, DTW, etc.) vs. observed data
+   --       e. If improved, update shared state and notify Monitor
+   --       f. Use random descent to adjust parameters and iterate
+   --    4. Periodically save best parameters to disk
+   --
+   --  CONFIGURATION:
+   --    Highly configurable via 50+ environment variables controlling:
+   --    - Metric type (CC, RMS, DTW, EMD, etc.)
+   --    - Training interval (dates, split, exclude)
+   --    - Optimization parameters (spread, threshold, max loops)
+   --    - LTE physics (filters, nonlinearity, decay, symmetry)
+   --    - Advanced features (Mathieu mode, full-wave rectification, etc.)
+   --
+   --  CONCURRENCY:
+   --    Multiple threads run this procedure concurrently, each with its own
+   --    random search trajectory. Monitor coordinates best-result tracking.
+   --  =========================================================================
    procedure Dipole_Model
      (N_Tides, N_Modulations : in Integer; ID : in Integer := 0;
       File_Name : in String := "nino4.dat";
@@ -278,6 +373,9 @@ package body GEM.LTE.Primitives.Solution is
 
       Impulses : Data_Pairs := Data_Records;
       Forcing : Data_Pairs := Data_Records;
+      --  TODO: Can remove - F_Model was used for experimental blending of
+      --  forcing calculation methods, never fully implemented. Line 837
+      --  shows the intended 1% new / 99% old mixing logic that was abandoned.
       --F_Model  : Data_Pairs := Data_Records;
       Model : Data_Pairs := Data_Records;
       KeepModel : Data_Pairs := Data_Records;
@@ -336,6 +434,14 @@ package body GEM.LTE.Primitives.Solution is
       Lock_Short_Tidal : constant Boolean := GEM.Getenv ("LOCKST", False);
       Derivative : constant Boolean := GEM.Getenv ("DER", False);
       Partial : constant Boolean := GEM.Getenv ("PART", True);  -- FALSE
+      --  UNUSED CONSTANT (Compiler Warning):
+      --  ImpMonth loaded from environment but never referenced in code.
+      --
+      --  RATIONALE: Was intended for hardcoded monthly impulse timing
+      --  (see commented code lines 497-499 below). Testing showed the
+      --  DPos calculation from DelB parameter is more flexible and general.
+      --
+      --  TODO: Can remove - superseded by DPos calculation from DelB.
       ImpMonth : constant Integer := GEM.Getenv ("IMPMONTH", 0);
       Clamp : constant Boolean := GEM.Getenv ("CLAMP", False);
       Vary_Initial : constant Boolean := GEM.Getenv ("VI", False);
@@ -347,6 +453,8 @@ package body GEM.LTE.Primitives.Solution is
       begin
          if RMS_Metric then
             return RMS (X, Y, RMS_Data, 0.0);
+            --  TODO: Can remove - Experimental hybrid metric combining RMS and CC
+            --  was tested but never adopted. Simple RMS alone was sufficient.
             -- return (RMS(X,Y,RMS_Data, 0.0) + CC(X,Y))/2.0;
          elsif CID_Metric then
             return CC (X, Y) * CID (X, Y);
@@ -391,6 +499,9 @@ package body GEM.LTE.Primitives.Solution is
            Integer (((Time - Long_Float'Floor (Time)) * Sampling_Per_Year));
          DPos : Integer := Integer ((abs (D.B.DelB) * Sampling_Per_Year));
       begin
+         --  TODO: Can remove - ImpMonth hardcoding was tested for specific
+         --  monthly impulse timing but made code less flexible. The DPos
+         --  calculation from DelB parameter is more general and configurable.
          --if ImpMonth > 2 then
          --   DPos := ImpMonth;
          --end if;
@@ -422,10 +533,13 @@ package body GEM.LTE.Primitives.Solution is
             end if;
          elsif Trunc = DPos then
             Value := D.B.DelA;
+            --  TODO: Can remove - Debug output for impulse timing verification
+            --  was useful during development but no longer needed.
             --Text_IO.Put_Line("a" & Trunc'Img & Value'Img);
          elsif Trunc = (DPos + Integer (Sampling_Per_Year) / 2) mod 12 then
             if Symmetric = 0 then
                Value := D.B.Asym;
+               --  TODO: Can remove - Debug output (see above)
                --Text_IO.Put_Line("b"  & Trunc'Img & Value'Img);
             else
                Value := -D.B.DelA;
@@ -592,6 +706,8 @@ package body GEM.LTE.Primitives.Solution is
 
       use Ada.Numerics.Long_Elementary_Functions;
       Secular_Trend : Long_Float := 0.0;
+      --  TODO: Can remove - Single exclamation mark marker used during
+      --  development for code bookmarking, no functional significance.
       --!
       Singular : Boolean;
       M : Modulations (1 .. NM + NH);
@@ -613,6 +729,10 @@ package body GEM.LTE.Primitives.Solution is
          der := 1.0 - D.B.mA; -- - D.B.mP; -- keeps the integrator stable
 
          if Year_Trim then
+            --  TODO: Can remove - Year_Adjustment functionality was experimental
+            --  approach to handling year-length variations in tidal calculations.
+            --  Never completed and raises thread-safety concerns (protected call?).
+            --  The simpler Ramp := D.B.Year approach proved sufficient.
             null; -- StartY := D.B.ImpC; -- GEM.LTE.Year_Adjustment(D.B.ImpC, D.A.LP); -- should be a protected call?
          else
             Ramp := D.B.Year;
@@ -706,11 +826,15 @@ package body GEM.LTE.Primitives.Solution is
             Forcing :=
               GEM.Mix_Regression
                 (Data_Records, -0.3, 0.6, -First, Last, not Quad);
+            --  TODO: Can remove - Hard-coded regression parameters (0, 0) were
+            --  replaced by training interval parameters (First, Last) for proper
+            --  split training/validation methodology.
             --Forcing := Gem.Mix_Regression(Data_Records, -0.3, 0.6, 0, 0);
          else
             Forcing :=
               GEM.Mix_Regression
                 (Data_Records, -0.3, 0.6, First, Last, not Quad);
+            --  TODO: Can remove - See above comment.
             --Forcing := Gem.Mix_Regression(Data_Records, -0.3, 0.6, 0, 0);
          end if;
       end if;
@@ -732,13 +856,18 @@ package body GEM.LTE.Primitives.Solution is
                Forcing :=
                  GEM.Mix_Regression
                    (Forcing, -0.3, 0.6, -First, Last, not Quad);
+               --  TODO: Can remove - See line 815 comment above.
                --Forcing := Gem.Mix_Regression(Forcing, -0.3, 0.6, 0, 0);
             else
                Forcing :=
                  GEM.Mix_Regression
                    (Forcing, -0.3, 0.6, First, Last, not Quad);
+               --  TODO: Can remove - See line 815 comment above.
                --Forcing := Gem.Mix_Regression(Forcing, -0.3, 0.6, 0, 0);
             end if;
+            --  TODO: Can remove - Experimental forcing blending approach that was
+            --  never completed. Idea was to smooth forcing by mixing 1% new with
+            --  99% of a calculated model, but F_Model variable support was dropped.
             --F_Model := Calc_Forcing;
             --for I in Forcing'Range loop
       --   Forcing(I).Value := 0.01*Forcing(I).Value + 0.99*F_Model(I).Value;
@@ -782,6 +911,9 @@ package body GEM.LTE.Primitives.Solution is
 
             Regression_Factors
               (Data_Records => Excluded (DR), -- Time series
+            --  TODO: Can remove - First/Last parameters were factored into the
+            --  Excluded() function wrapper, making direct parameter passing redundant.
+            --  Excluded() handles the training interval logic more cleanly.
             --First => First,
             --Last => Last,  -- Training Interval
 
@@ -860,6 +992,9 @@ package body GEM.LTE.Primitives.Solution is
                end if;
 
                Model := Annual_Add (Model);
+               --  TODO: Can remove - Clamp mode using sinusoidal bounding was
+               --  experimental approach to limit model values. Not effective and
+               --  made the model non-linear in unhelpful ways. Never used in practice.
                --if Clamp then
                --   for I in Model'Range loop
                --      Model(I).Value := D.B.ImpA*Ada.Numerics.Long_Elementary_Functions.Sin(D.B.IR*Model(I).Value+ D.B.ImpB);

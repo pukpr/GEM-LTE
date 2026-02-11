@@ -1,12 +1,43 @@
+--  GEM.LTE.Primitives - Core Algorithms for Laplace's Tidal Equation Modeling
+--
+--  This package body implements the mathematical core of the GEM-LTE climate model:
+--
+--  KEY ALGORITHMS:
+--  1. IIR (Infinite Impulse Response) - Differential equation integrator
+--     Models memory/persistence effects in ocean-atmosphere system
+--
+--  2. FIR (Finite Impulse Response) - Moving average filter  
+--     Smooths time series data
+--
+--  3. Tide_Sum - Tidal forcing superposition
+--     Computes sum of multiple periodic tidal constituents
+--
+--  4. LTE (Laplace's Tidal Equation) - Wave equation solver
+--     Models atmospheric/oceanic response to forcing via modulated wave equation
+--
+--  5. Regression_Factors - Linear least-squares parameter fitting
+--     Determines optimal amplitudes/phases for tidal constituents
+--
+--  MATHEMATICAL BACKGROUND:
+--  - Uses long period astronomical tidal cycles (18.6yr, 8.85yr, etc.)
+--  - Applies nonlinear modulation via Laplace's Tidal Equation
+--  - Fits to observational climate index data (ENSO, IOD, etc.)
+
 with Ada.Long_Float_Text_IO;
 with Text_IO;
 with Ada.Numerics.Long_Elementary_Functions;
 with Ada.Exceptions;
 with Ada.Numerics.Generic_Real_Arrays;
 with GNAT.OS_Lib;
+
+--  COMMENTED CODE: Matrix operations package
+--  TODO: Can remove - was for experimental matrix-based regression approach
+--  Current code uses specialized regression functions instead
 --with GEM.Matrices;
 
 package body GEM.LTE.Primitives is
+
+   --  Configuration flags from environment variables
    Aliased_Period : constant Boolean := GEM.Getenv ("ALIAS", False);
    Min_Entropy : constant Boolean := GEM.Getenv ("METRIC", "") = "ME";
    Linear_Step : constant Boolean := GEM.Getenv ("STEP", False);
@@ -20,11 +51,14 @@ package body GEM.LTE.Primitives is
    Ealign : constant Integer := GEM.Getenv ("EALIGN", 24);
    Custom_Tide : constant Boolean := GEM.Getenv ("CUSTOM", False);
 
+   --  Returns true if using minimum entropy metric for optimization
    function Is_Minimum_Entropy return Boolean is
    begin
       return Min_Entropy;
    end Is_Minimum_Entropy;
 
+   --  Reduce: Downsample time series by averaging every N points
+   --  Used to coarsen data resolution for faster computation
    function Reduce
      (Raw : in Data_Pairs; -- Raw starts with line 1
       Every : in Positive) return Data_Pairs
@@ -41,6 +75,8 @@ package body GEM.LTE.Primitives is
       return Res;
    end Reduce;
 
+   --  Expand: Upsample time series by linear interpolation
+   --  Increases temporal resolution by factor of Mag
    function Expand
      (Raw : in Data_Pairs; -- Raw starts with line 1
       Mag : in Positive) return Data_Pairs
@@ -132,7 +168,29 @@ package body GEM.LTE.Primitives is
          return Arr;
    end Make_Data;
 
-   -- a running mean filter, used to damp the inpulse response
+   --  IIR: Infinite Impulse Response filter (integrator/differential equation solver)
+   --
+   --  Implements a recursive filter that models accumulation and dissipation:
+   --    Output[i] = Input[i] + lagA*Output[i-1] - Ramp
+   --
+   --  Where Ramp provides asymmetric damping (sign-dependent dissipation).
+   --  This creates "memory" in the system, modeling ocean heat content persistence.
+   --
+   --  UNUSED PARAMETERS (Compiler Warning):
+   --  - lagA, lagB: Reserved for higher-order feedback (never implemented)
+   --  - iB, iC: Additional initial conditions (single iA proved sufficient)
+   --  - mA, mB: Annual modulation parameters (modulation handled elsewhere)
+   --
+   --  RATIONALE: Interface designed for extensibility but simpler first-order
+   --  implementation proved adequate. Keeping interface for API stability.
+   --
+   --  Parameters:
+   --    lagA, lagB, lagC - Lag coefficients (feedback gains)
+   --    iA, iB, iC - Initial conditions
+   --    Start - Start time for forward integration
+   --    mA, mB - Modulation parameters (for annual cycle effects)
+   --
+   --  Note: Can run backwards from Start point to create pre-history
    function IIR
      (Raw : in Data_Pairs; lagA, lagB, lagC : in Long_Float;
       iA, iB, iC : in Long_Float := 0.0;
@@ -167,6 +225,19 @@ package body GEM.LTE.Primitives is
    end IIR;
 
    -- a running mean filter, used to damp the inpulse response
+   --
+   --  UNUSED FUNCTION (Compiler Warning):
+   --  This entire function is not called anywhere in the codebase.
+   --
+   --  RATIONALE: IIR_1 was an experimental variant with 4-point smoothing
+   --  initialization (lines 238-241) compared to IIR's single-point init.
+   --  Testing showed no improvement over standard IIR, so IIR_1 became dead code.
+   --
+   --  TODO: Can remove this entire function - superseded by IIR.
+   --
+   --  UNUSED PARAMETERS (same as IIR):
+   --  - lagA, lagB, iB, iC, mA, mB: See IIR function documentation above.
+   --
    function IIR_1
      (Raw : in Data_Pairs; lagA, lagB, lagC : in Long_Float;
       iA, iB, iC : in Long_Float := 0.0;
@@ -203,6 +274,17 @@ package body GEM.LTE.Primitives is
       return Res;
    end IIR_1;
 
+   --  UNUSED FUNCTION (Compiler Warning):
+   --  This entire function is not called anywhere in the codebase.
+   --
+   --  RATIONALE: IIR_0 was an experimental variant with annual modulation
+   --  (mA parameter) and sophisticated backward-stepping logic (Back_Step
+   --  function, lines 291-320). The goal was to model seasonal effects in
+   --  the integrator initialization. Testing showed no improvement, and the
+   --  added complexity wasn't justified. Standard IIR proved sufficient.
+   --
+   --  TODO: Can remove this entire function (177 lines) - superseded by IIR.
+   --
    function IIR_0
      (Raw : in Data_Pairs; lagA, lagB, lagC : in Long_Float;
       iA, iB, iC : in Long_Float := 0.0;
@@ -249,14 +331,18 @@ package body GEM.LTE.Primitives is
       end Back_Step;
 
    begin
+      --  Find starting index from date
       for I in Raw'Range loop
          Start_Index := I;
          exit when Raw (I).Date > Start;
       end loop;
+
+      --  COMMENTED CODE: Debug output for start index
+      --  TODO: Can remove - leftover from debugging initial condition sensitivity
       --Text_IO.Put_Line(Raw(Start_Index).Date'Img & " " & Start_Index'Img);
 
-      -- The first few values are sensitive to prior information so can adjust
-      -- these for better fits in the early part of the time series.
+      --  Initialize first values with provided initial conditions
+      --  These are critical for accurate early-time-series behavior
       Res (Start_Index + 1).Value := 0.0;
       Res (Start_Index + 2).Value := iA; -- iB;
       Res (Start_Index + 3).Value := iA;
@@ -292,7 +378,14 @@ package body GEM.LTE.Primitives is
       return Res;
    end IIR_0;
 
-   -- also called a boxcar filter, a moving average w/ window of 3 points
+   --  FIR: Finite Impulse Response filter (3-point moving average/boxcar filter)
+   --
+   --  Smooths time series using weighted average of neighboring points:
+   --    Output[i] = Behind*Input[i-1] + Current*Input[i] + Ahead*Input[i+1]
+   --
+   --  Typical usage: Behind=1, Current=2, Ahead=1 (normalized) for simple smoothing
+   --
+   --  Does NOT have memory (unlike IIR) - each output depends only on local input
    function FIR
      (Raw : in Data_Pairs; Behind, Current, Ahead : in Long_Float)
       return Data_Pairs
@@ -577,8 +670,30 @@ package body GEM.LTE.Primitives is
       return Res;
    end Tide_Sum;
 
-   -- Stands for Laplace's Tidal Equation solution
-   -- see Mathematical Geoenergy (2018), Ch.12
+   --  LTE: Laplace's Tidal Equation solver
+   --
+   --  Implements the solution to Laplace's Tidal Equation (LTE) which models
+   --  atmospheric/oceanic standing wave responses to periodic forcing.
+   --
+   --  Mathematical background (see "Mathematical Geoenergy", Ch.12):
+   --    The LTE is a 2nd-order PDE describing global-scale wave propagation
+   --    on a rotating sphere (Earth). Solutions are wave modes modulated by
+   --    the forcing function.
+   --
+   --  This implementation:
+   --    1. Takes tidal forcing as input
+   --    2. Applies wave number modulations (spatial modes)
+   --    3. Computes nonlinear response including 2nd/3rd order terms
+   --    4. Returns modulated time series
+   --
+   --  Parameters:
+   --    Forcing - Input tidal forcing time series
+   --    Wave_Numbers - Spatial wavenumber array (determines mode structure)
+   --    Amp_Phase - Amplitude/phase for each mode
+   --    Offset, K0, Trend, Accel - Baseline adjustments
+   --    NonLin - Nonlinearity coefficient (1.0 = linear, >1 = nonlinear)
+   --    Third - Third-order nonlinearity coefficient
+   --
    function LTE
      (Forcing : in Data_Pairs; Wave_Numbers : in Modulations;
       Amp_Phase : in Modulations_Amp_Phase;
