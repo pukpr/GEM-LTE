@@ -236,9 +236,9 @@ begin
    if Seed_Value /= 0 then
       -- Fixed seed for reproducible testing
       Text_IO.Put_Line ("Random_Descent: Using fixed seed " & Integer'Image (Seed_Value));
-      DR.Reset (D, DR.Initiator (Seed_Value));
-      FR.Reset (G, FR.Initiator (Seed_Value));
-      HR.Reset (H, HR.Initiator (Seed_Value));
+      DR.Reset (D, Seed_Value);
+      FR.Reset (G, Seed_Value);
+      HR.Reset (H, Seed_Value);
    elsif GEM.Getenv ("RESET", False) then
       -- Time-based reset
       Reset;

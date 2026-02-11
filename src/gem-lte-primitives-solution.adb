@@ -698,7 +698,12 @@ package body GEM.LTE.Primitives.Solution is
          Harmonic_Range => Max_Harmonics);
 
       Set, Keep, Set0 : Walker.LF_Array (1 .. Size_Shared);
+      
+      --  Suppress overlay address clause warning (intentional unsafe operation)
+      pragma Warnings (Off, "overlay changes scalar storage order");
       for Set'Address use D.B.Offset'Address;
+      pragma Warnings (On, "overlay changes scalar storage order");
+      
       --  SAFETY NOTE: This address clause creates an array view of Param_B.
       --  The layout is verified by Param_B_Overlay.Verify_Layout below.
       --  Field positions are documented via named constants in the overlay package.
@@ -812,6 +817,15 @@ package body GEM.LTE.Primitives.Solution is
       
       -- Verify overlay layout before optimization begins
       GEM.LTE.Primitives.Param_B_Overlay.Verify_Layout (D.B, Size_Shared);
+      
+      -- Optional debug: print field-by-field mapping (set OVERLAY_DEBUG=1)
+      declare
+         --  Create view of Walker.LF_Array as Param_B_Overlay.LF_Array for debug
+         Debug_Set : GEM.LTE.Primitives.Param_B_Overlay.LF_Array (1 .. Size_Shared);
+         for Debug_Set'Address use Set'Address;
+      begin
+         GEM.LTE.Primitives.Param_B_Overlay.Debug_Print_Field_Mapping (D.B, Debug_Set);
+      end;
       
       Walker.Reset;
       if Filter9Pt > 0 then

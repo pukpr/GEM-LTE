@@ -14,6 +14,11 @@
 --    - Runtime verification of layout assumptions
 --    - Type-safe interface for creating overlays
 --
+--  COMPILE-TIME SAFETY:
+--    Static assertions verify fundamental assumptions about data representation:
+--    - Long_Float is 64 bits (8 bytes) as expected
+--    - Ensures portability across platforms
+--
 --  FIELD INDICES IN OVERLAY ARRAY:
 --    Scalars (18 fields):
 --      1. Offset    7. DelB      13. Year    
@@ -40,6 +45,23 @@ with GEM.LTE.Primitives.Shared;
 package GEM.LTE.Primitives.Param_B_Overlay is
 
    use GEM.LTE.Primitives.Shared;
+   
+   --  ==========================================================================
+   --  COMPILE-TIME SAFETY CHECKS
+   --  ==========================================================================
+   
+   --  Verify Long_Float is 64 bits as expected
+   --  This is fundamental to the overlay working correctly
+   pragma Compile_Time_Error 
+      (Long_Float'Size /= 64,
+       "Long_Float'Size must be 64 bits for overlay to work");
+   
+   --  Verify Long_Float alignment is reasonable
+   pragma Compile_Time_Error
+      (Long_Float'Alignment > 8,
+       "Long_Float'Alignment unexpectedly large");
+   
+   --  ==========================================================================
    
    --  Named constants for scalar field positions in overlay array
    Offset_Index  : constant := 1;
@@ -89,5 +111,19 @@ package GEM.LTE.Primitives.Param_B_Overlay is
    --  Get index for specific LPAP constituent's phase
    --  Constituent 1..NLP, returns index for Phase field
    function LPAP_Phase_Index (Constituent : Positive) return Positive;
+   
+   --  ==========================================================================
+   --  DEBUG MODE - Field Mapping Verification
+   --  ==========================================================================
+   
+   --  Long_Float array type for overlay debugging
+   type LF_Array is array (Positive range <>) of Long_Float;
+   
+   --  Print detailed field-by-field mapping and verify overlay access
+   --  Only runs if environment variable OVERLAY_DEBUG=1
+   --  Useful for verifying overlay correctness when adding new fields
+   procedure Debug_Print_Field_Mapping (
+      P : in Param_B;
+      Set : in LF_Array);
 
 end GEM.LTE.Primitives.Param_B_Overlay;
