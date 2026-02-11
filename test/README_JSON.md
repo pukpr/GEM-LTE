@@ -88,9 +88,38 @@ lt.exe  # Result: cc = 0.4107660797 ✅ EXACT MATCH
 
 ### Suspected Root Causes
 
-1. **Array Indexing Issue**: GNATCOLL.JSON uses 1-based indexing, but there may be a mismatch in how triplet elements are accessed
-2. **Period Matching Logic**: The Apply() procedure searches for matching periods but may have an off-by-one error
-3. **Sequential vs Search**: .par reader assigns sequentially by index; JSON reader searches by period value
+The .par reader and JSON reader use fundamentally different strategies:
+
+**.par Format: ORDER-DEPENDENT Sequential Assignment (WORKS)**
+```ada
+for I in D.B.LPAP'Range loop
+   Read (FT, D.A.LP (I), D.B.LPAP (I).Amplitude, D.B.LPAP (I).Phase);
+   D.A.LP (I) := GEM.LTE.LP (I); -- Assigns to index I sequentially (1,2,3...)
+end loop;
+```
+- **Critical:** .par files MUST have LPAP triplets in the same order as GEM.LTE.LP array
+- Reads triplet #1 → assigns to LP[1], triplet #2 → LP[2], etc.
+- Period values in file are discarded (overwritten)
+
+**JSON Format: ORDER-INDEPENDENT Period Matching (FAILS)**
+```ada
+for I in D.B.LPAP'Range loop
+   if abs (Period - GEM.LTE.LP (I)) <= abs (GEM.LTE.LP (I)) * 0.01 then
+      D.B.LPAP (I).Amplitude := Amp;  -- Searches for match, assigns to index I
+      D.B.LPAP (I).Phase := Phase;
+      exit;
+   end if;
+end loop;
+```
+- **Design intent:** JSON arrays can be in any order - period matching finds correct index
+- Should be more flexible than .par format
+- Bug must be in the matching implementation itself
+
+**Possible issues:**
+1. Array indexing confusion in GNATCOLL.JSON Get() calls
+2. Off-by-one error in Apply() loop
+3. Period matching happens but writes to wrong array index
+4. Loop exits prematurely or doesn't iterate correctly
 
 ### Workaround
 
@@ -102,18 +131,57 @@ lt.exe  # Uses config.par successfully
 
 This workaround is proven to work perfectly with both primary and secondary parameter files.
 
-### Text .par Format Behavior
+## Format Differences: Order Dependency
 
-When reading from .par files, the code:
-1. Reads the period value from the file
-2. **OVERRIDES** it with the predefined GEM.LTE.LP value (line 623 of gem-lte-primitives-shared.adb)
+### .par Format: ORDER-DEPENDENT (Sequential Reading)
+
+The .par format **requires** LPAP triplets to be in the exact same order as the internal `GEM.LTE.LP` array:
 
 ```ada
-Read (FT, D.A.LP (I), D.B.LPAP (I).Amplitude, D.B.LPAP (I).Phase);
-D.A.LP (I) := GEM.LTE.LP (I); -- OVERRIDE!
+for I in D.B.LPAP'Range loop
+   Read (FT, D.A.LP (I), D.B.LPAP (I).Amplitude, D.B.LPAP (I).Phase);
+   D.A.LP (I) := GEM.LTE.LP (I); -- Sequential: I=1,2,3...
+end loop;
 ```
 
-This means .par files can have any period values - they're replaced anyway.
+- Reads triplets sequentially (I=1, 2, 3, ...)
+- Assigns directly to array index I
+- **Order is critical** - triplet #1 must correspond to LP[1], triplet #2 to LP[2], etc.
+- Period values in the file are discarded (overwritten with GEM.LTE.LP values)
+
+### JSON Format: ORDER-INDEPENDENT (Period Matching)
+
+The JSON format allows LPAP triplets in **any order** because it uses period matching:
+
+```ada
+for I in D.B.LPAP'Range loop
+   if abs (Period - GEM.LTE.LP (I)) <= abs (GEM.LTE.LP (I)) * 0.01 then
+      D.B.LPAP (I).Amplitude := Amp;  -- Match found, assign to index I
+      D.B.LPAP (I).Phase := Phase;
+      exit;
+   end if;
+end loop;
+```
+
+- Searches through LP array to find matching period
+- Uses 1% tolerance for matching
+- Can handle JSON arrays in any order
+- **Period matching is critical** - must correctly identify which LP index to write to
+
+### Why This Design?
+
+JSON objects/arrays can be reordered during editing or programmatic manipulation. The period-matching approach makes the JSON format more robust and flexible than the sequential .par format.
+
+**Example:**
+```json
+"lpap": [
+  [27.321, 0.006, -1.35],  // Could be LP[1]
+  [27.212, 0.031, -0.76],  // Could be LP[2]
+  ...
+]
+```
+
+These could appear in any order in the JSON file, and the reader should still correctly assign them to the right LP array indices based on period matching.
 
 ## Recommendations
 

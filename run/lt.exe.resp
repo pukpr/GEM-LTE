@@ -11,14 +11,6 @@ ALIAS                          FALSE
 EXCLUDE                        true
 ALTERNATE                      false
 CLIMATE_INDEX3                  qbo_70.dat
-CLIMATE_INDEX0                 qbo30.dat
-CLIMATE_INDEX1                  rand1880.dat
-CLIMATE_INDEXa                  nino34avg1870.dat
-CLIMATE_INDEXh                  pdo_1870.dat
-CLIMATE_INDEXa                 soi_darwin_avg_1870_EXTEND.dat
-CLIMATE_INDEXb                  amo_long.dat
-CLIMATE_INDEXj                  iod_e_AVG.dat
-CLIMATE_INDEXa                 m1.dat
 DLOD_REF                       true
 FILTER                         0.0
 FLIP                           0.01
@@ -31,15 +23,15 @@ IMPC                           -1
 IMPD                           -1
 IMPULSE                        DELTA
 IR                             0.0
-MAXH                           50
+MAXH                           60
 MAXLOOPS                       100000
 MERMS                          FALSE
-METRIC                         DTW
+-METRIC                         CC
 MLR                            FALSE
 -NH                             ""
--NH                            "1 1 1"
-NH                            "1 1 1 1 1 1 1 1 1 1"
-NH                             "1 1 1 1 1"
+NH                            "1 1 1"
+-NH                            "1 1 1 1 1 1 1 1 1 1"
+NH                             "1 1 1 1 1 1"
 NM                             2
 PARETO                         false
 RESET                          FALSE
@@ -55,10 +47,10 @@ STARTING_METRIC                0.001
 STEP                           false
 THRESHOLD                      99
 THRESHOLD_ACTION               CATCHUP
-TRAIN_END                      1970
-TRAIN_START                    1960
-TRAIN_END                      1970
-TRAIN_START                    1968
+-TRAIN_END                      1970
+-TRAIN_START                    1960
+-TRAIN_END                      1970
+-TRAIN_START                    1940
 TREND                          true
 YEAR                           0.005
 -IMPAVALUE                      9.03

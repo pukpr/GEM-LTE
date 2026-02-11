@@ -1,0 +1,911 @@
+
+  Id CommandLine                                                                                                                                                                         
+  -- -----------                                                                                                                                                                         
+   1 cd .\github\pukpr\GEM-LTE\run\                                                                                                                                                      
+   2 ..\ed nino4                                                                                                                                                                         
+   3 ./LT                                                                                                                                                                                
+   4 ./LT                                                                                                                                                                                
+   5 ..\del nino34                                                                                                                                                                       
+   6 ./LT                                                                                                                                                                                
+   7 ..\del nino3                                                                                                                                                                        
+   8 ./LT                                                                                                                                                                                
+   9 ..\del nino12                                                                                                                                                                       
+  10 ./LT                                                                                                                                                                                
+  11 ..\ed nino4                                                                                                                                                                         
+  12 ./LT                                                                                                                                                                                
+  13 ../backup junk                                                                                                                                                                      
+  14 ./LT                                                                                                                                                                                
+  15 ./LT                                                                                                                                                                                
+  16 ./LT                                                                                                                                                                                
+  17 ./LT                                                                                                                                                                                
+  18 ..\ed nino4                                                                                                                                                                         
+  19 notepad lt.exe.par                                                                                                                                                                  
+  20 ./LT                                                                                                                                                                                
+  21 ../backup slow_n4                                                                                                                                                                   
+  22 ./LT                                                                                                                                                                                
+  23 ./LT                                                                                                                                                                                
+  24 ./LT                                                                                                                                                                                
+  25 ..\ed nino4                                                                                                                                                                         
+  26 ./LT                                                                                                                                                                                
+  27 ./LT                                                                                                                                                                                
+  28 notepad lt.exe.par                                                                                                                                                                  
+  29 ./LT                                                                                                                                                                                
+  30 ./LT                                                                                                                                                                                
+  31 notepad lt.exe.par                                                                                                                                                                  
+  32 ./LT                                                                                                                                                                                
+  33 ./LT                                                                                                                                                                                
+  34 ..\ed nino4                                                                                                                                                                         
+  35 ./LT                                                                                                                                                                                
+  36 ./LT                                                                                                                                                                                
+  37 ./LT                                                                                                                                                                                
+  38 ./LT                                                                                                                                                                                
+  39 ./LT                                                                                                                                                                                
+  40 ./LT                                                                                                                                                                                
+  41 ./LT                                                                                                                                                                                
+  42 ./LT                                                                                                                                                                                
+  43 ./LT                                                                                                                                                                                
+  44 ../restore slow_n4                                                                                                                                                                  
+  45 ..\del nino4                                                                                                                                                                        
+  46 ./LT                                                                                                                                                                                
+  47 ./LT                                                                                                                                                                                
+  48 ./LT                                                                                                                                                                                
+  49 ./LT                                                                                                                                                                                
+  50 ./LT                                                                                                                                                                                
+  51 ./LT                                                                                                                                                                                
+  52 ./LT                                                                                                                                                                                
+  53 ./LT                                                                                                                                                                                
+  54 ./LT                                                                                                                                                                                
+  55 ./LT                                                                                                                                                                                
+  56 ./LT                                                                                                                                                                                
+  57 ./LT                                                                                                                                                                                
+  58 ./LT                                                                                                                                                                                
+  59 ./LT                                                                                                                                                                                
+  60 ./LT                                                                                                                                                                                
+  61 ..\ed nino4                                                                                                                                                                         
+  62 ./LT                                                                                                                                                                                
+  63 ./LT                                                                                                                                                                                
+  64 ./LT                                                                                                                                                                                
+  65 ./LT                                                                                                                                                                                
+  66 ./LT                                                                                                                                                                                
+  67 ..\del nino4                                                                                                                                                                        
+  68 $env:LOCKT="true"                                                                                                                                                                   
+  69 ./LT                                                                                                                                                                                
+  70 ..\del nino4                                                                                                                                                                        
+  71 ./LT                                                                                                                                                                                
+  72 ./LT                                                                                                                                                                                
+  73 ..\ed nino4                                                                                                                                                                         
+  74 ./LT                                                                                                                                                                                
+  75 $env:LOCKT="false"                                                                                                                                                                  
+  76 ../backup spectral_n4                                                                                                                                                               
+  77 ./LT                                                                                                                                                                                
+  78 ./LT                                                                                                                                                                                
+  79 notepad lt.exe.par                                                                                                                                                                  
+  80 ./LT                                                                                                                                                                                
+  81 notepad lt.exe.par                                                                                                                                                                  
+  82 ./LT                                                                                                                                                                                
+  83 ./LT                                                                                                                                                                                
+  84 ./LT                                                                                                                                                                                
+  85 ./LT                                                                                                                                                                                
+  86 ./LT                                                                                                                                                                                
+  87 ./LT                                                                                                                                                                                
+  88 ./LT                                                                                                                                                                                
+  89 ./LT                                                                                                                                                                                
+  90 ./LT                                                                                                                                                                                
+  91 ./LT                                                                                                                                                                                
+  92 ./LT                                                                                                                                                                                
+  93 $env:DTW="6"                                                                                                                                                                        
+  94 ./LT                                                                                                                                                                                
+  95 ./LT                                                                                                                                                                                
+  96 ./LT                                                                                                                                                                                
+  97 ./LT                                                                                                                                                                                
+  98 $env:DTW="12"                                                                                                                                                                       
+  99 ./LT                                                                                                                                                                                
+ 100 ..\ed nino4                                                                                                                                                                         
+ 101 $env:DTW="6"                                                                                                                                                                        
+ 102 ./LT                                                                                                                                                                                
+ 103 notepad lt.exe.par                                                                                                                                                                  
+ 104 ./LT                                                                                                                                                                                
+ 105 notepad lt.exe.par                                                                                                                                                                  
+ 106 ./LT                                                                                                                                                                                
+ 107 ..\ed nino4                                                                                                                                                                         
+ 108 ./LT                                                                                                                                                                                
+ 109 ../backup spectral_n4a                                                                                                                                                              
+ 110 ..\del pdo                                                                                                                                                                          
+ 111 ./LT                                                                                                                                                                                
+ 112 ..\del amo                                                                                                                                                                          
+ 113 ./LT                                                                                                                                                                                
+ 114 ../backup spectral_n4a_amo                                                                                                                                                          
+ 115 ./LT                                                                                                                                                                                
+ 116 ..\ed amo                                                                                                                                                                           
+ 117 ./LT                                                                                                                                                                                
+ 118 ./LT                                                                                                                                                                                
+ 119 ../backup spectral_n4a_amo1                                                                                                                                                         
+ 120 ./LT                                                                                                                                                                                
+ 121 ../backup spectral_n4a_amo1                                                                                                                                                         
+ 122 ..\ed nino4                                                                                                                                                                         
+ 123 ./LT                                                                                                                                                                                
+ 124 ../restore spectral_n4a                                                                                                                                                             
+ 125 ..\del nino4                                                                                                                                                                        
+ 126 ./LT                                                                                                                                                                                
+ 127 ..\ed amo                                                                                                                                                                           
+ 128 ./LT                                                                                                                                                                                
+ 129 ../restore spectral_n4a                                                                                                                                                             
+ 130 ..\del nino4                                                                                                                                                                        
+ 131 ./LT                                                                                                                                                                                
+ 132 ../restore spectral_n4a_amo1                                                                                                                                                        
+ 133 ..\del amo                                                                                                                                                                          
+ 134 ./LT                                                                                                                                                                                
+ 135 ./LT                                                                                                                                                                                
+ 136 ..\ed amo                                                                                                                                                                           
+ 137 ./LT                                                                                                                                                                                
+ 138 ../backup spectral_n4a_amo2                                                                                                                                                         
+ 139 ./LT                                                                                                                                                                                
+ 140 ../backup spectral_n4a_amo3                                                                                                                                                         
+ 141 ..\del iode                                                                                                                                                                         
+ 142 ./LT                                                                                                                                                                                
+ 143 ../restore spectral_n4a                                                                                                                                                             
+ 144 ..\del nino4                                                                                                                                                                        
+ 145 ./LT                                                                                                                                                                                
+ 146 ..\ed nino4                                                                                                                                                                         
+ 147 ./LT                                                                                                                                                                                
+ 148 ./LT                                                                                                                                                                                
+ 149 ./LT                                                                                                                                                                                
+ 150 ..\ed nino4                                                                                                                                                                         
+ 151 ./LT                                                                                                                                                                                
+ 152 ..\ed nino4                                                                                                                                                                         
+ 153 ./LT                                                                                                                                                                                
+ 154 ./LT                                                                                                                                                                                
+ 155 ./LT                                                                                                                                                                                
+ 156 ./LT                                                                                                                                                                                
+ 157 notepad lt.exe.par                                                                                                                                                                  
+ 158 ./LT                                                                                                                                                                                
+ 159 notepad lt.exe.par                                                                                                                                                                  
+ 160 ./LT                                                                                                                                                                                
+ 161 ../backup spectral_n4b                                                                                                                                                              
+ 162 ..\ed amo                                                                                                                                                                           
+ 163 ./LT                                                                                                                                                                                
+ 164 ../backup spectral_n4b_amo                                                                                                                                                          
+ 165 ../restore spectral_n4b                                                                                                                                                             
+ 166 ./LT                                                                                                                                                                                
+ 167 ../backup spectral_n4b_amo1                                                                                                                                                         
+ 168 ..\ed nino4                                                                                                                                                                         
+ 169 ./LT                                                                                                                                                                                
+ 170 ./LT                                                                                                                                                                                
+ 171 ../restore spectral_n4b_amo1                                                                                                                                                        
+ 172 ..\del amo                                                                                                                                                                          
+ 173 ./LT                                                                                                                                                                                
+ 174 ../backup spectral_n4b_amo2                                                                                                                                                         
+ 175 ..\ed pdo                                                                                                                                                                           
+ 176 ./LT                                                                                                                                                                                
+ 177 ..\ed nino4                                                                                                                                                                         
+ 178 ./LT                                                                                                                                                                                
+ 179 ./LT                                                                                                                                                                                
+ 180 ../backup spectral_n4b_amo2_n4                                                                                                                                                      
+ 181 ..\ed amo                                                                                                                                                                           
+ 182 ./LT                                                                                                                                                                                
+ 183 ./LT                                                                                                                                                                                
+ 184 ../backup spectral_n4b_amo2_n4_amo                                                                                                                                                  
+ 185 ..\del nao                                                                                                                                                                          
+ 186 ./LT                                                                                                                                                                                
+ 187 ../backup spectral_n4b_amo2_n4_amo_nao                                                                                                                                              
+ 188 ..\ed nino4                                                                                                                                                                         
+ 189 ./LT                                                                                                                                                                                
+ 190 ..\ed nino4                                                                                                                                                                         
+ 191 ./LT                                                                                                                                                                                
+ 192 ./LT                                                                                                                                                                                
+ 193 ../backup spectral_n4b_amo2_n4_amo_nao_n4                                                                                                                                           
+ 194 ../restore spectral_n4b_amo2_n4                                                                                                                                                     
+ 195 ..\del nino4                                                                                                                                                                        
+ 196 ./LT                                                                                                                                                                                
+ 197 ../restore spectral_n4b_amo2_n4_amo                                                                                                                                                 
+ 198 ..\del amo                                                                                                                                                                          
+ 199 ./LT                                                                                                                                                                                
+ 200 ..\ed nino4                                                                                                                                                                         
+ 201 ./LT                                                                                                                                                                                
+ 202 ../restore spectral_n4b                                                                                                                                                             
+ 203 ..\del nino4                                                                                                                                                                        
+ 204 ./LT                                                                                                                                                                                
+ 205 ..\ed amo                                                                                                                                                                           
+ 206 ./LT                                                                                                                                                                                
+ 207 ./LT                                                                                                                                                                                
+ 208 ../backup spectral_n4b_amo2nd                                                                                                                                                       
+ 209 ..\del nino4                                                                                                                                                                        
+ 210 notepad lt.exe.par                                                                                                                                                                  
+ 211 ./LT                                                                                                                                                                                
+ 212 ../backup spectral_n4b_amo2nd_n4                                                                                                                                                    
+ 213 ..\ednino4                                                                                                                                                                          
+ 214 ..\ed nino4                                                                                                                                                                         
+ 215 ./LT                                                                                                                                                                                
+ 216 ../backup spectral_n4b_amo2nd_n4a                                                                                                                                                   
+ 217 ./LT                                                                                                                                                                                
+ 218 ..\ed nino4                                                                                                                                                                         
+ 219 ./LT                                                                                                                                                                                
+ 220 ../backup spectral_n4b_amo2nd_n4b                                                                                                                                                   
+ 221 ..\ed amo                                                                                                                                                                           
+ 222 ./LT                                                                                                                                                                                
+ 223 ./LT                                                                                                                                                                                
+ 224 ../backup spectral_n4b_amo2nd_n4b_amo                                                                                                                                               
+ 225 ..\ed nao                                                                                                                                                                           
+ 226 ./LT                                                                                                                                                                                
+ 227 ../restore spectral_n4b_amo2_n4_amo_nao                                                                                                                                             
+ 228 ..\del nao                                                                                                                                                                          
+ 229 ./LT                                                                                                                                                                                
+ 230 ..\ed nao                                                                                                                                                                           
+ 231 ./LT                                                                                                                                                                                
+ 232 ../backup spectral_n4b_amo2_n4_amo_nao1                                                                                                                                             
+ 233 ..\del amo                                                                                                                                                                          
+ 234 ./LT                                                                                                                                                                                
+ 235 ../restore spectral_n4b_amo2_n4_amo                                                                                                                                                 
+ 236 ..\del amo                                                                                                                                                                          
+ 237 ./LT                                                                                                                                                                                
+ 238 ../restore spectral_n4b_amo2_n4_amo_nao1                                                                                                                                            
+ 239 ..\del nao                                                                                                                                                                          
+ 240 ./LT                                                                                                                                                                                
+ 241 ..\ed amo                                                                                                                                                                           
+ 242 ./LT                                                                                                                                                                                
+ 243 ./LT                                                                                                                                                                                
+ 244 ../restore spectral_n4b_amo2_n4_amo_nao1_amo                                                                                                                                        
+ 245 ../restore spectral_n4b_amo2nd_n4b_amo                                                                                                                                              
+ 246 ..\del amo                                                                                                                                                                          
+ 247 ./LT                                                                                                                                                                                
+ 248 ./LT                                                                                                                                                                                
+ 249 ../backup spectral_n4b_amo2nd_n4b_amo2                                                                                                                                              
+ 250 dir *.par.spectral*amo                                                                                                                                                              
+ 251 ../restore spectral_n4b_amo2_n4_amo                                                                                                                                                 
+ 252 ..\del amo                                                                                                                                                                          
+ 253 ./LT                                                                                                                                                                                
+ 254 ./LT                                                                                                                                                                                
+ 255 ./LT                                                                                                                                                                                
+ 256 ../backup spectral_n4b_amo2_n4_amo2                                                                                                                                                 
+ 257 ./LT                                                                                                                                                                                
+ 258 ../backup spectral_n4b_amo2_n4_amo3                                                                                                                                                 
+ 259 ./LT                                                                                                                                                                                
+ 260 ..\ed nao                                                                                                                                                                           
+ 261 ./LT                                                                                                                                                                                
+ 262 ./LT                                                                                                                                                                                
+ 263 ./LT                                                                                                                                                                                
+ 264 ../backup spectral_n4b_amo2_n4_amo3_nao                                                                                                                                             
+ 265 ..\ed nao                                                                                                                                                                           
+ 266 ./LT                                                                                                                                                                                
+ 267 ../backup spectral_n4b_amo2_n4_amo3_nao1                                                                                                                                            
+ 268 dir *.par.spectral*nao                                                                                                                                                              
+ 269 ../restore spectral_n4b_amo2_n4_amo_nao                                                                                                                                             
+ 270 ..\del nao                                                                                                                                                                          
+ 271 dir *.par.spectral*nao?                                                                                                                                                             
+ 272 ../restore spectral_n4b_amo2_n4_amo_nao1                                                                                                                                            
+ 273 ..\del nao                                                                                                                                                                          
+ 274 ./LT                                                                                                                                                                                
+ 275 ..\ed nino4                                                                                                                                                                         
+ 276 ./LT                                                                                                                                                                                
+ 277 ..\ed nino4                                                                                                                                                                         
+ 278 ./LT                                                                                                                                                                                
+ 279 $env:TIMEOUT="20.0"                                                                                                                                                                 
+ 280 ./LT                                                                                                                                                                                
+ 281 notepad runA.ps1                                                                                                                                                                    
+ 282 ./runA.ps1                                                                                                                                                                          
+ 283 ../ev                                                                                                                                                                               
+ 284 dir ..                                                                                                                                                                              
+ 285 cat ..\ev.ps1                                                                                                                                                                       
+ 286 dir ..                                                                                                                                                                              
+ 287 cat ..\re.ps1                                                                                                                                                                       
+ 288 ./runA.ps1                                                                                                                                                                          
+ 289 ./runA.ps1                                                                                                                                                                          
+ 290 ./runA.ps1                                                                                                                                                                          
+ 291 ./runA.ps1                                                                                                                                                                          
+ 292 notepad runA.ps1                                                                                                                                                                    
+ 293 ./runA.ps1                                                                                                                                                                          
+ 294 notepad runA.ps1                                                                                                                                                                    
+ 295 ../restore spectral_n4b_amo2_n4_amo_nao1                                                                                                                                            
+ 296 ..\del nao                                                                                                                                                                          
+ 297 ./LT                                                                                                                                                                                
+ 298 ./LT                                                                                                                                                                                
+ 299 ./runA.ps1                                                                                                                                                                          
+ 300 ./runA.ps1                                                                                                                                                                          
+ 301 ./runA.ps1                                                                                                                                                                          
+ 302 ./runA.ps1                                                                                                                                                                          
+ 303 ./runA.ps1                                                                                                                                                                          
+ 304 ../restore spectral_n4b_amo2_n4_amo_nao1                                                                                                                                            
+ 305 ..\del nao                                                                                                                                                                          
+ 306 ./LT                                                                                                                                                                                
+ 307 ../restore spectral_n4b_amo2_n4_amo3                                                                                                                                                
+ 308 ..\del amo                                                                                                                                                                          
+ 309 ./LT                                                                                                                                                                                
+ 310 dir *.par.spectral*n4?                                                                                                                                                              
+ 311 dir *.par.spectral*n4                                                                                                                                                               
+ 312 ../restore spectral_n4b_amo2_n4                                                                                                                                                     
+ 313 ..\del nino4                                                                                                                                                                        
+ 314 ./LT                                                                                                                                                                                
+ 315 ../restore spectral_n4b                                                                                                                                                             
+ 316 ..\del nino4                                                                                                                                                                        
+ 317 ./LT                                                                                                                                                                                
+ 318 ..\ed nino4                                                                                                                                                                         
+ 319 ./LT                                                                                                                                                                                
+ 320 ..\ed amo                                                                                                                                                                           
+ 321 ./LT                                                                                                                                                                                
+ 322 ../backup spectral_n4b_amo3rd                                                                                                                                                       
+ 323 ./LT                                                                                                                                                                                
+ 324 ../ev                                                                                                                                                                               
+ 325 $env:TRIGGER                                                                                                                                                                        
+ 326 $env:TRIGGER="0.95"                                                                                                                                                                 
+ 327 $env:TIMEOUT                                                                                                                                                                        
+ 328 $env:TIMEOUT=""                                                                                                                                                                     
+ 329 ./LT                                                                                                                                                                                
+ 330 ../backup spectral_n4b_amo3rd                                                                                                                                                       
+ 331 ./LT                                                                                                                                                                                
+ 332 ../backup spectral_n4b_amo3rd                                                                                                                                                       
+ 333 ..\ed nao                                                                                                                                                                           
+ 334 ./LT                                                                                                                                                                                
+ 335 ..\del nao                                                                                                                                                                          
+ 336 ./LT                                                                                                                                                                                
+ 337 ../restore spectral_n4b_amo3rd                                                                                                                                                      
+ 338 ./LT                                                                                                                                                                                
+ 339 ../restore spectral_n4b_amo3rd                                                                                                                                                      
+ 340 ./LT                                                                                                                                                                                
+ 341 ../restore spectral_n4b                                                                                                                                                             
+ 342 ./LT                                                                                                                                                                                
+ 343 ./LT                                                                                                                                                                                
+ 344 ./LT                                                                                                                                                                                
+ 345 ./LT                                                                                                                                                                                
+ 346 dir *.par.*111*                                                                                                                                                                     
+ 347 dir *.par.*111*                                                                                                                                                                     
+ 348 ../restore mini_n4_111_amo_n4_amo_n4a_amo_n4b_amo                                                                                                                                   
+ 349 ..\del amo                                                                                                                                                                          
+ 350 ./LT                                                                                                                                                                                
+ 351 ../restore mini_n4_111_amo_n4_amo_n4a_amo_n4b                                                                                                                                       
+ 352 ..\del nino4                                                                                                                                                                        
+ 353 ./LT                                                                                                                                                                                
+ 354 ../restore spectral_n4b_amo3rd                                                                                                                                                      
+ 355 ..\del amo                                                                                                                                                                          
+ 356 ./LT                                                                                                                                                                                
+ 357 ..\ed nao                                                                                                                                                                           
+ 358 ./LT                                                                                                                                                                                
+ 359 ./LT                                                                                                                                                                                
+ 360 ../backup spectral_n4b_amo3rd_nao                                                                                                                                                   
+ 361 ./runA.ps1                                                                                                                                                                          
+ 362 ../restore spectral_n4b                                                                                                                                                             
+ 363 ..\del nino4                                                                                                                                                                        
+ 364 ./LT                                                                                                                                                                                
+ 365 ..\del pdo                                                                                                                                                                          
+ 366 .\LT                                                                                                                                                                                
+ 367 ..\ev                                                                                                                                                                               
+ 368 $env:TRIGGER=""                                                                                                                                                                     
+ 369 $env:TRIGGER="0.99"                                                                                                                                                                 
+ 370 $env:TIMEOUT                                                                                                                                                                        
+ 371 $env:TIMEOUT="999999999.9"                                                                                                                                                          
+ 372 .\LT                                                                                                                                                                                
+ 373 ../backup spectral_n4b_pdo                                                                                                                                                          
+ 374 ../restore spectral_n4b_amo3rd                                                                                                                                                      
+ 375 ..\del amo                                                                                                                                                                          
+ 376 .\LT                                                                                                                                                                                
+ 377 ..\del tna                                                                                                                                                                          
+ 378 .\LT                                                                                                                                                                                
+ 379 ../backup spectral_n4b_amo3rd_tna                                                                                                                                                   
+ 380 .\LT                                                                                                                                                                                
+ 381 ../backup spectral_n4b_amo3rd_tna1                                                                                                                                                  
+ 382 ..\ed tna                                                                                                                                                                           
+ 383 .\LT                                                                                                                                                                                
+ 384 ../backup spectral_n4b_amo3rd_tna2                                                                                                                                                  
+ 385 .\LT                                                                                                                                                                                
+ 386 ../backup spectral_n4b_amo3rd_tna2                                                                                                                                                  
+ 387 .\LT                                                                                                                                                                                
+ 388 .\LT                                                                                                                                                                                
+ 389 ../backup spectral_n4b_amo3rd_tna3                                                                                                                                                  
+ 390 .\LT                                                                                                                                                                                
+ 391 ../backup spectral_n4b_amo3rd_tna3                                                                                                                                                  
+ 392 .\LT                                                                                                                                                                                
+ 393 ../backup spectral_n4b_amo3rd_tna3                                                                                                                                                  
+ 394 ..\ed tna                                                                                                                                                                           
+ 395 .\LT                                                                                                                                                                                
+ 396 ..\ed tna                                                                                                                                                                           
+ 397 .\LT                                                                                                                                                                                
+ 398 .\LT                                                                                                                                                                                
+ 399 ../backup spectral_n4b_amo3rd_tna3DTW                                                                                                                                               
+ 400 .\LT                                                                                                                                                                                
+ 401 ../backup spectral_n4b_amo3rd_tna3DTW                                                                                                                                               
+ 402 ..\del iodE                                                                                                                                                                         
+ 403 .\LT                                                                                                                                                                                
+ 404 ../ev                                                                                                                                                                               
+ 405 ../backup spectral_n4b_amo3rd_tna3DTW_iodE                                                                                                                                          
+ 406 .\LT                                                                                                                                                                                
+ 407 $env:DTW                                                                                                                                                                            
+ 408 $env:DTW="1"                                                                                                                                                                        
+ 409 .\LT                                                                                                                                                                                
+ 410 .\LT                                                                                                                                                                                
+ 411 ../backup spectral_n4b_amo3rd_tna3DTW_iodE1                                                                                                                                         
+ 412 ..\del tsa                                                                                                                                                                          
+ 413 .\LT                                                                                                                                                                                
+ 414 ../backup spectral_n4b_amo3rd_tna3DTW_iodE1_TSA                                                                                                                                     
+ 415 .\LT                                                                                                                                                                                
+ 416 .\LT                                                                                                                                                                                
+ 417 ../backup spectral_n4b_amo3rd_tna3DTW_iodE1_TSA1                                                                                                                                    
+ 418  ../restore spectral_n4b_amo2_n4_amo3                                                                                                                                               
+ 419 ..\del amo                                                                                                                                                                          
+ 420 .\LT                                                                                                                                                                                
+ 421 ..\ed tna                                                                                                                                                                           
+ 422 .\LT                                                                                                                                                                                
+ 423 .\LT                                                                                                                                                                                
+ 424  ../backup spectral_n4b_amo2_n4_amo3_tna                                                                                                                                            
+ 425 .\LT                                                                                                                                                                                
+ 426 .\LT                                                                                                                                                                                
+ 427 .\LT                                                                                                                                                                                
+ 428 .\LT                                                                                                                                                                                
+ 429 .\LT                                                                                                                                                                                
+ 430  ../backup spectral_n4b_amo2_n4_amo3_tnaFine                                                                                                                                        
+ 431 ..\del m4_1880                                                                                                                                                                      
+ 432 .\LT                                                                                                                                                                                
+ 433  ../restore spectral_n4b_pdo                                                                                                                                                        
+ 434 .\LT                                                                                                                                                                                
+ 435 ..\ed m4_1880                                                                                                                                                                       
+ 436 .\LT                                                                                                                                                                                
+ 437 ..\ed m4_1880                                                                                                                                                                       
+ 438 .\LT                                                                                                                                                                                
+ 439  ../backup spectral_n4b_amo2_n4_amo3_tnaFine_m4                                                                                                                                     
+ 440 .\LT                                                                                                                                                                                
+ 441 .\LT                                                                                                                                                                                
+ 442  ../backup spectral_n4b_amo2_n4_amo3_tnaFine_m4a                                                                                                                                    
+ 443 .\LT                                                                                                                                                                                
+ 444  ../backup spectral_n4b_amo2_n4_amo3_tnaFine_m4aDTW                                                                                                                                 
+ 445 .\LT                                                                                                                                                                                
+ 446  ../restore spectral_n4b_amo2_n4_amo3_tnaFine_m4a                                                                                                                                   
+ 447 .\LT                                                                                                                                                                                
+ 448  ../backup spectral_n4b_amo2_n4_amo3_tnaFine_m4b                                                                                                                                    
+ 449 ..\del emi                                                                                                                                                                          
+ 450 .\LT                                                                                                                                                                                
+ 451 ..\ed emi                                                                                                                                                                           
+ 452 .\LT                                                                                                                                                                                
+ 453  ../backup spectral_n4b_amo2_n4_amo3_tnaFine_m4b_emi                                                                                                                                
+ 454 .\LT                                                                                                                                                                                
+ 455  ../backup spectral_n4b_amo2_n4_amo3_tnaFine_m4b_emiDTW                                                                                                                             
+ 456 ..\ed nino4                                                                                                                                                                         
+ 457 .\LT                                                                                                                                                                                
+ 458  ../backup component_drac                                                                                                                                                           
+ 459 ..\ed nino4                                                                                                                                                                         
+ 460 .\LT                                                                                                                                                                                
+ 461 .\LT                                                                                                                                                                                
+ 462  ../backup component_drac                                                                                                                                                           
+ 463 .\LT                                                                                                                                                                                
+ 464 .\LT                                                                                                                                                                                
+ 465  ../restore component_drac                                                                                                                                                          
+ 466 .\LT                                                                                                                                                                                
+ 467  ../restore component_drac                                                                                                                                                          
+ 468 .\LT                                                                                                                                                                                
+ 469  ../restore component_drac                                                                                                                                                          
+ 470 ..\del nino4                                                                                                                                                                        
+ 471 .\LT                                                                                                                                                                                
+ 472 ..\ned nino4                                                                                                                                                                        
+ 473 ..\ed nino4                                                                                                                                                                         
+ 474 .\LT                                                                                                                                                                                
+ 475  ../backup component_drac1                                                                                                                                                          
+ 476 .\LT                                                                                                                                                                                
+ 477  ../backup component_trop                                                                                                                                                           
+ 478 .\LT                                                                                                                                                                                
+ 479 .\LT                                                                                                                                                                                
+ 480  ../restore component_drac1                                                                                                                                                         
+ 481 ..\del nino4                                                                                                                                                                        
+ 482 .\LT                                                                                                                                                                                
+ 483 notepad artificial.dat                                                                                                                                                              
+ 484 ..\ed artificial                                                                                                                                                                    
+ 485 .\LT                                                                                                                                                                                
+ 486 .\LT                                                                                                                                                                                
+ 487 .\LT                                                                                                                                                                                
+ 488 .\LT                                                                                                                                                                                
+ 489 ..\ed artificial                                                                                                                                                                    
+ 490 .\LT                                                                                                                                                                                
+ 491  ../backup component_artificial                                                                                                                                                     
+ 492 ..\del nino4                                                                                                                                                                        
+ 493 .\LT                                                                                                                                                                                
+ 494 ..\update_exe.bat                                                                                                                                                                   
+ 495  ../backup component_artificial_n4                                                                                                                                                  
+ 496 .\LT                                                                                                                                                                                
+ 497  ../backup component_artificial_n4pt5                                                                                                                                               
+ 498 .\LT                                                                                                                                                                                
+ 499  ../backup component_artificial_n4pt58                                                                                                                                              
+ 500 .\LT                                                                                                                                                                                
+ 501 .\LT                                                                                                                                                                                
+ 502  ../backup component_artificial_n4pt58short                                                                                                                                         
+ 503 .\LT                                                                                                                                                                                
+ 504 .\LT                                                                                                                                                                                
+ 505 .\LT                                                                                                                                                                                
+ 506 .\LT                                                                                                                                                                                
+ 507  ../backup component_artificial_n4pt58short1                                                                                                                                        
+ 508 .\LT                                                                                                                                                                                
+ 509  ../backup component_artificial_n4pt58short1pt64                                                                                                                                    
+ 510 .\LT                                                                                                                                                                                
+ 511 .\LT                                                                                                                                                                                
+ 512  ../backup component_artificial_n4pt58short1pt65                                                                                                                                    
+ 513 .\LT                                                                                                                                                                                
+ 514  ../backup component_artificial_n4pt58short1pt7                                                                                                                                     
+ 515 .\LT                                                                                                                                                                                
+ 516 .\LT                                                                                                                                                                                
+ 517 .\LT                                                                                                                                                                                
+ 518 .\LT                                                                                                                                                                                
+ 519 .\LT                                                                                                                                                                                
+ 520  ../backup component_artificial_n4pt58short1pt7a                                                                                                                                    
+ 521 .\LT                                                                                                                                                                                
+ 522 .\LT                                                                                                                                                                                
+ 523 .\LT                                                                                                                                                                                
+ 524 .\LT                                                                                                                                                                                
+ 525 .\LT                                                                                                                                                                                
+ 526 .\LT                                                                                                                                                                                
+ 527  ../backup component_artificial_n4pt58short1pt73                                                                                                                                    
+ 528 .\LT                                                                                                                                                                                
+ 529 .\LT                                                                                                                                                                                
+ 530 .\LT                                                                                                                                                                                
+ 531  ../backup component_artificial_n4pt58short1pt77                                                                                                                                    
+ 532 .\LT                                                                                                                                                                                
+ 533  ../backup component_artificial_n4pt58allPt806                                                                                                                                      
+ 534 .\LT                                                                                                                                                                                
+ 535 .\LT                                                                                                                                                                                
+ 536 .\LT                                                                                                                                                                                
+ 537 .\LT                                                                                                                                                                                
+ 538 .\LT                                                                                                                                                                                
+ 539 .\LT                                                                                                                                                                                
+ 540 .\LT                                                                                                                                                                                
+ 541 ../ev                                                                                                                                                                               
+ 542 .\LT                                                                                                                                                                                
+ 543  ../backup component_artificial_n4pt58allPt806DTW                                                                                                                                   
+ 544 .\LT                                                                                                                                                                                
+ 545  ../backup component_artificial_n4pt58allPt837                                                                                                                                      
+ 546 $env:MODULATION                                                                                                                                                                     
+ 547 $env:MODULATION="false"                                                                                                                                                             
+ 548 .\LT                                                                                                                                                                                
+ 549 $env:MODULATION="true"                                                                                                                                                              
+ 550 .\LT                                                                                                                                                                                
+ 551  ../backup component_artificial_n4pt58allPt84                                                                                                                                       
+ 552 .\LT                                                                                                                                                                                
+ 553  ../backup component_artificial_n4pt58allPt845                                                                                                                                      
+ 554 .\LT                                                                                                                                                                                
+ 555 .\LT                                                                                                                                                                                
+ 556 .\LT                                                                                                                                                                                
+ 557  ../backup component_artificial_n4pt58allPt866                                                                                                                                      
+ 558 .\LT                                                                                                                                                                                
+ 559  ../backup component_artificial_n4pt58allPt87                                                                                                                                       
+ 560 .\LT                                                                                                                                                                                
+ 561 ../ev                                                                                                                                                                               
+ 562  ../backup component_artificial_n4pt58allPt88                                                                                                                                       
+ 563  ../restore component_drac                                                                                                                                                          
+ 564 .\LT                                                                                                                                                                                
+ 565 $env:MODULATION                                                                                                                                                                     
+ 566 $env:MODULATION="false"                                                                                                                                                             
+ 567 .\LT                                                                                                                                                                                
+ 568 .\LT                                                                                                                                                                                
+ 569 .\LT                                                                                                                                                                                
+ 570 .\LT                                                                                                                                                                                
+ 571 .\LT                                                                                                                                                                                
+ 572 .\LT                                                                                                                                                                                
+ 573 .\LT                                                                                                                                                                                
+ 574 .\LT                                                                                                                                                                                
+ 575 .\LT                                                                                                                                                                                
+ 576 .\LT                                                                                                                                                                                
+ 577 .\LT                                                                                                                                                                                
+ 578 .\LT                                                                                                                                                                                
+ 579 .\LT                                                                                                                                                                                
+ 580 .\LT                                                                                                                                                                                
+ 581 .\LT                                                                                                                                                                                
+ 582 .\LT                                                                                                                                                                                
+ 583 .\LT                                                                                                                                                                                
+ 584 $env:MODULATION=""                                                                                                                                                                  
+ 585  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 586 ../del nino4                                                                                                                                                                        
+ 587 .\LT                                                                                                                                                                                
+ 588 ../del amo                                                                                                                                                                          
+ 589 .\LT                                                                                                                                                                                
+ 590 .\LT                                                                                                                                                                                
+ 591  ../backup component_artificial_n4pt58allPt88_amo                                                                                                                                   
+ 592 .\LT                                                                                                                                                                                
+ 593 .\LT                                                                                                                                                                                
+ 594  ../backup component_artificial_n4pt58allPt88_amo1                                                                                                                                  
+ 595 ../ed nino4                                                                                                                                                                         
+ 596 .\LT                                                                                                                                                                                
+ 597 ../ed  amo                                                                                                                                                                          
+ 598 .\LT                                                                                                                                                                                
+ 599 .\LT                                                                                                                                                                                
+ 600  ../backup component_artificial_n4pt58allPt88_amo2                                                                                                                                  
+ 601 .\LT                                                                                                                                                                                
+ 602  ../backup component_artificial_n4pt58allPt88_amo3                                                                                                                                  
+ 603 .\LT                                                                                                                                                                                
+ 604  ../backup component_artificial_n4pt58allPt88_amo4                                                                                                                                  
+ 605 .\LT                                                                                                                                                                                
+ 606  ../backup component_artificial_n4pt58allPt88_amo5                                                                                                                                  
+ 607 .\LT                                                                                                                                                                                
+ 608  ../backup component_artificial_n4pt58allPt88_amo6                                                                                                                                  
+ 609 .\LT                                                                                                                                                                                
+ 610 .\LT                                                                                                                                                                                
+ 611 .\LT                                                                                                                                                                                
+ 612 .\LT                                                                                                                                                                                
+ 613  ../backup component_artificial_n4pt58allPt88_amo7                                                                                                                                  
+ 614 ../del  tna                                                                                                                                                                         
+ 615 .\LT                                                                                                                                                                                
+ 616 .\LT                                                                                                                                                                                
+ 617  ../backup component_artificial_n4pt58allPt88_amo7_tna                                                                                                                              
+ 618 .\LT                                                                                                                                                                                
+ 619  ../backup component_artificial_n4pt58allPt88_amo7_tna1                                                                                                                             
+ 620 .\LT                                                                                                                                                                                
+ 621  ../backup component_artificial_n4pt58allPt88_amo7_tna2                                                                                                                             
+ 622 ../del  nao                                                                                                                                                                         
+ 623 .\LT                                                                                                                                                                                
+ 624  ../backup component_artificial_n4pt58allPt88_amo7_tna2_nao                                                                                                                         
+ 625 ../ed nao                                                                                                                                                                           
+ 626 .\LT                                                                                                                                                                                
+ 627  ../backup component_artificial_n4pt58allPt88_amo7_tna2_nao1                                                                                                                        
+ 628 .\LT                                                                                                                                                                                
+ 629 ../del  iodE                                                                                                                                                                        
+ 630 .\LT                                                                                                                                                                                
+ 631  ../backup component_artificial_n4pt58allPt88_amo7_tna2_nao1_iodE                                                                                                                   
+ 632  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 633 ../del  iodE                                                                                                                                                                        
+ 634 $env:DTW                                                                                                                                                                            
+ 635 $env:DTW="6"                                                                                                                                                                        
+ 636 .\LT                                                                                                                                                                                
+ 637 .\LT                                                                                                                                                                                
+ 638 ../ed iode                                                                                                                                                                          
+ 639  ../backup component_artificial_n4pt58allPt88_iode                                                                                                                                  
+ 640 .\LT                                                                                                                                                                                
+ 641  ../backup component_artificial_n4pt58allPt88_iode1                                                                                                                                 
+ 642  ../restore component_artificial_n4pt58allPt88_amo7_tna2                                                                                                                            
+ 643 ../del tsa                                                                                                                                                                          
+ 644 .\LT                                                                                                                                                                                
+ 645 ../ed tsa                                                                                                                                                                           
+ 646 .\LT                                                                                                                                                                                
+ 647  ../backup component_artificial_n4pt58allPt88_amo7_tna2_tsa                                                                                                                         
+ 648 .\LT                                                                                                                                                                                
+ 649  ../backup component_artificial_n4pt58allPt88_amo7_tna2_tsa1                                                                                                                        
+ 650  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 651 ../del nino34                                                                                                                                                                       
+ 652 .\LT                                                                                                                                                                                
+ 653  ../backup component_artificial_n4pt58allPt88_N34                                                                                                                                   
+ 654  ../restore component_artificial_n4pt58allPt88_amo7_tna2                                                                                                                            
+ 655 ../del brest                                                                                                                                                                        
+ 656 .\LT                                                                                                                                                                                
+ 657 .\LT                                                                                                                                                                                
+ 658  ../restore component_artificial_n4pt58allPt88_amo7_tna2                                                                                                                            
+ 659 ../del brest                                                                                                                                                                        
+ 660 .\LT                                                                                                                                                                                
+ 661 ../ed brest                                                                                                                                                                         
+ 662 .\LT                                                                                                                                                                                
+ 663  ../backup component_artificial_n4pt58allPt88_amo7_tna2_brest                                                                                                                       
+ 664 .\LT                                                                                                                                                                                
+ 665  ../backup component_artificial_n4pt58allPt88_amo7_tna2_brest1                                                                                                                      
+ 666 .\LT                                                                                                                                                                                
+ 667  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 668 ../del hono_filt                                                                                                                                                                    
+ 669 .\LT                                                                                                                                                                                
+ 670 ../ed hono_filt                                                                                                                                                                     
+ 671 .\LT                                                                                                                                                                                
+ 672 .\LT                                                                                                                                                                                
+ 673  ../backup component_artificial_n4pt58allPt88_hono                                                                                                                                  
+ 674  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 675 ../del victoria                                                                                                                                                                     
+ 676 .\LT                                                                                                                                                                                
+ 677 .\LT                                                                                                                                                                                
+ 678 .\LT                                                                                                                                                                                
+ 679 ../del astoria                                                                                                                                                                      
+ 680 .\LT                                                                                                                                                                                
+ 681 .\LT                                                                                                                                                                                
+ 682 .\LT                                                                                                                                                                                
+ 683  ../backup component_artificial_n4pt58allPt88_ast                                                                                                                                   
+ 684 .\LT                                                                                                                                                                                
+ 685  ../backup component_artificial_n4pt58allPt88_ast                                                                                                                                   
+ 686 ../del victoria                                                                                                                                                                     
+ 687 .\LT                                                                                                                                                                                
+ 688 .\LT                                                                                                                                                                                
+ 689  ../backup component_artificial_n4pt58allPt88_ast_vic                                                                                                                               
+ 690 .\LT                                                                                                                                                                                
+ 691  ../backup component_artificial_n4pt58allPt88_ast_vic1                                                                                                                              
+ 692 ../del m4_1880                                                                                                                                                                      
+ 693 .\LT                                                                                                                                                                                
+ 694  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 695 ../del  pdo                                                                                                                                                                         
+ 696 .\LT                                                                                                                                                                                
+ 697  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 698 .\LT                                                                                                                                                                                
+ 699  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 700 .\LT                                                                                                                                                                                
+ 701  ../backup component_artificial_n4pt58allPt88_pdo                                                                                                                                   
+ 702 ../ed  pdo                                                                                                                                                                          
+ 703 .\LT                                                                                                                                                                                
+ 704  ../backup component_artificial_n4pt58allPt88_pdo1                                                                                                                                  
+ 705 ../ed  pdo                                                                                                                                                                          
+ 706 .\LT                                                                                                                                                                                
+ 707 .\LT                                                                                                                                                                                
+ 708  ../backup component_artificial_n4pt58allPt88_pdo2                                                                                                                                  
+ 709 ../del  emi                                                                                                                                                                         
+ 710 .\LT                                                                                                                                                                                
+ 711  ../backup component_artificial_n4pt58allPt88_pdo2_emi                                                                                                                              
+ 712 .\LT                                                                                                                                                                                
+ 713  ../backup component_artificial_n4pt58allPt88_pdo2_emi1                                                                                                                             
+ 714 .\LT                                                                                                                                                                                
+ 715  ../backup component_artificial_n4pt58allPt88_pdo2_emi2                                                                                                                             
+ 716 ../ed  emi                                                                                                                                                                          
+ 717 .\LT                                                                                                                                                                                
+ 718 .\LT                                                                                                                                                                                
+ 719  ../backup component_artificial_n4pt58allPt88_pdo2_emi3                                                                                                                             
+ 720 ../del  m4_1880                                                                                                                                                                     
+ 721 .\LT                                                                                                                                                                                
+ 722  ../backup component_artificial_n4pt58allPt88_pdo2_emi3_m4                                                                                                                          
+ 723 .\LT                                                                                                                                                                                
+ 724 .\LT                                                                                                                                                                                
+ 725  ../backup component_artificial_n4pt58allPt88_pdo2_emi3_m4a                                                                                                                         
+ 726  ../restore component_artificial_n4pt58allPt88_pdo2_emi3_m4                                                                                                                         
+ 727 ../del  m4_1880                                                                                                                                                                     
+ 728 .\LT                                                                                                                                                                                
+ 729 ../ed  m4_1880                                                                                                                                                                      
+ 730 .\LT                                                                                                                                                                                
+ 731  ../backup component_artificial_n4pt58allPt88_pdo2_emi3_m4a                                                                                                                         
+ 732 .\LT                                                                                                                                                                                
+ 733  ../backup component_artificial_n4pt58allPt88_pdo2_emi3_m4b                                                                                                                         
+ 734  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 735 ../del  nino3                                                                                                                                                                       
+ 736 .\LT                                                                                                                                                                                
+ 737 .\LT                                                                                                                                                                                
+ 738  ../backup component_artificial_n4pt58allPt88_N3                                                                                                                                    
+ 739 ../del  nino12                                                                                                                                                                      
+ 740 dir *.dat                                                                                                                                                                           
+ 741 .\LT                                                                                                                                                                                
+ 742 ../ed  nino12                                                                                                                                                                       
+ 743 .\LT                                                                                                                                                                                
+ 744 .\LT                                                                                                                                                                                
+ 745  ../backup component_artificial_n4pt58allPt88_N13_n12                                                                                                                               
+ 746 dir *.dat                                                                                                                                                                           
+ 747  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 748 ../del  denison_1880                                                                                                                                                                
+ 749 .\LT                                                                                                                                                                                
+ 750 ../ed  denison_1880                                                                                                                                                                 
+ 751 ../ed  denison_1880                                                                                                                                                                 
+ 752 .\LT                                                                                                                                                                                
+ 753  ../backup component_artificial_n4pt58allPt88_denison                                                                                                                               
+ 754 dir *.dat                                                                                                                                                                           
+ 755  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 756 ../del  ic3tsfc                                                                                                                                                                     
+ 757 .\LT                                                                                                                                                                                
+ 758 .\LT                                                                                                                                                                                
+ 759  ../backup component_artificial_n4pt58allPt88_ic3                                                                                                                                   
+ 760 .\LT                                                                                                                                                                                
+ 761  ../backup component_artificial_n4pt58allPt88_ic3b                                                                                                                                  
+ 762 .\LT                                                                                                                                                                                
+ 763 .\LT                                                                                                                                                                                
+ 764 .\LT                                                                                                                                                                                
+ 765  ../backup component_artificial_n4pt58allPt88_ic3bFine                                                                                                                              
+ 766 .\LT                                                                                                                                                                                
+ 767  ../backup component_artificial_n4pt58allPt88_ic3bFinecc                                                                                                                            
+ 768 .\LT                                                                                                                                                                                
+ 769  ../backup component_artificial_n4pt58allPt88_ic3bFinecD                                                                                                                            
+ 770  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 771 ../del  nino4                                                                                                                                                                       
+ 772 .\LT                                                                                                                                                                                
+ 773 .\LT                                                                                                                                                                                
+ 774 dir .\darwin1880.dat                                                                                                                                                                
+ 775 ../del  darwin1880                                                                                                                                                                  
+ 776 .\LT                                                                                                                                                                                
+ 777 .\LT                                                                                                                                                                                
+ 778 .\LT                                                                                                                                                                                
+ 779 .\LT                                                                                                                                                                                
+ 780 ../ed  darwin1880                                                                                                                                                                   
+ 781 .\LT                                                                                                                                                                                
+ 782 .\LT                                                                                                                                                                                
+ 783  ../backup component_artificial_n4pt58allPt88_darwin                                                                                                                                
+ 784 ../ed  darwin1880                                                                                                                                                                   
+ 785 ../ev                                                                                                                                                                               
+ 786 $env:DTW                                                                                                                                                                            
+ 787 $env:DTW="1"                                                                                                                                                                        
+ 788 .\LT                                                                                                                                                                                
+ 789 .\LT                                                                                                                                                                                
+ 790  ../backup component_artificial_n4pt58allPt88_darwinDTW                                                                                                                             
+ 791 dir *.dat                                                                                                                                                                           
+ 792 .\LT                                                                                                                                                                                
+ 793 dir *.dat                                                                                                                                                                           
+ 794 ../del  hono_filt                                                                                                                                                                   
+ 795 .\LT                                                                                                                                                                                
+ 796 .\LT                                                                                                                                                                                
+ 797 .\LT                                                                                                                                                                                
+ 798  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono                                                                                                                        
+ 799 .\LT                                                                                                                                                                                
+ 800 .\LT                                                                                                                                                                                
+ 801  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono                                                                                                                        
+ 802 .\LT                                                                                                                                                                                
+ 803  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono                                                                                                                        
+ 804 .\LT                                                                                                                                                                                
+ 805  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono                                                                                                                        
+ 806 .\LT                                                                                                                                                                                
+ 807  ../restore component_artificial_n4pt58allPt88_darwinDTW_hono                                                                                                                       
+ 808 ../del  darwin1880                                                                                                                                                                  
+ 809 .\LT                                                                                                                                                                                
+ 810 ../del  hono_filt                                                                                                                                                                   
+ 811 .\LT                                                                                                                                                                                
+ 812 .\LT                                                                                                                                                                                
+ 813  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono_try2                                                                                                                   
+ 814 .\LT                                                                                                                                                                                
+ 815  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono_try2b                                                                                                                  
+ 816 ../ed  hono_filt                                                                                                                                                                    
+ 817 .\LT                                                                                                                                                                                
+ 818 .\LT                                                                                                                                                                                
+ 819 .\LT                                                                                                                                                                                
+ 820 ../ed  hono_filt                                                                                                                                                                    
+ 821 .\LT                                                                                                                                                                                
+ 822 $env:DTW="6"                                                                                                                                                                        
+ 823 .\LT                                                                                                                                                                                
+ 824  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono_try2bDTW                                                                                                               
+ 825 .\LT                                                                                                                                                                                
+ 826 $env:DTW="3"                                                                                                                                                                        
+ 827 .\LT                                                                                                                                                                                
+ 828  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono_try2bDTW                                                                                                               
+ 829 ../ed  hono_filt                                                                                                                                                                    
+ 830 .\LT                                                                                                                                                                                
+ 831 $env:DTW="1"                                                                                                                                                                        
+ 832 .\LT                                                                                                                                                                                
+ 833 ../ed  hono_filt                                                                                                                                                                    
+ 834 .\LT                                                                                                                                                                                
+ 835 .\LT                                                                                                                                                                                
+ 836 .\LT                                                                                                                                                                                
+ 837 .\LT                                                                                                                                                                                
+ 838 .\LT                                                                                                                                                                                
+ 839  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono_try2bDTWcc2                                                                                                            
+ 840 .\LT                                                                                                                                                                                
+ 841 .\LT                                                                                                                                                                                
+ 842 .\LT                                                                                                                                                                                
+ 843  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono_try2bDTWcc2dtw                                                                                                         
+ 844 .\LT                                                                                                                                                                                
+ 845 .\LT                                                                                                                                                                                
+ 846 ../ev                                                                                                                                                                               
+ 847  ../backup component_artificial_n4pt58allPt88_darwinDTW_hono_try2bDTWcc2dtw2                                                                                                        
+ 848  ../restore component_artificial_n4pt58allPt88_darwinDTW_hono_try2bDTWcc2dtw                                                                                                        
+ 849 ../del  hono_filt                                                                                                                                                                   
+ 850 .\LT                                                                                                                                                                                
+ 851  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 852 ../del  nino4                                                                                                                                                                       
+ 853 .\LT                                                                                                                                                                                
+ 854 ../ed  nino34                                                                                                                                                                       
+ 855 .\LT                                                                                                                                                                                
+ 856  ../restore component_artificial_n4pt58allPt88_ic3bFinecD                                                                                                                           
+ 857 ../del  ic3tsfc                                                                                                                                                                     
+ 858 .\LT                                                                                                                                                                                
+ 859  ../restore component_artificial_n4pt58allPt88_pdo2_emi3_m4b                                                                                                                        
+ 860 ../del  emi                                                                                                                                                                         
+ 861 .\LT                                                                                                                                                                                
+ 862  ../restore component_artificial_n4pt58allPt88_darwinDTW_hono_try2bDTWcc2dtw                                                                                                        
+ 863 ../del  hono_filt                                                                                                                                                                   
+ 864 .\LT                                                                                                                                                                                
+ 865  ../restore component_artificial_n4pt58allPt88_amo7                                                                                                                                 
+ 866 ../del  amo                                                                                                                                                                         
+ 867 .\LT                                                                                                                                                                                
+ 868  ../restore component_artificial_n4pt58allPt88_ast_vic1                                                                                                                             
+ 869 ../del  victoria                                                                                                                                                                    
+ 870 .\LT                                                                                                                                                                                
+ 871  ../restore component_artificial_n4pt58allPt88_amo7_tna2_brest1                                                                                                                     
+ 872 ../del  brest                                                                                                                                                                       
+ 873 .\LT                                                                                                                                                                                
+ 874  ../restore component_artificial_n4pt58allPt88_iode1                                                                                                                                
+ 875 ../del  iode                                                                                                                                                                        
+ 876 .\LT                                                                                                                                                                                
+ 877 dir *drac*                                                                                                                                                                          
+ 878  ../restore component_drac1                                                                                                                                                         
+ 879 ../del  nino4                                                                                                                                                                       
+ 880 .\LT                                                                                                                                                                                
+ 881 dir *component_artificial_*                                                                                                                                                         
+ 882  ../restore component_artificial                                                                                                                                                    
+ 883 ../del  nino4                                                                                                                                                                       
+ 884 .\LT                                                                                                                                                                                
+ 885 .\LT                                                                                                                                                                                
+ 886 .\LT                                                                                                                                                                                
+ 887  ../restore component_artificial                                                                                                                                                    
+ 888 .\LT                                                                                                                                                                                
+ 889 ../del  nino4                                                                                                                                                                       
+ 890 .\LT                                                                                                                                                                                
+ 891  ../restore component_artificial_n4pt58allPt88                                                                                                                                      
+ 892 ../del  nino4                                                                                                                                                                       
+ 893 .\LT                                                                                                                                                                                
+ 894 .\LT                                                                                                                                                                                
+ 895  ../backup component_artificial_n4pt58allPt88_only_draconic                                                                                                                         
+ 896  ../restore component_artificial_n4pt58allPt88_amo7_tna2                                                                                                                            
+ 897 ../del  tna                                                                                                                                                                         
+ 898 .\LT                                                                                                                                                                                
+ 899 .\LT                                                                                                                                                                                
+ 900 .\LT                                                                                                                                                                                
+ 901 dir *component_artificial_*tsa*                                                                                                                                                     
+ 902  ../restore component_artificial_n4pt58allPt88_amo7_tna2_tsa1                                                                                                                       
+ 903 ../del  tsa                                                                                                                                                                         
+ 904 .\LT                                                                                                                                                                                
+ 905  ../restore component_artificial_n4pt58allPt88_amo7                                                                                                                                 
+ 906 ../del  amo                                                                                                                                                                         
+
+

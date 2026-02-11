@@ -5,11 +5,17 @@ par_to_json.py - Convert GEM-LTE .par files to JSON format
 Converts text-based .par parameter files to JSON format for easier
 configuration management and programmatic access.
 
-IMPORTANT: This converter uses predefined LP (Long Period) tidal constituent
-periods from the GEM-LTE internal arrays. When .par file periods are found,
-they are matched to the nearest predefined period within 1% tolerance, and
-the predefined period is used in the JSON output. This ensures exact matching
-with the Ada JSON reader's period-matching logic.
+IMPORTANT: Order and Period Matching
+=====================================
+.par format: LPAP triplets MUST be in sequential order (1,2,3...)
+             matching the internal GEM.LTE.LP array indices.
+
+JSON format: LPAP triplets CAN be in any order because the Ada JSON
+             reader uses period matching to find the correct LP index.
+
+This converter preserves the sequential order from .par files, but the
+predefined LP periods are used to ensure exact matching with the Ada
+JSON reader's period-matching logic (1% tolerance).
 
 Usage:
     python par_to_json.py <input.par> [output.json]
