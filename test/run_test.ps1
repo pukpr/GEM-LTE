@@ -29,8 +29,8 @@ if ($json) {
     Remove-Item lt.exe.nino4.dat.par -ErrorAction SilentlyContinue
     
     try {
-        # Run lt.exe with JSON files
-        .\lt.exe > current_output.txt 2>&1
+        # Run lt.exe with JSON files using -j flag
+        .\lt.exe -j > current_output.txt 2>&1
     } finally {
         # Restore .par files
         Move-Item lt.exe.par.bak lt.exe.par -Force
