@@ -454,29 +454,60 @@ package body GEM.LTE.Primitives.Shared is
       use GNATCOLL.JSON;
       Arr : JSON_Array;
       Count : Natural;
+      Matches_Found : Natural := 0;
+      Matched : array (D.B.LPAP'Range) of Boolean := (others => False);
       
       procedure Apply (Period, Amp, Phase : in Long_Float) is
+         Found : Boolean := False;
+         Tolerance : Long_Float;
+         Best_Index : Integer := 0;
+         Best_Diff : Long_Float := Long_Float'Last;
       begin
+         -- Find the closest unmatched period
          for I in D.B.LPAP'Range loop
-            -- Match using absolute values to handle negative periods from Doodson calculations
-            -- Negative periods are mathematically valid (phase-adjusted frequencies)
-            if abs (D.A.LP (I)) > 0.0
-              and then abs (abs (Period) - abs (D.A.LP (I))) <=
-                abs (D.A.LP (I)) * 0.01
-            then
-               D.B.LPAP (I).Amplitude := Amp;
-               D.B.LPAP (I).Phase := Phase;
-               exit;
+            if not Matched (I) and then abs (D.A.LP (I)) > 0.0 then
+               declare
+                  Diff : constant Long_Float := abs (abs (Period) - abs (D.A.LP (I)));
+                  Tol : constant Long_Float := abs (D.A.LP (I)) * 0.01;
+               begin
+                  if Diff <= Tol and then Diff < Best_Diff then
+                     Best_Diff := Diff;
+                     Best_Index := I;
+                     Found := True;
+                  end if;
+               end;
             end if;
          end loop;
+         
+         if Found and Best_Index > 0 then
+            Ada.Text_IO.Put_Line 
+              ("  MATCH: JSON period" & Long_Float'Image (Period) &
+               " -> Index" & Integer'Image (Best_Index) &
+               " (LP=" & Long_Float'Image (D.A.LP (Best_Index)) &
+               ", diff=" & Long_Float'Image (Best_Diff) &
+               ", Amp=" & Long_Float'Image (Amp) &
+               ", Phase=" & Long_Float'Image (Phase) & ")");
+            D.B.LPAP (Best_Index).Amplitude := Amp;
+            D.B.LPAP (Best_Index).Phase := Phase;
+            Matched (Best_Index) := True;
+            Matches_Found := Matches_Found + 1;
+         else
+            Ada.Text_IO.Put_Line 
+              ("  NO MATCH: JSON period" & Long_Float'Image (Period) &
+               " (Amp=" & Long_Float'Image (Amp) &
+               ", Phase=" & Long_Float'Image (Phase) & ")");
+         end if;
       end Apply;
    begin
+      Ada.Text_IO.Put_Line ("=== Reading JSON LPAP from: " & Name & " ===");
       if Kind (Data) /= JSON_Object_Type or else not Has_Field (Data, Name)
       then
+         Ada.Text_IO.Put_Line ("  Field '" & Name & "' not found in JSON");
          return;
       end if;
       Arr := Get (Data, Name);
       Count := Length (Arr);
+      Ada.Text_IO.Put_Line ("  Array contains" & Natural'Image (Count) & " triplets");
       if Count = 0 then
          return;
       end if;
@@ -506,6 +537,9 @@ package body GEM.LTE.Primitives.Shared is
             end loop;
          end;
       end if;
+      Ada.Text_IO.Put_Line 
+        ("=== LPAP Summary: Matched" & Natural'Image (Matches_Found) &
+         " out of" & Natural'Image (Count) & " JSON triplets ===" & ASCII.LF);
    exception
       when others =>
          Ada.Text_IO.Put_Line ("JSON array error " & Name);
