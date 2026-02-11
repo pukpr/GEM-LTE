@@ -33,11 +33,12 @@ PLOT_REL = r"..\plot.py"      # relative to INDEX directory
 
 # ---------------- HELPERS ----------------
 
-def resolve_lt_cmd(run_dir: Path) -> str:
+def resolve_lt_cmd(run_dir: Path, use_json: bool = False) -> str:
+    json_flag = " -j" if use_json else ""
     if (run_dir / "..\\lt.exe").exists():
-        return r"..\\lt.exe"
+        return r"..\\lt.exe" + json_flag
     if (run_dir / "..\\lt").exists():
-        return r"..\\lt"
+        return r"..\\lt" + json_flag
     raise FileNotFoundError(f"No lt or lt.exe in {run_dir}")
 
 
@@ -131,6 +132,9 @@ class App(tk.Tk):
 
         self._image_ref = None
         self._pil_image_ref = None
+        
+        # JSON loading checkbox state
+        self.use_json_var = tk.BooleanVar(value=True)  # Default to JSON mode
 
         self._build_ui()
         self._set_root(self.root_dir)
@@ -210,6 +214,7 @@ class App(tk.Tk):
         left_btns.grid(row=0, column=0, sticky="w")
 
         ttk.Button(left_btns, text="Run lt", command=self.run_lt).pack(side="left")
+        ttk.Checkbutton(left_btns, text="JSON", variable=self.use_json_var).pack(side="left", padx=(8, 0))
         ttk.Button(left_btns, text="Run plot", command=self.run_plot).pack(side="left", padx=8)
         ttk.Button(left_btns, text="Refresh PNG", command=self.show_png).pack(side="left", padx=8)
 
@@ -331,8 +336,9 @@ class App(tk.Tk):
                 pass
 
         try:
-            lt_cmd = resolve_lt_cmd(run_dir)
-            # lt_cmd = resolve_lt_cmd(run_dir.parent)
+            use_json = self.use_json_var.get()
+            lt_cmd = resolve_lt_cmd(run_dir, use_json)
+            # lt_cmd = resolve_lt_cmd(run_dir.parent, use_json)
         except Exception as e:
             messagebox.showerror("Missing lt", str(e))
             return
