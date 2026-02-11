@@ -61,17 +61,15 @@ package body GEM.Random_Descent is
    subtype Harmonic_Index is Positive range 2 .. Harmonic_Range;
    package HR is new Ada.Numerics.Discrete_Random (Harmonic_Index);
 
-   --  Random number generators (time-seeded by default)
-   --  TODO: For reproducible testing, could add seeding via SEED env var:
-   --    if GEM.Getenv("SEED", 0) /= 0 then
-   --       DR.Reset(D, DR.Initiator(GEM.Getenv("SEED", 0)));
-   --       FR.Reset(G, FR.Initiator(GEM.Getenv("SEED", 0)));
-   --       HR.Reset(H, HR.Initiator(GEM.Getenv("SEED", 0)));
-   --    end if;
-   --  This would enable deterministic floating-point results for regression testing.
+   --  Random number generators
+   --  Can be seeded via SEED environment variable for reproducible testing
+   --  Default: time-based seed (non-deterministic)
+   --  With SEED: deterministic floating-point results for regression testing
    D : DR.Generator; -- Discrete for selecting from a set of params
    G : FR.Generator; -- Floating point for values
    H : HR.Generator; -- Floating point for values
+   
+   Seed_Value : constant Integer := GEM.Getenv ("SEED", 0);
 
    --  =========================================================================
    --  Markov: Apply random perturbation to parameter array
@@ -234,8 +232,16 @@ package body GEM.Random_Descent is
    end Small_Random;
 
 begin
-   --  Optional reset on package initialization
-   if GEM.Getenv ("RESET", False) then
+   --  Initialize random number generators
+   if Seed_Value /= 0 then
+      -- Fixed seed for reproducible testing
+      Text_IO.Put_Line ("Random_Descent: Using fixed seed " & Integer'Image (Seed_Value));
+      DR.Reset (D, DR.Initiator (Seed_Value));
+      FR.Reset (G, FR.Initiator (Seed_Value));
+      HR.Reset (H, HR.Initiator (Seed_Value));
+   elsif GEM.Getenv ("RESET", False) then
+      -- Time-based reset
       Reset;
    end if;
+   -- Otherwise use default time-based initialization
 end GEM.Random_Descent;
