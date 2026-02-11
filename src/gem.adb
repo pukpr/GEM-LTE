@@ -13,7 +13,7 @@ package body GEM is
                     SCALING, SINPOW, SPLIT_LOW, SPLIT_TRAINING, SPREAD_CYCLE,
                     SPREAD_MIN, SPREAD_MAX, STARTING_METRIC, STEP, THRESHOLD,
                     THRESHOLD_ACTION, TRAIN_END, TRAIN_START, TREND, YEAR, F9,
-                    DECAY, FMULT, FSTART, LOCKF, R2M, SYM, YTRIM, NONLIN
+                    DECAY, FMULT, FSTART, LOCKF, R2M, SYM, YTRIM, NONLIN, IDATE, TEST_ONLY, TIMEOUT, NUMBER_OF_PROCESSORS
                    );
 
    type Option_Pair is

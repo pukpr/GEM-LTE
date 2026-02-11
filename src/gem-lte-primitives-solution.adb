@@ -30,6 +30,7 @@ package body GEM.LTE.Primitives.Solution is
    Mathieu : constant Boolean :=  GEM.Getenv("MATHIEU", FALSE);
    Quad  : constant Boolean :=  GEM.Getenv("QUAD", FALSE);
    Two_Stage : constant Boolean :=  GEM.Getenv("STAGES", TRUE);
+   Test_Only : constant Boolean :=  GEM.Getenv("TEST_ONLY", FALSE);
 
    function CompareRef(LP : in Long_Periods;
                        LPRef, AP : in Long_Periods_Amp_Phase) return Long_Float is
@@ -904,36 +905,38 @@ package body GEM.LTE.Primitives.Solution is
          else
             Spread := Spread_Min + Spread_Max*(1.0-LEF.Cos(Progress_Cycle/Spread_Cycle));
          end if;
-         if Vary_Initial then
+         if Test_Only then
+            exit;
+         elsif Vary_Initial then
             Walker.Markov(D.B.Init, Keep_Initial_Value, Spread, Init_Value0);
          else
-         if Lock_Short_Tidal then
-            declare
-               DBLAP : constant Amp_Phases := D.B.LPAP;
-            begin
+            if Lock_Short_Tidal then
+               declare
+                  DBLAP : constant Amp_Phases := D.B.LPAP;
+               begin
+                  Walker.Markov(Set, Keep, Spread, Set0);
+                  for I in DBLAP'Range loop
+                      if D.A.LP(I) < 40.0 then
+                         D.B.LPAP(I) := DBLAP(I);
+                      end if;
+                  end loop;
+               end;
+            elsif Lock_Tidal then
+               declare
+                  DBLAP : constant Amp_Phases := D.B.LPAP;
+               begin
+                  Walker.Markov(Set, Keep, Spread, Set0);
+                  D.B.LPAP := DBLAP;
+               end;
+            else
                Walker.Markov(Set, Keep, Spread, Set0);
-               for I in DBLAP'Range loop
-                   if D.A.LP(I) < 40.0 then
-                      D.B.LPAP(I) := DBLAP(I);
-                   end if;
-               end loop;
-            end;
-         elsif Lock_Tidal then
-            declare
-               DBLAP : constant Amp_Phases := D.B.LPAP;
-            begin
-               Walker.Markov(Set, Keep, Spread, Set0);
-               D.B.LPAP := DBLAP;
-            end;
-         else
-            Walker.Markov(Set, Keep, Spread, Set0);
-         end if;
+            end if;
             Walker.Random_Harmonic(Harms, Harms_Keep);
-        end if;
+         end if;
 
       end loop;
       Monitor.Stop;
-      if Best_Client = ID then
+      if Test_Only or Best_Client = ID then
 
 
          -- Text_IO.Put_Line("### " & File_Name);
