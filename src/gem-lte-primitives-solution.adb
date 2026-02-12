@@ -364,6 +364,19 @@ package body GEM.LTE.Primitives.Solution is
    is
       package LEF renames Ada.Numerics.Long_Elementary_Functions;
 
+      -- Helper function to parse NH: supports "6" (count) or "1 1 1 1 1 1" (list)
+      function Parse_NH (NH_Str : String) return Ns is
+         Harms_Temp : constant Ns := S_to_I (NH_Str);
+      begin
+         -- If NH is a single integer > 1 (count), convert to array of 1's
+         if Harms_Temp'Length = 1 and then Harms_Temp (1) > 1 then
+            return (1 .. Harms_Temp (1) => 1);
+         else
+            -- Old format: space-separated list of integers
+            return Harms_Temp;
+         end if;
+      end Parse_NH;
+
       Data_Records : Data_Pairs := Make_Data (File_Name);
       Data_Ext : Data_Pairs := Make_Data (Ext_Forcing);
       DR : Data_Pairs := Data_Records;
@@ -688,10 +701,16 @@ package body GEM.LTE.Primitives.Solution is
    -- to randomly modify parameters. This is documented and verified via
    -- the Param_B_Overlay package for maximum safety.
       ------------------------------------------------------------------------
-      Size_Shared : Positive :=
-        GEM.Getenv
-          ("DSIZE",
-           GEM.LTE.Primitives.Param_B_Overlay.Overlay_Size (D.B.NLP, D.B.NLT));
+      NM : constant Integer := GEM.Getenv ("NM", N_Modulations);
+      
+      -- Full overlay size for verification (entire D.B structure)
+      Full_Size : constant Positive :=
+        GEM.LTE.Primitives.Param_B_Overlay.Overlay_Size (D.B.NLP, D.B.NLT);
+      
+      -- Reduced size for Walker search based on NM (only search used LT entries)
+      -- Size = 18 scalars + (NLP * 2) LPAP + NM LT entries
+      Size_Shared : constant Positive :=
+        GEM.Getenv ("DSIZE", 18 + (D.B.NLP * 2) + NM);
 
       package Walker is new GEM.Random_Descent
         (Fixed => Is_Fixed, Set_Range => Size_Shared,
@@ -707,9 +726,9 @@ package body GEM.LTE.Primitives.Solution is
       --  SAFETY NOTE: This address clause creates an array view of Param_B.
       --  The layout is verified by Param_B_Overlay.Verify_Layout below.
       --  Field positions are documented via named constants in the overlay package.
+      --  Walker only searches 1..Size_Shared (NM-limited), not the full array.
       ------------------------------------------------------------------------
-      NM : Integer := GEM.Getenv ("NM", N_Modulations);
-      Harms : Ns := S_to_I (GEM.Getenv ("NH", ""));
+      Harms : Ns := Parse_NH (GEM.Getenv ("NH", ""));
       Harms_Keep : Ns := Harms;
       NH : Integer := Harms'Length;
 
@@ -815,8 +834,8 @@ package body GEM.LTE.Primitives.Solution is
       RMS_Data := Ada.Numerics.Long_Elementary_Functions.Sqrt (RMS_Data);
       Old_CC := 0.0;
       
-      -- Verify overlay layout before optimization begins
-      GEM.LTE.Primitives.Param_B_Overlay.Verify_Layout (D.B, Size_Shared);
+      -- Verify overlay layout before optimization begins (use full size)
+      GEM.LTE.Primitives.Param_B_Overlay.Verify_Layout (D.B, Full_Size);
       
       -- Optional debug: print field-by-field mapping (set OVERLAY_DEBUG=1)
       declare

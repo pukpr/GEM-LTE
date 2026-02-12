@@ -58,6 +58,63 @@ The JSON format contains:
 - **harm**: Harmonic indices - array of integers
 - **lpap**: Long Period Amplitude Phase tidal constituents - array of [period, amplitude, phase] triplets
 
+## Configuration Parameters (NH and NM)
+
+The `.resp` configuration file controls which elements of the `ltep` and `harm` arrays are used:
+
+### NH Parameter (Harmonic Count)
+
+Controls how many harmonic terms from the `harm` array are used in optimization.
+
+**Two formats are supported:**
+
+1. **Integer format (recommended)**: `NH=6`
+   - Simply specifies the count of harmonic terms to use
+   - Clear and concise
+
+2. **List format (legacy/obscure)**: `NH=1 1 1 1 1 1`
+   - Space-separated list of 1's
+   - Length of list indicates count (6 ones = 6 terms)
+   - Backward compatible with older .resp files
+   - Less intuitive but still supported
+
+**Examples:**
+```
+NH=6          # Use first 6 harmonic terms (recommended)
+NH=1 1 1      # Use first 3 harmonic terms (legacy format)
+NH=27         # Use all 27 harmonic terms
+```
+
+### NM Parameter (LTEP Modulation Count)
+
+Controls how many long-term evolution parameters from the `ltep` array are used:
+
+```
+NM=2          # Use first 2 LTEP terms
+NM=11         # Use all 11 LTEP terms
+```
+
+### JSON Compact Format
+
+When using JSON `.p` files, the arrays are automatically sized based on NH/NM parameters:
+
+- **Writing**: JSON arrays contain only NH harm entries and NM ltep entries
+- **Reading**: If NH/NM are not specified in .resp file, they are auto-detected from JSON array lengths
+- **.par files**: Always write full arrays (unchanged for backward compatibility)
+
+**Example workflow:**
+```powershell
+# Set compact size in .resp file
+echo "NH=6" >> lt.exe.resp
+echo "NM=2" >> lt.exe.resp
+
+# Save creates compact JSON (6 harm, 2 ltep)
+lt.exe -s
+
+# Load auto-detects array sizes from JSON
+lt.exe
+```
+
 ## Known Issues
 
 ### LPAP Data Not Loading from JSON ⚠️

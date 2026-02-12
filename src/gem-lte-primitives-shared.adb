@@ -239,6 +239,83 @@ package body GEM.LTE.Primitives.Shared is
    --
    --  Format: JSON with same structure as Read_JSON expects
    --  =========================================================================
+   
+   function File_To_String (Name : in String) return String;  -- Forward declaration
+   
+   --  Detect NM and NH from JSON file array lengths
+   --  Overrides default values to match actual JSON array sizes
+   procedure Detect_NM_NH_From_JSON (Filename : in String) is
+      use GNATCOLL.JSON;
+      Result : Read_Result;
+      Data : JSON_Value;
+      Arr : JSON_Array;
+      NM_Count, NH_Count : Natural;
+   begin
+      -- Read JSON file
+      declare
+         Text : constant String := File_To_String (Filename);
+      begin
+         Result := Read (Text);
+      exception
+         when Ada.Text_IO.Name_Error | Ada.IO_Exceptions.Name_Error =>
+            return;  -- File doesn't exist, skip detection
+         when others =>
+            return;
+      end;
+      
+      if not Result.Success then
+         return;  -- Parse error, skip detection
+      end if;
+      
+      Data := Result.Value;
+      
+      -- Count ltep array length and override NM
+      if Kind (Data) = JSON_Object_Type and then Has_Field (Data, "ltep") then
+         Arr := Get (Data, "ltep");
+         NM_Count := Length (Arr);
+         GEM.Setenv ("NM", Integer'Image (NM_Count));
+         --  Silently detect NM from JSON (uncomment for debug)
+         --  Ada.Text_IO.Put_Line ("Detected NM=" & Integer'Image (NM_Count) & " from JSON ltep array");
+      end if;
+      
+      -- Count harm array length and override NH
+      if Kind (Data) = JSON_Object_Type and then Has_Field (Data, "harm") then
+         Arr := Get (Data, "harm");
+         NH_Count := Length (Arr);
+         -- Build NH string as "1 1 1 ..." with NH_Count entries
+         declare
+            NH_Str : String (1 .. NH_Count * 2 - 1) := (others => ' ');
+            Pos : Positive := 1;
+         begin
+            for I in 1 .. NH_Count loop
+               NH_Str (Pos) := '1';
+               if I < NH_Count then
+                  Pos := Pos + 2;  -- Skip space
+               end if;
+            end loop;
+            GEM.Setenv ("NH", NH_Str);
+            --  Silently detect NH from JSON (uncomment for debug)
+            --  Ada.Text_IO.Put_Line ("Detected NH with" & Natural'Image (NH_Count) & " entries from JSON harm array");
+         end;
+      end if;
+   exception
+      when others =>
+         null;  -- Silently ignore any errors during detection
+   end Detect_NM_NH_From_JSON;
+   
+   -- Helper function to parse NH: supports "6" (count) or "1 1 1 1 1 1" (list)
+   function Parse_NH (NH_Str : String) return Ns is
+      Harms_Temp : constant Ns := S_to_I (NH_Str);
+   begin
+      -- If NH is a single integer > 1 (count), convert to array of 1's
+      if Harms_Temp'Length = 1 and then Harms_Temp (1) > 1 then
+         return (1 .. Harms_Temp (1) => 1);
+      else
+         -- Old format: space-separated list of integers
+         return Harms_Temp;
+      end if;
+   end Parse_NH;
+
    procedure Write_JSON (D : in Param_S) is
       use GNATCOLL.JSON;
       FN : constant String :=
@@ -246,6 +323,13 @@ package body GEM.LTE.Primitives.Shared is
       FN2 : constant String :=
         Ada.Directories.Simple_Name (Ada.Command_Line.Command_Name) & "." &
         CI & ".p";
+      
+      -- Use NH/NM from environment (.resp file takes precedence)
+      NM : constant Integer := GEM.Getenv ("NM", D.B.LT'Length);
+      Harms : constant Ns := Parse_NH (GEM.Getenv ("NH", ""));
+      NH : constant Integer := Harms'Length;
+      
+      procedure Write_To_File (Filename : String; Include_LPAP : Boolean);
       
       procedure Write_To_File (Filename : String; Include_LPAP : Boolean) is
          Obj : constant JSON_Value := Create_Object;
@@ -288,17 +372,24 @@ package body GEM.LTE.Primitives.Shared is
             Set_Field (Obj, "lpap", Create (LPAP_Arr));
          end if;
          
-         -- ltep array (LT modulation periods)
-         for I in D.B.LT'Range loop
+         -- ltep array (LT modulation periods) - only first NM terms
+         for I in 1 .. NM loop
             Append (LT_Arr, Create (D.B.LT (I)));
          end loop;
          Set_Field (Obj, "ltep", Create (LT_Arr));
          
-         -- harm array (harmonics) - only non-zero values
-         for I in D.C'Range loop
-            exit when D.C (I) = 0;
-            Append (Harm_Arr, Create (Long_Float (D.C (I))));
-         end loop;
+         -- harm array (harmonics) - only first NH values if NH specified
+         if NH > 0 then
+            for I in 1 .. NH loop
+               Append (Harm_Arr, Create (Long_Float (D.C (I))));
+            end loop;
+         else
+            -- Fallback: only non-zero values (original behavior)
+            for I in D.C'Range loop
+               exit when D.C (I) = 0;
+               Append (Harm_Arr, Create (Long_Float (D.C (I))));
+            end loop;
+         end if;
          Set_Field (Obj, "harm", Create (Harm_Arr));
          
          -- Write to file
@@ -798,6 +889,10 @@ package body GEM.LTE.Primitives.Shared is
       for I in D.A.LP'Range loop
          D.A.LP (I) := GEM.LTE.LP (I);
       end loop;
+      
+      -- Detect NM/NH from JSON to override defaults with actual JSON array sizes
+      Detect_NM_NH_From_JSON (FN2_JSON);  -- Try secondary file first (more specific)
+      Detect_NM_NH_From_JSON (FN_JSON);   -- Then primary file (may override if present)
       
       -- JSON-only mode (-j flag): Read ONLY from JSON files, fail if not found
       if JSON_Only_Mode then
