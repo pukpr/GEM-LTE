@@ -1067,9 +1067,9 @@ package body GEM.LTE.Primitives is
    end Scaled_Error_Metric;
 
    Pi : constant Long_Float := Ada.Numerics.Pi;
-   Mult : constant Long_Float := GEM.Getenv ("FMULT", 1.006);
+   Mult : constant Long_Float := GEM.Getenv ("FMULT", 1.008);
    Step : constant Long_Float := GEM.Getenv ("FSTEP", 0.18);
-   F_Start : constant Long_Float := GEM.Getenv ("FSTART", 0.1);
+   F_Start : constant Long_Float := GEM.Getenv ("FSTART", 0.01);
    F_End : constant Long_Float := 1_000.0;
 
    function Min_Entropy_RMS (X, Y : in Data_Pairs) return Long_Float is
