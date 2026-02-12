@@ -416,7 +416,7 @@ package body GEM.LTE.Primitives.Solution is
         GEM.Getenv ("DTW", 1); -- 100 is about ~5% of the time-series length
       Sin_Impulse : constant Boolean :=
         GEM.Getenv ("IMPULSE", "DELTA") = "SIN";
-      Sin_Power : constant Integer := GEM.Getenv ("SINPOW", 3); --posituve
+      Sin_Power : constant Integer := GEM.Getenv ("SINPOW", 1); --positive
       Sampling_Per_Year : constant Long_Float := GEM.Getenv ("SAMPLING", 12.0);
       Filter : constant Long_Float := GEM.Getenv ("FILTER", 0.333_333_33);
       MLR_On : constant Boolean := GEM.Getenv ("MLR", False); -- wrong name
@@ -429,7 +429,7 @@ package body GEM.LTE.Primitives.Solution is
       Decay : constant Long_Float := GEM.Getenv ("DECAY", 1.0);
       Revert_to_Mean : constant Long_Float := GEM.Getenv ("R2M", 1.0);
       Year_Trim : constant Boolean := GEM.Getenv ("YTRIM", False);
-      Lock_Freq : constant Boolean := GEM.Getenv ("LOCKF", True);
+      Lock_Freq : constant Boolean := GEM.Getenv ("LOCKF", False);
       Local_Max : constant Boolean := GEM.Getenv ("LOCAL", False);
       Lock_Tidal : constant Boolean := GEM.Getenv ("LOCKT", False);
       Lock_Short_Tidal : constant Boolean := GEM.Getenv ("LOCKST", False);
