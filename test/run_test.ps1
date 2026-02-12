@@ -78,6 +78,11 @@ if ($json) {
     Remove-Item lt.exe.nino4.dat.par -ErrorAction SilentlyContinue
     
     try {
+        # Set test environment variables (TEST_ONLY=TRUE bypasses optimization)
+        $env:TEST_ONLY = "TRUE"
+        $env:TIMEOUT = "0.0"
+        $env:NUMBER_OF_PROCESSORS = "1"
+        
         # Run lt.exe with JSON files using -j flag
         .\lt.exe -j > current_output.txt 2>&1
     } finally {
@@ -91,6 +96,11 @@ if ($json) {
     # Check consistency between .par files
     Write-Host "`nChecking file consistency..."
     Test-FileConsistency ".par" | Out-Null
+    
+    # Set test environment variables (TEST_ONLY=TRUE bypasses optimization)
+    $env:TEST_ONLY = "TRUE"
+    $env:TIMEOUT = "0.0"
+    $env:NUMBER_OF_PROCESSORS = "1"
     
     # Run lt.exe with .par files (standard test)
     .\lt.exe > current_output.txt 2>&1
