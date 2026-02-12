@@ -19,6 +19,8 @@ CLIMATE_INDEXa                 soi_darwin_avg_1870_EXTEND.dat
 CLIMATE_INDEXb                  amo_long.dat
 CLIMATE_INDEXj                  iod_e_AVG.dat
 CLIMATE_INDEXa                 m1.dat
+CLIMATE_INDEX                  11.dat
+DLOD_DAT                       ../dLOD3.dat
 DLOD_REF                       true
 FILTER                         0.0
 FLIP                           0.01

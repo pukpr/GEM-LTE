@@ -17,7 +17,7 @@ procedure GEM_Test is
    Test_Trigger  : constant Integer := 0;      -- No trigger - run once and stop
    
    N : Positive := GEM.Getenv("NUMBER_OF_PROCESSORS", System.Task_Info.Number_Of_Processors);
-   dLOD_dat : String := GEM.Getenv("DLOD_DAT", "dlod3.dat"); 
+   dLOD_dat : String := GEM.Getenv("DLOD_DAT", "../dLOD3.dat"); 
    dLOD_Scale : constant Long_Float := GEM.Getenv("DLOD_SCALE", 0.0);
 
    D : GEM.LTE.Primitives.Shared.Param_S :=
