@@ -1,70 +1,7 @@
-DECAY                          1.01
-FMULT                          1.008
-FSTART                         0.01
-LOCKF                          false
-R2M                            1.0
-SYM                            0
-YTRIM                          false
-NONLIN                         1.0
--REF_TIME                       0.000
-ALIAS                          FALSE
-EXCLUDE                        true
-ALTERNATE                      false
-CLIMATE_INDEX3                  qbo_70.dat
-CLIMATE_INDEX0                 qbo30.dat
-CLIMATE_INDEX1                  rand1880.dat
-CLIMATE_INDEXa                  nino34avg1870.dat
-CLIMATE_INDEXh                  pdo_1870.dat
-CLIMATE_INDEXa                 soi_darwin_avg_1870_EXTEND.dat
-CLIMATE_INDEXb                  amo_long.dat
-CLIMATE_INDEXj                  iod_e_AVG.dat
-CLIMATE_INDEXa                 m1.dat
-CLIMATE_INDEX                  11.dat
-DLOD_DAT                       ../dLOD3.dat
-DLOD_REF                       true
-FILTER                         0.0
 FLIP                           0.01
-FORCING                        FALSE
-FSTEP                          0.18
-F9                             1
-IMPA                           9.03
-IMPB                           35
-IMPC                           -1
-IMPD                           -1
-IMPULSE                        DELTA
-IR                             0.0
-MAXH                           60
-MAXLOOPS                       100000
-MERMS                          FALSE
--METRIC                         CC
-MLR                            FALSE
--NH                             ""
-NH                            "1 1 1"
--NH                            "1 1 1 1 1 1 1 1 1 1"
-NH                             "1 1 1 1 1 1"
-NM                             2
-PARETO                         false
-RESET                          FALSE
-SAMPLING                       12.0
-SCALING                        1.0
-SINPOW                        1
-SPLIT_LOW                      FALSE
-SPLIT_TRAINING                 FALSE
-SPREAD_CYCLE                   200.0
 SPREAD_MIN                     0.00001
 SPREAD_MAX                     0.25
-STARTING_METRIC                0.001
-STEP                           false
-THRESHOLD                      99
-THRESHOLD_ACTION               CATCHUP
-TRAIN_END                      1970
-TRAIN_START                    1960
-TRAIN_END                      1970
-TRAIN_START                    1940
-TREND                          true
+MAXH                           60
+NH                             "1 1 1 1 1 1"
+NM                             2
 YEAR                           0.005
--IMPAVALUE                      9.03
--IMPBVALUE                      0.25
--BG                             55.0
-
-

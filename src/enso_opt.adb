@@ -74,7 +74,7 @@ begin
 
       --  Initialize tidal forcing amplitudes and phases from dLOD data
       if GEM.Command_Line_Option_Exists ("r") or
-        not GEM.Getenv ("DLOD_REF", False)
+        not GEM.Getenv ("DLOD_REF", True)
       then
          --  Fresh start: use dLOD data directly with optional scaling
          Text_IO.Put_Line ("Loading dLOD");
