@@ -136,6 +136,11 @@ class App(tk.Tk):
         # JSON loading checkbox state
         self.use_json_var = tk.BooleanVar(value=True)  # Default to JSON mode
 
+        self.exclude_var = tk.BooleanVar(value=True)  # Default to true
+        self.filter_var = tk.BooleanVar(value=True)  # Default to true
+        self.trend_var = tk.BooleanVar(value=True)  # Default to true
+        self.test_only_var = tk.BooleanVar(value=False)  # Default to false
+
         self._build_ui()
         self._set_root(self.root_dir)
 
@@ -246,6 +251,10 @@ class App(tk.Tk):
         ttk.Entry(right_fields, textvariable=self.interval_begin_var, width=6).pack(side="left")
         ttk.Label(right_fields, text="to").pack(side="left", padx=6)
         ttk.Entry(right_fields, textvariable=self.interval_end_var, width=6).pack(side="left")
+        ttk.Checkbutton(right_fields, text="exclude", variable=self.exclude_var).pack(side="left")
+        ttk.Checkbutton(right_fields, text="filter", variable=self.filter_var).pack(side="left")
+        ttk.Checkbutton(right_fields, text="trend", variable=self.trend_var).pack(side="left")
+        ttk.Checkbutton(right_fields, text="test", variable=self.test_only_var).pack(side="left")
 
 
         img_frame = ttk.LabelFrame(right, text="PNG preview (from selected dir)", padding=8)
@@ -358,6 +367,11 @@ class App(tk.Tk):
         env["TRAIN_END"] = e # self.interval_end_var.get().strip()
         env["CLIMATE_INDEX"] = f"{index}.dat"
         env["IDATE"] = "1920.9"
+        env["EXCLUDE"] = "true" if self.exclude_var.get() else "false"
+        env["TREND"] = "true" if self.trend_var.get() else "false"
+        env["F9"] = "1" if self.filter_var.get() else "0"
+        env["TEST_ONLY"] = "true" if self.test_only_var.get() else "false"
+
 
         subprocess.Popen(
             ["cmd.exe", "/k", lt_cmd],
