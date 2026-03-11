@@ -4,6 +4,7 @@ using DelimitedFiles
 using JSON3
 using Dates
 using LinearAlgebra
+using Statistics
 using Optim
 using DSP
 
@@ -59,6 +60,11 @@ function build_tidal_signal(t, tides)
         A  = Float64(td["amplitude"])
         φ  = Float64(td["phase"])
         ω  = 2π / P
+        
+        # User hint: Strongest tidal period is 27.2122 days.
+        # We can emphasize this component if needed, but the amplitude should already reflect importance.
+        # However, if the fit is struggling, we might want to boost its effect or ensure it's not drowned out.
+        # For now, let's just use the amplitude as given.
         @. sig += A * sin(ω * t_days + φ)
     end
     return sig
@@ -186,8 +192,29 @@ function objective(x, I, t, tides, kappa; μ=1e-2, λ_reg=1.0)
     reg_term = λ_reg * ((log_ζ - prior_log_ζ)^2 + (log_ω0 - prior_log_ω0)^2)
 
     # objective
-
-    J = hoyer(abs.(c)) + μ * sum(abs2.(Imodel .- I)) + reg_term
+    I_real = real.(Imodel)
+    # Use Correlation Coefficient as primary metric
+    # Manual correlation calculation for ForwardDiff compatibility
+    I_mean = mean(I)
+    Im_mean = mean(I_real)
+    I_centered = I .- I_mean
+    Im_centered = I_real .- Im_mean
+    
+    # Avoid division by zero
+    norm_I = norm(I_centered)
+    norm_Im = norm(Im_centered)
+    
+    correlation = if norm_I > 1e-9 && norm_Im > 1e-9
+        dot(I_centered, Im_centered) / (norm_I * norm_Im)
+    else
+        0.0
+    end
+    
+    # Minimize (1 - correlation) strongly
+    # Keep MSE for scale, but weight it less? Or rely on correlation.
+    # We add MSE to keep coefficients from exploding/vanishing.
+    
+    J = hoyer(abs.(c)) + μ * sum(abs2.(I_real .- I)) + 10.0 * (1.0 - correlation) + reg_term
     
     return J
 end
