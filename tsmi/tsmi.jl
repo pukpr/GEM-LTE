@@ -22,7 +22,7 @@ function read_params(path::String)
     j = JSON3.read(txt, Dict)
     tides = j["tides"]          # array of objects with period, amplitude, phase
     damping = j["damping"]      # object with zeta, omega0
-    kappa = collect(Float64.(j["kappa"]))
+    kappa = collect(-50:50) # "Large faster LTE modulation"
     annual_phase = Float64(get(j, "annual_phase", 0.0))
     
     # Read initial condition parameters (default to 0.0)
@@ -204,6 +204,9 @@ function objective(x, I, t, tides, kappa; μ=1e-2, λ_reg=1.0)
         0.0
     end
     
+    # User hint: "Hoyer-type metric can determine the sparse values"
+    # But we know pure Hoyer fails (r=0.28).
+    # We use a combined objective, prioritizing correlation but rewarding sparsity.
     J = 0.1 * hoyer(abs.(c)) + 1e-2 * sum(abs2.(I_real .- I)) + 100.0 * (1.0 - correlation) + reg_term
     
     return J
@@ -228,7 +231,7 @@ function optimize_state(I, t, tides, damping, kappa, phi_init, ic_A_init, ic_B_i
 
     # optimize non-linear parameters
     result = optimize(x -> objective(x, I, t, tides, kappa; μ=μ, λ_reg=1.0),
-                      x0, LBFGS(); autodiff = :forward)
+                      x0, LBFGS(), Optim.Options(show_trace=true); autodiff = :forward)
 
     x_opt = Optim.minimizer(result)
     
