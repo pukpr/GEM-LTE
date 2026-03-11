@@ -29,7 +29,7 @@ try:
             try:
                 t.append(float(row['t']))
                 I.append(float(row['I']))
-                I_model.append(0.2*float(row['I_model']))
+                I_model.append(float(row['I_model']))
             except ValueError:
                 continue
 except FileNotFoundError:
