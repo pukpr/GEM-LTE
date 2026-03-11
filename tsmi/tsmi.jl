@@ -211,10 +211,9 @@ function objective(x, I, t, tides, kappa; μ=1e-2, λ_reg=1.0)
     end
     
     # Minimize (1 - correlation) strongly
-    # Keep MSE for scale, but weight it less? Or rely on correlation.
-    # We add MSE to keep coefficients from exploding/vanishing.
+    # Reduce Hoyer and MSE influence to prioritize correlation
     
-    J = hoyer(abs.(c)) + μ * sum(abs2.(I_real .- I)) + 10.0 * (1.0 - correlation) + reg_term
+    J = 0.1 * hoyer(abs.(c)) + 1e-2 * sum(abs2.(I_real .- I)) + 100.0 * (1.0 - correlation) + reg_term
     
     return J
 end
@@ -317,8 +316,33 @@ function main(ts_path::String, json_path::String; μ=1e-2, skip_optim=false)
         else
             # Reconstruct c0 if not in json (unlikely if we are skipping opt)
             M0 = build_manifold(t, tides, ζ_opt, ω0_opt, phi_opt, ic_A_opt, ic_B_opt)
-            Φ0 = [exp.(1im * κ .* M0) for κ in kappa]
-            c_opt = [dot(I, φ) for φ in Φ0]
+            # Φ0 = [exp.(1im * κ .* M0) for κ in kappa]
+            # c_opt = [dot(I, φ) for φ in Φ0]
+            
+            # Use Least Squares to find optimal c
+            # Construct Phi matrix (nt x nkappa)
+            Phi_mat = zeros(ComplexF64, length(t), length(kappa))
+            for (k_idx, k_val) in enumerate(kappa)
+                @. Phi_mat[:, k_idx] = exp(1im * k_val * M0)
+            end
+            
+            # Solve Phi * c = I
+            c_opt = Phi_mat \ ComplexF64.(I)
+            
+            # Save recalculated coefficients to JSON
+            json_obj["damping"]["zeta"]  = ζ_opt
+            json_obj["damping"]["omega0"] = ω0_opt
+            json_obj["annual_phase"] = phi_opt
+            json_obj["initial_condition"]["A"] = ic_A_opt
+            json_obj["initial_condition"]["B"] = ic_B_opt
+            
+            json_obj["coefficients"] = Dict(
+                "kappa" => kappa,
+                "real"  => real.(c_opt),
+                "imag"  => imag.(c_opt),
+            )
+            write_params(json_path, json_obj)
+            println("Updated coefficients written to $json_path")
         end
     end
 
