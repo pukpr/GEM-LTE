@@ -30,7 +30,10 @@ function read_params(path::String)
     ic_A = Float64(get(ic, "A", 0.0))
     ic_B = Float64(get(ic, "B", 0.0))
     
-    return tides, damping, kappa, annual_phase, ic_A, ic_B, j
+    # Read ramp slope if available, else default to 0.001 (small decay per step)
+    ramp_slope = Float64(get(j, "ramp_slope", 0.001))
+    
+    return tides, damping, kappa, annual_phase, ic_A, ic_B, ramp_slope, j
 end
 
 function archive_params(path::String)
@@ -42,333 +45,474 @@ end
 
 function write_params(path::String, json_obj)
     open(path, "w") do io
-        JSON3.write(io, json_obj; indent=2)
+        JSON3.write(io, json_obj)
     end
+    # Use python to pretty print since JSON3 pretty print is limited
+    run(`python -c "import json; d=json.load(open('$path')); open('$path', 'w').write(json.dumps(d, indent=4))"`)
 end
 
 # ---------- Physics: manifold construction ----------
 
-function build_tidal_signal(t, tides)
-    # t is in years, tides period is in days.
-    # Convert t to days for tidal calculation
-    # Use consistent floating point type
-    T = eltype(t)
-    t_days = t .* 365.25
-    sig = zeros(T, length(t))
+function build_tidal_signal(t, tides, year_len)
+    # t is in years. Convert to days using the variable year length.
+    t_days = t .* year_len
+    sig = zeros(eltype(t), length(t))
     for td in tides
         P  = Float64(td["period"])
         A  = Float64(td["amplitude"])
         φ  = Float64(td["phase"])
         ω  = 2π / P
-        
-        # User hint: Strongest tidal period is 27.2122 days.
-        # We can emphasize this component if needed, but the amplitude should already reflect importance.
-        # However, if the fit is struggling, we might want to boost its effect or ensure it's not drowned out.
-        # For now, let's just use the amplitude as given.
         @. sig += A * sin(ω * t_days + φ)
     end
     return sig
 end
 
-function build_annual_comb(t, phi)
-    # Gaussian comb with period 1 year
-    # sigma = 1/12 (approx 1 month)
-    σ = 1.0/12.0
-    T = promote_type(eltype(t), typeof(phi))
-    comb = zeros(T, length(t))
+function build_annual_comb(t, phi, sec_amp, year_len, drift_linear, drift_quad)
+    # Gaussian comb with period 365.0 days + drifts
+    # t is in years (approx 365.25 days)
+    # P_comb = 365.0 / 365.25 approx 0.999... in 't' units?
+    # No, let's keep it simple: 
+    # The 'nominal' year length in the model is year_len.
+    # The impulse happens every 365.0 days.
+    # So P_comb = 365.0 / year_len (in units of 't')
     
-    # We assume t is in years.
-    # range of years to cover
-    # Use simpler iteration to avoid type issues with min/max on Duals if necessary
-    # But usually min/max works.
-    # To be safe with ForwardDiff, use values or simple loops.
-    # But for loop boundaries we need integers.
-    # We can use the raw values of t for bounds if t is not being differentiated (t is fixed data).
-    # t is fixed data here.
+    P_comb = 365.0 / year_len
     
-    y_min = floor(Int, minimum(t)) - 1
-    y_max = ceil(Int, maximum(t)) + 1
+    σ = 1.0/12.0 
     
-    for k in y_min:y_max
-        # Center of Gaussian for year k
-        μ = k + phi
-        # vectorized Gaussian addition
-        @. comb += exp( - (t - μ)^2 / (2 * σ^2) )
+    comb = zeros(eltype(t), length(t))
+    
+    # Range of k to cover t
+    # Center time for quadratic drift? Let's use mean(t) to keep numbers small
+    t_mean = mean(t)
+    
+    k_min = floor(Int, minimum(t) / P_comb) - 2
+    k_max = ceil(Int, maximum(t) / P_comb) + 2
+    
+    for k in k_min:k_max
+        # Nominal time
+        t_nom = k * P_comb + phi
+        
+        # Add drifts
+        # Linear drift is already covered by P_comb vs year_len mismatch?
+        # User says "slight linear drift AND quadratic drift in impulse time"
+        # So: t_actual = t_nom + L * (t_nom - t_mean) + Q * (t_nom - t_mean)^2
+        
+        dt = t_nom - t_mean
+        t_actual = t_nom + drift_linear * dt + drift_quad * dt^2
+        
+        # Primary Impulse
+        @. comb += exp( - (t - t_actual)^2 / (2 * σ^2) )
+        
+        # Secondary Impulse
+        # Assume secondary impulse shifts with the primary
+        t_sec = t_actual + 0.5 * P_comb 
+        @. comb += sec_amp * exp( - (t - t_sec)^2 / (2 * σ^2) )
     end
-    
     return comb
 end
 
-function response_kernel(t, ζ, ω0)
-    # damped exponential impulse response (1st order)
-    # Ignore ω0, use ζ as decay rate
-    T = promote_type(eltype(t), typeof(ζ))
-    h = zeros(T, length(t))
-    for i in eachindex(t)
-        τ = t[i]
-        if τ < 0
-            h[i] = 0.0
+function build_manifold(t, tides, ramp_slope, phi, sec_amp, year_len, ic_A, ic_B, drift_linear, drift_quad)
+    # Spin-up: Run for 20 years prior to t[1] to eliminate transient
+    
+    t_start = t[1]
+    dt = t[2] - t[1] 
+    if dt <= 0; dt = 1.0/365.242; end
+    
+    t_spinup = range(t_start - 40.0, stop=t_start - dt, step=dt) 
+    
+    base_spinup = build_annual_comb(t_spinup, phi, sec_amp, year_len, drift_linear, drift_quad) .* build_tidal_signal(t_spinup, tides, year_len)
+    
+    val = 0.0 
+    for i in eachindex(t_spinup)
+        ramp = copysign(ramp_slope, val)
+        val = base_spinup[i] + val - ramp
+    end
+    
+    base = build_annual_comb(t, phi, sec_amp, year_len, drift_linear, drift_quad) .* build_tidal_signal(t, tides, year_len)
+    
+    M_forced = zeros(eltype(t), length(t))
+    current_val = val
+    for i in 1:length(t)
+        ramp = copysign(ramp_slope, current_val)
+        current_val = base[i] + current_val - ramp
+        M_forced[i] = current_val
+    end
+    
+    return M_forced
+end
+
+
+
+# ---------- Sparsity Helpers ----------
+
+# ---------- OMP Core ----------
+
+function run_omp(M, I, kappa, t; max_atoms=12)
+    # Construct Manifold Dictionary
+    n_kappa = length(kappa)
+    n_add = 4 # 2 annual + 2 semi-annual
+    Phi = Matrix{ComplexF64}(undef, length(I), n_kappa + n_add)
+    
+    # Manifold terms
+    @inbounds for (j, k_val) in enumerate(kappa)
+        @. Phi[:, j] = exp(1im * k_val * M)
+    end
+    
+    # Additive terms (Annual + Semi-Annual)
+    # Indices: n_kappa + 1..4
+    # Period 1.0 (Annual) -> 2pi * t
+    omega_ann = 2π
+    @. Phi[:, n_kappa + 1] = cos(omega_ann * t)
+    @. Phi[:, n_kappa + 2] = sin(omega_ann * t)
+    @. Phi[:, n_kappa + 3] = cos(2 * omega_ann * t)
+    @. Phi[:, n_kappa + 4] = sin(2 * omega_ann * t)
+    
+    residual = copy(ComplexF64.(I))
+    selected_indices = Int[]
+    c_full = zeros(ComplexF64, n_kappa + n_add)
+    
+    best_corr = 0.0
+    
+    for iter in 1:max_atoms
+        projections = Phi' * residual
+        mags = abs.(projections)
+        
+        if !isempty(selected_indices)
+            mags[selected_indices] .= -1.0
+        end
+        
+        best_idx = argmax(mags)
+        if mags[best_idx] <= 1e-9
+            break
+        end
+        
+        push!(selected_indices, best_idx)
+        
+        Phi_sub = Phi[:, selected_indices]
+        # Ridge for stability
+        lambda = 1e-6
+        H = Phi_sub' * Phi_sub
+        for i in 1:size(H,1); H[i,i] += lambda; end
+        c_sub = H \ (Phi_sub' * ComplexF64.(I))
+        
+        Im_sub = Phi_sub * c_sub
+        residual = ComplexF64.(I) - Im_sub
+        
+        Im_real = real.(Im_sub)
+        r = cor(I, Im_real)
+        if r > best_corr
+            best_corr = r
+        end
+        
+        c_full[:] .= 0.0
+        c_full[selected_indices] = c_sub
+    end
+    
+    return best_corr, c_full
+end
+
+# ---------- Optimization ----------
+
+function optimize_manifold_random(t, I, tides, ramp_slope_init, annual_phase, ic_A, ic_B, kappa)
+    println("Starting Canonical Manifold Optimization (Random Search - Linear/Quad Drift)...")
+    
+    # Check if 11force.dat is available for training
+    use_force_target = false
+    I_target = I
+    t_target = t
+    if isfile("11force.dat")
+        println("Target: 11force.dat found. Switching optimization target to match Empirical Manifold.")
+        tf, If = read_timeseries("11force.dat")
+        
+        # Align with main time vector t? 
+        # Actually, we should optimize on the overlapping region.
+        # Let's create a common time vector or interpolate.
+        # Simpler: Use tf/If as the optimization set if we want to fit 11force.dat
+        t_target = tf
+        I_target = If .* 10.0 # Match scale
+        use_force_target = true
+    else
+        println("Target: 11force.dat NOT found. Optimizing on AMO index I directly (this is harder).")
+    end
+
+    # Current Params
+    current_tides = deepcopy(tides)
+    current_ramp = Float64(ramp_slope_init)
+    current_phi = Float64(annual_phase)
+    current_year_len = 365.242
+    current_sec_amp = 0.0 
+    current_d_lin = 0.0
+    current_d_quad = 0.0
+    
+    best_tides = deepcopy(current_tides)
+    best_ramp = current_ramp
+    best_phi = current_phi
+    best_year_len = current_year_len
+    best_sec_amp = current_sec_amp
+    best_d_lin = current_d_lin
+    best_d_quad = current_d_quad
+    
+    # Objective function wrapper
+    function calc_objective(M_trial, I_ref)
+        if use_force_target
+            # Direct correlation with M_empirical
+            return cor(M_trial, I_ref)
         else
-            h[i] = exp(-ζ * τ)
+            # Correlation with OMP reconstruction
+            r, _ = run_omp(M_trial, I_ref, kappa, t; max_atoms=12)
+            return r
         end
     end
-    return h
-end
 
-function build_manifold(t, tides, ζ, ω0, phi, ic_A, ic_B)
-    base = build_annual_comb(t, phi) .* build_tidal_signal(t, tides)
-    dt = t[2] - t[1]
-    # build kernel on same grid (centered at 0..max(t))
-    h = response_kernel(t .- t[1], ζ, ω0)
+    # Initial Baseline
+    M = build_manifold(t_target, current_tides, current_ramp, current_phi, current_sec_amp, current_year_len, ic_A, ic_B, current_d_lin, current_d_quad)
+    r_best = calc_objective(M, I_target)
     
-    # Forced response (convolution)
-    M_forced = conv(base, h) .* dt
-    M_forced = M_forced[1:length(t)]
+    println("Initial Correlation: $r_best")
     
-    # Free response (initial conditions)
-    # Homogeneous solution: A * exp(-ζ * τ)
-    τ = t .- t[1]
-    M_free = ic_A .* exp.(-ζ .* τ)
-
-    return M_forced .+ M_free
-end
-
-# ---------- Hoyer metric and gradients ----------
-
-function hoyer(a)
-    n = length(a)
-    return sqrt(n) * sum(abs.(a)) / norm(a) - 1
-end
-
-# ---------- Objective and optimization ----------
-
-function objective(x, I, t, tides, kappa; μ=1e-2, λ_reg=1.0)
-    nt = length(I)
-
-    # parameters are optimized in log-space to ensure positivity
-    # x layout: [log(zeta), phi, ic_A] (3 params)
-    log_ζ    = x[1]
-    phi      = x[2]
-    ic_A     = x[3]
-    ic_B     = 0.0
-    ω0       = 1.0 # Ignored
-
-    # Convert back from log-space
-    if abs(log_ζ) > 100
-        return Inf
-    end
-
-    T = eltype(x)
-    ζ    = exp(log_ζ)
-
-    # manifold
-    M = build_manifold(t, tides, ζ, ω0, phi, ic_A, ic_B)
-
-    # basis matrix (Phi)
-    n_kappa = length(kappa)
-    Phi_mat = Matrix{Complex{T}}(undef, nt, n_kappa)
-    for (k_idx, k_val) in enumerate(kappa)
-        @. Phi_mat[:, k_idx] = exp(1im * k_val * M)
-    end
+    # Loop
+    n_iter = 10000 # More iterations for more params
+    T = 0.1 
+    alpha = 0.9995 
     
-    # Ridge regression: (Phi'Phi + lambda*I) * c = Phi' * I
-    lambda_ridge = 1.0
-    H = Phi_mat' * Phi_mat
-    for i in 1:size(H,1)
-        H[i,i] += lambda_ridge
-    end
-    c = H \ (Phi_mat' * Complex{T}.(I))
-
-    # Reconstruct model
-    Imodel = Phi_mat * c
-    I_real = real.(Imodel)
-
-    # Regularization
-    # Priors: zeta ~ 0.5 (decay rate)
-    prior_log_ζ = log(0.5)
-    reg_term = λ_reg * ((log_ζ - prior_log_ζ)^2)
-
-    # objective
-    I_mean = mean(I)
-    Im_mean = mean(I_real)
-    I_centered = I .- I_mean
-    Im_centered = I_real .- Im_mean
+    idx_27 = findfirst(x -> abs(Float64(x["period"]) - 27.2122) < 0.1, current_tides)
     
-    # Avoid division by zero
-    norm_I = norm(I_centered)
-    norm_Im = norm(Im_centered)
+    # Current state
+    curr_tides = deepcopy(best_tides)
+    curr_ramp = best_ramp
+    curr_phi = best_phi
+    curr_year_len = best_year_len
+    curr_sec_amp = best_sec_amp
+    curr_d_lin = best_d_lin
+    curr_d_quad = best_d_quad
+    curr_r = r_best
     
-    correlation = if norm_I > 1e-9 && norm_Im > 1e-9
-        dot(I_centered, Im_centered) / (norm_I * norm_Im)
-    else
-        0.0
+    for i in 1:n_iter
+        cand_tides = deepcopy(curr_tides)
+        cand_ramp = curr_ramp
+        cand_phi = curr_phi
+        cand_year_len = curr_year_len
+        cand_sec_amp = curr_sec_amp
+        cand_d_lin = curr_d_lin
+        cand_d_quad = curr_d_quad
+        
+        # Mutate Tides
+        for (idx, td) in enumerate(cand_tides)
+            if rand() < 0.05 || (idx == idx_27 && rand() < 0.2)
+                scale = 1.0 + randn() * 0.05
+                td["amplitude"] = Float64(td["amplitude"]) * scale
+                shift = randn() * 0.1
+                td["phase"] = Float64(td["phase"]) + shift
+            end
+        end
+        
+        # Mutate Global Params
+        if rand() < 0.2; cand_ramp = abs(cand_ramp * (1.0 + randn() * 0.1)); end
+        if rand() < 0.2; cand_phi += randn() * 0.05; end
+        if rand() < 0.2; cand_year_len += randn() * 0.002; end
+        if rand() < 0.2; cand_sec_amp = clamp(cand_sec_amp + randn() * 0.05, 0.0, 1.0); end
+        
+        # Mutate Drifts (Very small steps)
+        if rand() < 0.3; cand_d_lin += randn() * 1e-6; end
+        if rand() < 0.3; cand_d_quad += randn() * 1e-9; end
+        
+        # Evaluate
+        M_cand = build_manifold(t_target, cand_tides, cand_ramp, cand_phi, cand_sec_amp, cand_year_len, ic_A, ic_B, cand_d_lin, cand_d_quad)
+        r_cand = calc_objective(M_cand, I_target)
+        
+        # Metropolis-Hastings
+        delta = r_cand - curr_r
+        if delta > 0 || rand() < exp(delta * 10.0 / T) 
+            curr_tides = cand_tides
+            curr_ramp = cand_ramp
+            curr_phi = cand_phi
+            curr_year_len = cand_year_len
+            curr_sec_amp = cand_sec_amp
+            curr_d_lin = cand_d_lin
+            curr_d_quad = cand_d_quad
+            curr_r = r_cand
+            
+            if r_cand > r_best
+                println("Iter $i: New Best r = $r_cand (was $r_best)")
+                r_best = r_cand
+                best_tides = deepcopy(cand_tides)
+                best_ramp = cand_ramp
+                best_phi = cand_phi
+                best_year_len = cand_year_len
+                best_sec_amp = cand_sec_amp
+                best_d_lin = cand_d_lin
+                best_d_quad = cand_d_quad
+            end
+        end
+        
+        T *= alpha
+        if i % 500 == 0
+            println("  Iter $i... Temp: $(round(T, digits=4)), Curr: $(round(curr_r, digits=4)), Best: $(round(r_best, digits=4))")
+        end
     end
     
-    # User hint: "Hoyer-type metric can determine the sparse values"
-    # But we know pure Hoyer fails (r=0.28).
-    # We use a combined objective, prioritizing correlation but rewarding sparsity.
-    J = 0.1 * hoyer(abs.(c)) + 1e-2 * sum(abs2.(I_real .- I)) + 100.0 * (1.0 - correlation) + reg_term
-    
-    return J
-end
-
-function optimize_state(I, t, tides, damping, kappa, phi_init, ic_A_init, ic_B_init; μ=1e-2)
-    nκ = length(kappa)
-
-    ζ0  = Float64(damping["zeta"])
-    ω00 = Float64(damping["omega0"])
-    
-    # Ensure initial values are positive for log-transform
-    if ζ0 <= 0
-        ζ0 = 0.5
-    end
-    if ω00 <= 0
-        ω00 = 2.5
-    end
-
-    # x layout: [log(zeta), phi, ic_A]
-    x0 = [log(ζ0); phi_init; ic_A_init]
-
-    # optimize non-linear parameters
-    result = optimize(x -> objective(x, I, t, tides, kappa; μ=μ, λ_reg=1.0),
-                      x0, LBFGS(), Optim.Options(show_trace=true); autodiff = :forward)
-
-    x_opt = Optim.minimizer(result)
-    
-    log_ζ_opt  = x_opt[1]
-    phi_opt    = x_opt[2]
-    ic_A_opt   = x_opt[3]
-    
-    ζ_opt    = exp(log_ζ_opt)
-    ω0_opt   = 1.0 # Unused
-    ic_B_opt = 0.0 # Unused
-
-    # Final pass to get optimal coefficients
-    M_opt = build_manifold(t, tides, ζ_opt, ω0_opt, phi_opt, ic_A_opt, ic_B_opt)
-    Phi_mat = Matrix{ComplexF64}(undef, length(I), nκ)
-    for (k_idx, k_val) in enumerate(kappa)
-        @. Phi_mat[:, k_idx] = exp(1im * k_val * M_opt)
-    end
-    
-    # Ridge regression: (Phi'Phi + lambda*I) * c = Phi' * I
-    # Use lambda related to noise/regularization
-    lambda_ridge = 1.0 # Stronger regularization to keep coeffs small
-    H = Phi_mat' * Phi_mat
-    # Add diagonal ridge
-    for i in 1:size(H,1)
-        H[i,i] += lambda_ridge
-    end
-    c_opt = H \ (Phi_mat' * ComplexF64.(I))
-
-    return c_opt, ζ_opt, ω0_opt, phi_opt, ic_A_opt, ic_B_opt
+    return best_tides, best_ramp, best_phi, best_sec_amp, best_year_len, best_d_lin, best_d_quad, r_best
 end
 
 # ---------- Main ----------
 
-function main(ts_path::String, json_path::String; μ=1e-2, skip_optim=false)
+function main(ts_path::String, json_path::String; skip_optim=false)
     t, I = read_timeseries(ts_path)
-    tides, damping, kappa, annual_phase, ic_A, ic_B, json_obj = read_params(json_path)
+    tides, damping, kappa, annual_phase, ic_A, ic_B, ramp_slope, json_obj = read_params(json_path)
+
+    local c_final
+    local M_final
+    local best_sec_amp = 0.0
+    local best_year_len = 365.242
 
     if !skip_optim
         backup = archive_params(json_path)
         println("Archived previous params to $backup")
-
-        c_opt, ζ_opt, ω0_opt, phi_opt, ic_A_opt, ic_B_opt = optimize_state(I, t, tides, damping, kappa, annual_phase, ic_A, ic_B; μ=μ)
-
-        # update JSON object
-        json_obj["damping"]["zeta"]  = ζ_opt
-        json_obj["damping"]["omega0"] = ω0_opt
-        json_obj["annual_phase"] = phi_opt
         
-        # Store optimized initial conditions
-        if !haskey(json_obj, "initial_condition")
-            json_obj["initial_condition"] = Dict()
-        end
-        json_obj["initial_condition"]["A"] = ic_A_opt
-        json_obj["initial_condition"]["B"] = ic_B_opt
+        # Use broader kappa for search
+        kappa = collect(-500:500)
         
-        # optionally store c_opt as magnitude/phase or real/imag
+        # Optimize
+        best_tides, best_ramp, best_phi, sec_amp, year_len, best_d_lin, best_d_quad, best_r = optimize_manifold_random(t, I, tides, ramp_slope, annual_phase, ic_A, ic_B, kappa)
+        
+        println("Optimization Complete. Best Correlation: $best_r")
+        println("Optimized Year Length: $year_len")
+        println("Optimized Ramp Slope: $best_ramp")
+        println("Optimized Drift Linear: $best_d_lin")
+        println("Optimized Drift Quad: $best_d_quad")
+        
+        best_sec_amp = sec_amp
+        best_year_len = year_len
+        
+        # Final OMP with best params
+        # Note: If we optimized against 11force.dat, this OMP is against AMO (t, I)
+        M_final = build_manifold(t, best_tides, best_ramp, best_phi, sec_amp, year_len, ic_A, ic_B, best_d_lin, best_d_quad)
+        M_final .*= 1.0
+        r_final, c_final = run_omp(M_final, I, kappa, t; max_atoms=12)
+        
+        # Split coefficients
+        n_kappa = length(kappa)
+        c_manifold = c_final[1:n_kappa]
+        c_additive = c_final[n_kappa+1:end]
+        
+        # Update JSON
+        json_obj["tides"] = best_tides
+        json_obj["ramp_slope"] = best_ramp
+        json_obj["annual_phase"] = best_phi
+        json_obj["secondary_impulse_amp"] = best_sec_amp
+        json_obj["year_length"] = best_year_len
+        json_obj["drift_linear"] = best_d_lin
+        json_obj["drift_quad"] = best_d_quad
         json_obj["coefficients"] = Dict(
             "kappa" => kappa,
-            "real"  => real.(c_opt),
-            "imag"  => imag.(c_opt),
+            "real"  => real.(c_manifold),
+            "imag"  => imag.(c_manifold),
         )
-
+        json_obj["additive_coefficients"] = Dict(
+            "real" => real.(c_additive),
+            "imag" => imag.(c_additive)
+        )
         write_params(json_path, json_obj)
-        println("Updated params written to $json_path")
+        println("Saved optimized parameters to $json_path")
+        
     else
         println("Skipping optimization, using parameters from $json_path")
-        ζ_opt = Float64(damping["zeta"])
-        ω0_opt = Float64(damping["omega0"])
-        phi_opt = annual_phase
-        ic_A_opt = ic_A
-        ic_B_opt = ic_B
+        # Read new params if available
+        best_sec_amp = Float64(get(json_obj, "secondary_impulse_amp", 0.0))
+        best_year_len = Float64(get(json_obj, "year_length", 365.242))
+        best_ramp = Float64(get(json_obj, "ramp_slope", 0.001))
+        d_lin = Float64(get(json_obj, "drift_linear", 0.0))
+        d_quad = Float64(get(json_obj, "drift_quad", 0.0))
         
-        # Load c_opt from JSON if available
+        M_final = build_manifold(t, tides, best_ramp, annual_phase, best_sec_amp, best_year_len, ic_A, ic_B, d_lin, d_quad)
+        M_final .*= 1.0
+        
+        local c_manifold
+        local c_additive
+        
         if haskey(json_obj, "coefficients")
             c_re = Float64.(json_obj["coefficients"]["real"])
             c_im = Float64.(json_obj["coefficients"]["imag"])
-            c_opt = c_re .+ im .* c_im
+            c_manifold = c_re .+ im .* c_im
+            
+            if haskey(json_obj, "additive_coefficients")
+                add_re = Float64.(json_obj["additive_coefficients"]["real"])
+                add_im = Float64.(json_obj["additive_coefficients"]["imag"])
+                c_additive = add_re .+ im .* add_im
+            else
+                c_additive = zeros(ComplexF64, 4)
+            end
         else
-            # Reconstruct c0 if not in json (unlikely if we are skipping opt)
-            M0 = build_manifold(t, tides, ζ_opt, ω0_opt, phi_opt, ic_A_opt, ic_B_opt)
-            # Φ0 = [exp.(1im * κ .* M0) for κ in kappa]
-            # c_opt = [dot(I, φ) for φ in Φ0]
-            
-            # Use Least Squares to find optimal c
-            # Construct Phi matrix (nt x nkappa)
-            Phi_mat = zeros(ComplexF64, length(t), length(kappa))
-            for (k_idx, k_val) in enumerate(kappa)
-                @. Phi_mat[:, k_idx] = exp(1im * k_val * M0)
-            end
-            
-            # Solve Phi * c = I
-            # c_opt = Phi_mat \ ComplexF64.(I)
-            
-            # Ridge regression
-            lambda_ridge = 1.0
-            H = Phi_mat' * Phi_mat
-            for i in 1:size(H,1)
-                H[i,i] += lambda_ridge
-            end
-            c_opt = H \ (Phi_mat' * ComplexF64.(I))
-            
-            # Save recalculated coefficients to JSON
-            json_obj["damping"]["zeta"]  = ζ_opt
-            json_obj["damping"]["omega0"] = ω0_opt
-            json_obj["annual_phase"] = phi_opt
-            json_obj["initial_condition"]["A"] = ic_A_opt
-            json_obj["initial_condition"]["B"] = ic_B_opt
-            
-            json_obj["coefficients"] = Dict(
-                "kappa" => kappa,
-                "real"  => real.(c_opt),
-                "imag"  => imag.(c_opt),
-            )
-            write_params(json_path, json_obj)
-            println("Updated coefficients written to $json_path")
+            println("Warning: No coefficients found in JSON. Running OMP once.")
+            _, c_final = run_omp(M_final, I, kappa, t; max_atoms=12)
+            n_kappa = length(kappa)
+            c_manifold = c_final[1:n_kappa]
+            c_additive = c_final[n_kappa+1:end]
         end
     end
 
-    # ---------- Reconstruct model for plotting ----------
-    M_opt = build_manifold(t, tides, ζ_opt, ω0_opt, phi_opt, ic_A_opt, ic_B_opt)
-    Φ_opt = [exp.(1im * κ .* M_opt) for κ in kappa]
-    Imodel = zeros(eltype(c_opt), length(t))
-    for (j, φ) in enumerate(Φ_opt)
-        Imodel .+= c_opt[j] .* φ
-    end
+    # ---------- Reconstruct for Plotting ----------
+    println("Reconstructing model...")
     
-    # Save to CSV
+    # Check if 11force.dat exists for comparison
+    M_empirical = fill(NaN, length(t))
+    if isfile("11force.dat")
+        t_force, I_force = read_timeseries("11force.dat")
+        
+        # Create dictionary for lookup with rounded keys to avoid float precision issues
+        # Monthly data is ~0.0833, so 4 digits is safe
+        force_dict = Dict(round(ti, digits=4) => val for (ti, val) in zip(t_force, I_force))
+        
+        valid_model = Float64[]
+        valid_emp = Float64[]
+        
+        for (i, ti) in enumerate(t)
+            key = round(ti, digits=4)
+            if haskey(force_dict, key)
+                val = force_dict[key] * 10.0
+                M_empirical[i] = val
+                push!(valid_model, M_final[i])
+                push!(valid_emp, val)
+            end
+        end
+        
+        if !isempty(valid_emp)
+            r_manifold = cor(valid_model, valid_emp)
+            println("Correlation between Parametric Manifold and Empirical 11force.dat (n=$(length(valid_emp))): $r_manifold")
+        else
+             println("Warning: No overlapping time points found with 11force.dat")
+        end
+    end
+
     open("model_fit.csv", "w") do io
-        println(io, "t,I,I_model")
+        println(io, "t,I,I_model,Manifold,Manifold_Empirical")
+        
+        # Calculate model
+        Imodel = zeros(ComplexF64, length(t))
+        # Manifold part
+        for (j, k_val) in enumerate(kappa)
+             @. Imodel += c_manifold[j] * exp(1im * k_val * M_final)
+        end
+        
+        # Additive part
+        omega_ann = 2π
+        # indices 1..4 corresponding to cos(wt), sin(wt), cos(2wt), sin(2wt)
+        if length(c_additive) >= 4
+            @. Imodel += c_additive[1] * cos(omega_ann * t)
+            @. Imodel += c_additive[2] * sin(omega_ann * t)
+            @. Imodel += c_additive[3] * cos(2 * omega_ann * t)
+            @. Imodel += c_additive[4] * sin(2 * omega_ann * t)
+        end
+        
         for i in eachindex(t)
-            println(io, "$(t[i]),$(I[i]),$(real(Imodel[i]))")
+            m_emp_val = length(M_empirical) >= i ? M_empirical[i] : 0.0
+            println(io, "$(t[i]),$(I[i]),$(real(Imodel[i])),$(real(M_final[i])),$m_emp_val")
         end
     end
     println("Model fit saved to model_fit.csv")
 end
 
-# run if called as script
 if abspath(PROGRAM_FILE) == @__FILE__
     if length(ARGS) < 2
         println("Usage: script.jl timeseries.txt params.json [--skip-optim]")
