@@ -145,21 +145,15 @@ end
 # ---------- Objective and optimization ----------
 
 function objective(x, I, t, tides, kappa; μ=1e-2, λ_reg=1.0)
-    nκ = length(kappa)
     nt = length(I)
 
-    # unpack
-    c_re = view(x, 1:nκ)
-    c_im = view(x, nκ+1:2nκ)
-    
     # parameters are optimized in log-space to ensure positivity
-    log_ζ    = x[2nκ+1]
-    log_ω0   = x[2nκ+2]
-    phi      = x[2nκ+3]
-    # ic_A     = x[2nκ+4]
-    # ic_B     = x[2nκ+5]
-    ic_A = 0.0
-    ic_B = 0.0
+    # x layout: [log(zeta), log(omega0), phi, ic_A, ic_B]
+    log_ζ    = x[1]
+    log_ω0   = x[2]
+    phi      = x[3]
+    ic_A     = x[4]
+    ic_B     = x[5]
 
     # Convert back from log-space
     # Check for Inf before exp to avoid DomainError
@@ -171,28 +165,40 @@ function objective(x, I, t, tides, kappa; μ=1e-2, λ_reg=1.0)
     ζ    = exp(log_ζ)
     ω0   = exp(log_ω0)
 
-    c = c_re .+ im .* c_im
-
     # manifold
     M = build_manifold(t, tides, ζ, ω0, phi, ic_A, ic_B)
 
-    # basis and model
-    Φ = [exp.(1im * κ .* M) for κ in kappa]
-    Imodel = zeros(Complex{eltype(x)}, nt)
-    for (j, φ) in enumerate(Φ)
-        Imodel .+= c[j] .* φ
+    # basis matrix (Phi)
+    # Using simple loop to construct matrix with Dual numbers correctly
+    n_kappa = length(kappa)
+    Phi_mat = Matrix{Complex{T}}(undef, nt, n_kappa)
+    for (k_idx, k_val) in enumerate(kappa)
+        @. Phi_mat[:, k_idx] = exp(1im * k_val * M)
     end
     
+    # Solve linear coefficients analytically: c = Phi \ I
+    # This is the "Variable Projection" step.
+    # Ridge regression: (Phi'Phi + lambda*I) * c = Phi' * I
+    lambda_ridge = 1.0
+    H = Phi_mat' * Phi_mat
+    # Add diagonal ridge (manual loop to avoid allocation/type issues)
+    for i in 1:size(H,1)
+        H[i,i] += lambda_ridge
+    end
+    c = H \ (Phi_mat' * Complex{T}.(I))
+
+    # Reconstruct model
+    Imodel = Phi_mat * c
+    I_real = real.(Imodel)
+
     # Regularization to keep damping parameters sane
     # Priors: zeta ~ 0.5, omega0 ~ 2.5
     prior_log_ζ = log(0.5)
     prior_log_ω0 = log(2.5)
     # Also regularize ICs lightly to avoid drift if unconstrained
-    # reg_term = λ_reg * ((log_ζ - prior_log_ζ)^2 + (log_ω0 - prior_log_ω0)^2 + 0.1*(ic_A^2 + ic_B^2))
     reg_term = λ_reg * ((log_ζ - prior_log_ζ)^2 + (log_ω0 - prior_log_ω0)^2)
 
     # objective
-    I_real = real.(Imodel)
     # Use Correlation Coefficient as primary metric
     # Manual correlation calculation for ForwardDiff compatibility
     I_mean = mean(I)
@@ -225,7 +231,6 @@ function optimize_state(I, t, tides, damping, kappa, phi_init, ic_A_init, ic_B_i
     ω00 = Float64(damping["omega0"])
     
     # Ensure initial values are positive for log-transform
-    # If they are not (e.g. from a bad previous run), reset to defaults
     if ζ0 <= 0
         ζ0 = 0.5
     end
@@ -233,38 +238,42 @@ function optimize_state(I, t, tides, damping, kappa, phi_init, ic_A_init, ic_B_i
         ω00 = 2.5
     end
 
-    # initial manifold and coefficients
-    M0 = build_manifold(t, tides, ζ0, ω00, phi_init, ic_A_init, ic_B_init)
-    Φ0 = [exp.(1im * κ .* M0) for κ in kappa]
-    c0 = [dot(I, φ) for φ in Φ0]
+    # x layout: [log(zeta), log(omega0), phi, ic_A, ic_B]
+    x0 = [log(ζ0); log(ω00); phi_init; ic_A_init; ic_B_init]
 
-    # x layout: [Re(c), Im(c), log(zeta), log(omega0), phi]
-    # We must ensure log arguments are positive. 
-    # Use real() to strip potential Complex wrapper if any, though input should be Float64.
-    x0 = [real.(c0); imag.(c0); log(ζ0); log(ω00); phi_init]
-
-    # result = optimize(x -> objective(x, I, t, tides, kappa; μ=μ, λ_reg=1.0),
-    #                   x0, LBFGS(); autodiff = :forward)
+    # optimize non-linear parameters
     result = optimize(x -> objective(x, I, t, tides, kappa; μ=μ, λ_reg=1.0),
                       x0, LBFGS(); autodiff = :forward)
 
     x_opt = Optim.minimizer(result)
-    c_re = x_opt[1:nκ]
-    c_im = x_opt[nκ+1:2nκ]
     
-    log_ζ_opt  = x_opt[2nκ+1]
-    log_ω0_opt = x_opt[2nκ+2]
-    phi        = x_opt[2nκ+3]
-    # ic_A       = x_opt[2nκ+4]
-    # ic_B       = x_opt[2nκ+5]
-    ic_A = 0.0
-    ic_B = 0.0
+    log_ζ_opt  = x_opt[1]
+    log_ω0_opt = x_opt[2]
+    phi_opt    = x_opt[3]
+    ic_A_opt   = x_opt[4]
+    ic_B_opt   = x_opt[5]
     
-    ζ    = exp(log_ζ_opt)
-    ω0   = exp(log_ω0_opt)
+    ζ_opt    = exp(log_ζ_opt)
+    ω0_opt   = exp(log_ω0_opt)
 
-    c_opt = c_re .+ im .* c_im
-    return c_opt, ζ, ω0, phi, ic_A, ic_B
+    # Final pass to get optimal coefficients
+    M_opt = build_manifold(t, tides, ζ_opt, ω0_opt, phi_opt, ic_A_opt, ic_B_opt)
+    Phi_mat = Matrix{ComplexF64}(undef, length(I), nκ)
+    for (k_idx, k_val) in enumerate(kappa)
+        @. Phi_mat[:, k_idx] = exp(1im * k_val * M_opt)
+    end
+    
+    # Ridge regression: (Phi'Phi + lambda*I) * c = Phi' * I
+    # Use lambda related to noise/regularization
+    lambda_ridge = 1.0 # Stronger regularization to keep coeffs small
+    H = Phi_mat' * Phi_mat
+    # Add diagonal ridge
+    for i in 1:size(H,1)
+        H[i,i] += lambda_ridge
+    end
+    c_opt = H \ (Phi_mat' * ComplexF64.(I))
+
+    return c_opt, ζ_opt, ω0_opt, phi_opt, ic_A_opt, ic_B_opt
 end
 
 # ---------- Main ----------
@@ -327,7 +336,15 @@ function main(ts_path::String, json_path::String; μ=1e-2, skip_optim=false)
             end
             
             # Solve Phi * c = I
-            c_opt = Phi_mat \ ComplexF64.(I)
+            # c_opt = Phi_mat \ ComplexF64.(I)
+            
+            # Ridge regression
+            lambda_ridge = 1.0
+            H = Phi_mat' * Phi_mat
+            for i in 1:size(H,1)
+                H[i,i] += lambda_ridge
+            end
+            c_opt = H \ (Phi_mat' * ComplexF64.(I))
             
             # Save recalculated coefficients to JSON
             json_obj["damping"]["zeta"]  = ζ_opt
