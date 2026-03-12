@@ -78,7 +78,11 @@ function build_annual_comb(t, phi, sec_amp, year_len, drift_linear, drift_quad)
     
     P_comb = 365.0 / year_len
     
-    σ = 1.0/12.0 
+    # Sigma for Gaussian Impulse
+    # User feedback indicates "plateaus" should be smooth. 
+    # A wide impulse (1/12) causes tidal wiggles to leak into the plateau.
+    # Narrowing to ~1 week (1/52) to create cleaner steps/plateaus.
+    σ = 1.0/78.0 # 52
     
     comb = zeros(eltype(t), length(t))
     
@@ -235,10 +239,13 @@ end
 
 # ---------- Optimization ----------
 
-function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_only=false)
+function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_only=false, stop_threshold=nothing)
     println("Starting Canonical Manifold Optimization (Random Search - Linear/Quad Drift)...")
     if manifold_only
         println("  (Mode: Manifold-Only Fit)")
+    end
+    if stop_threshold !== nothing
+        println("  (Stop Threshold: Correlation >= $stop_threshold)")
     end
     
     # Optimization Target is always the input (t, I)
@@ -281,30 +288,30 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     sigma_I = std(I_target) # Compute once outside
     function calc_objective(M_trial, I_ref)
         if manifold_only
-            m_mean = mean(M_trial)
+            # For manifold fitting, we want to match the absolute amplitude and shape.
+            # Avoid linear scaling (slope/intercept) to force amplitude convergence.
             
-            # Use precomputed means if possible, but I_ref might change in other contexts? 
-            # In manifold_only, I_ref is always I_target.
-            i_mean = mean(I_ref)
+            # Calculate Absolute RMSE
+            diff = M_trial .- I_ref
+            mse = mean(diff.^2)
+            rmse_abs = sqrt(mse)
             
-            diff_m = M_trial .- m_mean
-            diff_i = I_ref .- i_mean
-            
-            num = sum(diff_m .* diff_i)
-            den = sum(diff_m.^2)
-            
-            slope = den > 1e-12 ? num / den : 0.0
-            
-            resid = slope .* diff_m .- diff_i
-            mse = mean(resid.^2)
-            rmse = sqrt(mse)
-            
+            # Calculate Correlation
             r = cor(M_trial, I_ref)
             
-            nrmse = rmse / (sigma_I + 1e-9)
+            # Combined Metric:
+            # We want high correlation (r -> 1) and low RMSE (rmse_abs -> 0).
+            # Normalize RMSE by the standard deviation of the target signal to make it comparable.
+            nrmse = rmse_abs / (sigma_I + 1e-9)
             
-            # Score = Correlation - 0.5 * NRMSE
-            score = r - 0.5 * nrmse
+            # Score formulation:
+            # If amplitude is off by factor of 2 (e.g. 0.03 vs 0.06), RMSE will be large.
+            # Let's weight RMSE heavily to force amplitude matching.
+            # Score = Correlation - Weight * NRMSE
+            # If Weight is too high, it might sacrifice correlation for DC offset?
+            # But M and I should be aligned.
+            
+            score = r - 2.0 * nrmse
             return score
         else
             # Correlation with OMP reconstruction (General Case)
@@ -356,7 +363,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     end
 
     # Loop
-    n_iter = 50000 
+    n_iter = 10000
     T = 0.1 
     alpha = 0.9995
     
@@ -470,6 +477,11 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
                 best_csa_phase = cand_csa_phase
                 best_ic_A = cand_ic_A
                 best_ic_B = cand_ic_B
+                
+                if stop_threshold !== nothing && r_best >= stop_threshold
+                    println("  Hit target correlation $stop_threshold at iter $i. Stopping early.")
+                    break
+                end
             end
         end
         
@@ -484,7 +496,7 @@ end
 
 # ---------- Main ----------
 
-function main(ts_path::String, json_path::String; skip_optim=false, manifold_only=false, final_mod_path::Union{String, Nothing}=nothing)
+function main(ts_path::String, json_path::String; skip_optim=false, manifold_only=false, final_mod_path::Union{String, Nothing}=nothing, staged_path::Union{String, Nothing}=nothing)
     t, I = read_timeseries(ts_path)
     tides, damping, kappa, annual_phase, ic_A, ic_B, ramp_slope, json_obj = read_params(json_path)
 
@@ -493,7 +505,74 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
     local best_sec_amp = 0.0
     local best_year_len = 365.242
 
-    if !skip_optim && final_mod_path === nothing
+    if !skip_optim && staged_path !== nothing
+        println("Running Staged Optimization using calibration file: $staged_path")
+        backup = archive_params(json_path)
+        println("Archived previous params to $backup")
+        
+        # Read calibration file
+        t_cal, I_cal = read_timeseries(staged_path)
+        println("Loaded calibration data (n=$(length(t_cal)))")
+        
+        # Stage 1: Fit Manifold to Calibration File (threshold 0.996)
+        kappa_stage1 = collect(-2000:2000)
+        
+        best_tides, best_ramp, best_phi, sec_amp, year_len, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, b_ic_A, b_ic_B, best_r = optimize_manifold_random(t_cal, I_cal, json_obj, ic_A, ic_B, kappa_stage1; manifold_only=true, stop_threshold=0.96)
+        
+        println("Stage 1 Complete. Best Calibration Correlation: $best_r")
+        
+        # Update local vars for Stage 2
+        best_sec_amp = sec_amp
+        best_year_len = year_len
+        
+        # Save intermediate params
+        json_obj["tides"] = best_tides
+        json_obj["ramp_slope"] = best_ramp
+        json_obj["annual_phase"] = best_phi
+        json_obj["secondary_impulse_amp"] = best_sec_amp
+        json_obj["year_length"] = best_year_len
+        json_obj["drift_linear"] = best_d_lin
+        json_obj["drift_quad"] = best_d_quad
+        json_obj["comp_annual_amp"] = b_ca_amp
+        json_obj["comp_annual_phase"] = b_ca_ph
+        json_obj["comp_semi_amp"] = b_csa_amp
+        json_obj["comp_semi_phase"] = b_csa_ph
+        json_obj["initial_condition"] = Dict("A" => b_ic_A, "B" => b_ic_B)
+        write_params(json_path, json_obj)
+        println("Saved Stage 1 parameters to $json_path")
+        
+        # Stage 2: Construct Manifold for Target 't' and Run OMP
+        println("Stage 2: Applying optimized manifold to target time-series...")
+        
+        # Construct M_final using clean manifold (inc_add=false)
+        inc_add = false 
+        M_final = build_manifold(t, best_tides, best_ramp, best_phi, sec_amp, year_len, b_ic_A, b_ic_B, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph; include_additive=inc_add)
+        M_final .*= 1.0
+        
+        # Run OMP on target
+        kappa = collect(-2000:2000)
+        r_final, c_final = run_omp(M_final, I, kappa, t; max_atoms=12)
+        
+        println("Stage 2 Complete. Final Correlation: $r_final")
+        
+        # Split coefficients and save
+        n_kappa = length(kappa)
+        c_manifold = c_final[1:n_kappa]
+        c_additive = c_final[n_kappa+1:end]
+        
+        json_obj["coefficients"] = Dict(
+            "kappa" => kappa,
+            "real"  => real.(c_manifold),
+            "imag"  => imag.(c_manifold),
+        )
+        json_obj["additive_coefficients"] = Dict(
+            "real" => real.(c_additive),
+            "imag" => imag.(c_additive)
+        )
+        write_params(json_path, json_obj)
+        println("Saved final coefficients to $json_path")
+
+    elseif !skip_optim && final_mod_path === nothing
         backup = archive_params(json_path)
         println("Archived previous params to $backup")
         
@@ -731,6 +810,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
             final_mod_path = ARGS[idx_fm + 1]
         end
         
-        main(ARGS[1], ARGS[2]; skip_optim=skip_optim, manifold_only=manifold_only, final_mod_path=final_mod_path)
+        staged_path = nothing
+        idx_staged = findfirst(x -> x == "--staged", ARGS)
+        if idx_staged !== nothing && length(ARGS) >= idx_staged + 1
+            staged_path = ARGS[idx_staged + 1]
+        end
+        
+        main(ARGS[1], ARGS[2]; skip_optim=skip_optim, manifold_only=manifold_only, final_mod_path=final_mod_path, staged_path=staged_path)
     end
 end
