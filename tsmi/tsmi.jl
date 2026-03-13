@@ -51,6 +51,49 @@ function write_params(path::String, json_obj)
     run(`python -c "import json; d=json.load(open('$path')); open('$path', 'w').write(json.dumps(d, indent=4))"`)
 end
 
+function sparsify_coeffs(kappa, c_dense)
+    sparse_list = []
+    for (i, val) in enumerate(c_dense)
+        if abs(val) > 1e-9
+            push!(sparse_list, Dict("k" => kappa[i], "re" => real(val), "im" => imag(val)))
+        end
+    end
+    return sparse_list
+end
+
+function load_active_coeffs(json_obj)
+    # Returns Vector{Tuple{Int, ComplexF64}}
+    active_coeffs = Tuple{Int, ComplexF64}[]
+    
+    if !haskey(json_obj, "coefficients"); return active_coeffs; end
+    
+    data = json_obj["coefficients"]
+    
+    if data isa Vector
+        # New sparse format: list of objects
+        for item in data
+            # Handle JSON3 object access
+            k = Int(item["k"])
+            val = ComplexF64(Float64(item["re"]), Float64(item["im"]))
+            push!(active_coeffs, (k, val))
+        end
+    elseif data isa Dict
+        # Old dense format: dict with arrays
+        if haskey(data, "kappa")
+            kappa_stored = Int.(data["kappa"])
+            re = Float64.(data["real"])
+            im = Float64.(data["imag"])
+            for (i, k) in enumerate(kappa_stored)
+                val = ComplexF64(re[i], im[i])
+                if abs(val) > 1e-9
+                    push!(active_coeffs, (k, val))
+                end
+            end
+        end
+    end
+    return active_coeffs
+end
+
 # ---------- Physics: manifold construction ----------
 
 function build_tidal_signal(t, tides, year_len)
@@ -311,7 +354,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
             # If Weight is too high, it might sacrifice correlation for DC offset?
             # But M and I should be aligned.
             
-            score = r - 2.0 * nrmse
+            score = r - 0.1 * nrmse  # 2
             return score
         else
             # Correlation with OMP reconstruction (General Case)
@@ -363,7 +406,8 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     end
 
     # Loop
-    n_iter = 10000
+    # Increase iterations for manifold-only mode to find global optimum
+    n_iter = manifold_only ? 250000 : 5000
     T = 0.1 
     alpha = 0.9995
     
@@ -500,7 +544,9 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
     t, I = read_timeseries(ts_path)
     tides, damping, kappa, annual_phase, ic_A, ic_B, ramp_slope, json_obj = read_params(json_path)
 
-    local c_final
+    # Use active_coeffs list for reconstruction
+    local active_coeffs = Tuple{Int, ComplexF64}[]
+    local c_additive = zeros(ComplexF64, 4)
     local M_final
     local best_sec_amp = 0.0
     local best_year_len = 365.242
@@ -560,11 +606,14 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         c_manifold = c_final[1:n_kappa]
         c_additive = c_final[n_kappa+1:end]
         
-        json_obj["coefficients"] = Dict(
-            "kappa" => kappa,
-            "real"  => real.(c_manifold),
-            "imag"  => imag.(c_manifold),
-        )
+        # Populate active_coeffs for reconstruction
+        for (i, val) in enumerate(c_manifold)
+            if abs(val) > 1e-9
+                push!(active_coeffs, (kappa[i], val))
+            end
+        end
+        
+        json_obj["coefficients"] = sparsify_coeffs(kappa, c_manifold)
         json_obj["additive_coefficients"] = Dict(
             "real" => real.(c_additive),
             "imag" => imag.(c_additive)
@@ -635,12 +684,14 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         c_manifold = c_final[1:n_kappa]
         c_additive = c_final[n_kappa+1:end]
         
+        # Populate active_coeffs for reconstruction
+        for (i, val) in enumerate(c_manifold)
+            if abs(val) > 1e-9
+                push!(active_coeffs, (kappa[i], val))
+            end
+        end
         
-        json_obj["coefficients"] = Dict(
-            "kappa" => kappa,
-            "real"  => real.(c_manifold),
-            "imag"  => imag.(c_manifold),
-        )
+        json_obj["coefficients"] = sparsify_coeffs(kappa, c_manifold)
         json_obj["additive_coefficients"] = Dict(
             "real" => real.(c_additive),
             "imag" => imag.(c_additive)
@@ -683,11 +734,14 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         c_manifold = c_final[1:n_kappa]
         c_additive = c_final[n_kappa+1:end]
         
-        json_obj["coefficients"] = Dict(
-            "kappa" => kappa,
-            "real"  => real.(c_manifold),
-            "imag"  => imag.(c_manifold),
-        )
+        # Populate active_coeffs for reconstruction
+        for (i, val) in enumerate(c_manifold)
+            if abs(val) > 1e-9
+                push!(active_coeffs, (kappa[i], val))
+            end
+        end
+        
+        json_obj["coefficients"] = sparsify_coeffs(kappa, c_manifold)
         json_obj["additive_coefficients"] = Dict(
             "real" => real.(c_additive),
             "imag" => imag.(c_additive)
@@ -712,27 +766,42 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         M_final = build_manifold(t, tides, best_ramp, annual_phase, best_sec_amp, best_year_len, ic_A, ic_B, d_lin, d_quad, ca_amp, ca_ph, csa_amp, csa_ph)
         M_final .*= 1.0
         
-        local c_manifold
-        local c_additive
+        # Load active coeffs
+        # In Julia, to assign to outer local active_coeffs, we need no 'local' prefix if already defined
+        active_coeffs = load_active_coeffs(json_obj)
         
-        if haskey(json_obj, "coefficients")
-            c_re = Float64.(json_obj["coefficients"]["real"])
-            c_im = Float64.(json_obj["coefficients"]["imag"])
-            c_manifold = c_re .+ im .* c_im
-            
-            if haskey(json_obj, "additive_coefficients")
-                add_re = Float64.(json_obj["additive_coefficients"]["real"])
-                add_im = Float64.(json_obj["additive_coefficients"]["imag"])
-                c_additive = add_re .+ im .* add_im
-            else
-                c_additive = zeros(ComplexF64, 4)
-            end
+        if haskey(json_obj, "additive_coefficients")
+             add_re = Float64.(json_obj["additive_coefficients"]["real"])
+             add_im = Float64.(json_obj["additive_coefficients"]["imag"])
+             c_additive = add_re .+ im .* add_im
         else
+             c_additive = zeros(ComplexF64, 4)
+        end
+             
+        if isempty(active_coeffs) && !haskey(json_obj, "coefficients")
             println("Warning: No coefficients found in JSON. Running OMP once.")
             _, c_final = run_omp(M_final, I, kappa, t; max_atoms=12)
             n_kappa = length(kappa)
             c_manifold = c_final[1:n_kappa]
             c_additive = c_final[n_kappa+1:end]
+            
+            # Populate active_coeffs
+            for (i, val) in enumerate(c_manifold)
+                if abs(val) > 1e-9
+                    push!(active_coeffs, (kappa[i], val))
+                end
+            end
+        end
+        
+        # Check if coefficients are in old dense format (Dict with arrays)
+        # If so, convert to new sparse format and save
+        coeffs_data = get(json_obj, "coefficients", nothing)
+        if coeffs_data isa Dict && haskey(coeffs_data, "kappa")
+             println("Converting dense coefficients to sparse format...")
+             dense_c = convert(Vector{ComplexF64}, coeffs_data["real"] .+ im .* coeffs_data["imag"])
+             json_obj["coefficients"] = sparsify_coeffs(coeffs_data["kappa"], dense_c)
+             write_params(json_path, json_obj)
+             println("Saved converted parameters to $json_path")
         end
     end
 
@@ -774,9 +843,20 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         
         # Calculate model
         Imodel = zeros(ComplexF64, length(t))
-        # Manifold part
-        for (j, k_val) in enumerate(kappa)
-             @. Imodel += c_manifold[j] * exp(1im * k_val * M_final)
+        # Manifold part - Sparse Summation
+        for item in active_coeffs
+             # active_coeffs is list of (k, val) tuples or objects?
+             # load_active_coeffs returns Vector{Tuple{Int, ComplexF64}}
+             # sparsify_coeffs returns Dict list.
+             # In skip_optim, we use active_coeffs which is Tuple.
+             
+             # If using sparse JSON, active_coeffs is Tuple list.
+             # If using dense JSON, load_active_coeffs converts to Tuple list.
+             
+             k_val = item[1]
+             c_val = item[2]
+             
+             @. Imodel += c_val * exp(1im * k_val * M_final)
         end
         
         # Additive part
@@ -796,6 +876,7 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
     end
     println("Model fit saved to model_fit.csv")
 end
+
 
 if abspath(PROGRAM_FILE) == @__FILE__
     if length(ARGS) < 2
