@@ -36,7 +36,13 @@ function read_params(path::String)
     # Read DC offset
     dc_offset = Float64(get(j, "dc_offset", 0.0))
     
-    return tides, damping, kappa, annual_phase, ic_A, ic_B, ramp_slope, dc_offset, j
+    # Read Impulse Sigma (default to 1.0/78.0 approx 0.0128)
+    impulse_sigma = Float64(get(j, "impulse_sigma", 1.0/78.0))
+    
+    # Read Primary Impulse Amplitude (default 1.0)
+    primary_amp = Float64(get(j, "primary_impulse_amp", 1.0))
+    
+    return tides, damping, kappa, annual_phase, ic_A, ic_B, ramp_slope, dc_offset, impulse_sigma, primary_amp, j
 end
 
 function archive_params(path::String)
@@ -113,7 +119,7 @@ function build_tidal_signal(t, tides, year_len)
     return sig
 end
 
-function build_annual_comb(t, phi, sec_amp, year_len, drift_linear, drift_quad)
+function build_annual_comb(t, primary_amp, phi, sec_amp, year_len, drift_linear, drift_quad, impulse_sigma)
     # Gaussian comb with period 365.0 days + drifts
     # t is in years (approx 365.25 days)
     # P_comb = 365.0 / 365.25 approx 0.999... in 't' units?
@@ -128,7 +134,7 @@ function build_annual_comb(t, phi, sec_amp, year_len, drift_linear, drift_quad)
     # User feedback indicates "plateaus" should be smooth. 
     # A wide impulse (1/12) causes tidal wiggles to leak into the plateau.
     # Narrowing to ~1 week (1/52) to create cleaner steps/plateaus.
-    σ = 1.0/78.0 # 52
+    σ = impulse_sigma # default 1.0/78.0
     
     comb = zeros(eltype(t), length(t))
     
@@ -151,8 +157,8 @@ function build_annual_comb(t, phi, sec_amp, year_len, drift_linear, drift_quad)
         dt = t_nom - t_mean
         t_actual = t_nom + drift_linear * dt + drift_quad * dt^2
         
-        # Primary Impulse
-        @. comb += exp( - (t - t_actual)^2 / (2 * σ^2) )
+        # Primary Impulse (Variable Amplitude)
+        @. comb += primary_amp * exp( - (t - t_actual)^2 / (2 * σ^2) )
         
         # Secondary Impulse
         # Assume secondary impulse shifts with the primary
@@ -162,8 +168,8 @@ function build_annual_comb(t, phi, sec_amp, year_len, drift_linear, drift_quad)
     return comb
 end
 
-function build_manifold(t, tides, ramp_slope, phi, sec_amp, year_len, ic_A, ic_B, drift_linear, drift_quad, 
-                        comp_ann_amp, comp_ann_phase, comp_semi_amp, comp_semi_phase, dc_offset; include_additive=true)
+function build_manifold(t, tides, ramp_slope, primary_amp, phi, sec_amp, year_len, ic_A, ic_B, drift_linear, drift_quad, 
+                        comp_ann_amp, comp_ann_phase, comp_semi_amp, comp_semi_phase, dc_offset, impulse_sigma; include_additive=true)
     # Spin-up: Run for 20 years prior to t[1] to eliminate transient
     
     t_start = t[1]
@@ -173,7 +179,7 @@ function build_manifold(t, tides, ramp_slope, phi, sec_amp, year_len, ic_A, ic_B
     t_spinup = range(t_start - 40.0, stop=t_start - dt, step=dt) 
     
     # Base Multiplicative (Impulse * Tides)
-    mult_spinup = build_annual_comb(t_spinup, phi, sec_amp, year_len, drift_linear, drift_quad) .* build_tidal_signal(t_spinup, tides, year_len)
+    mult_spinup = build_annual_comb(t_spinup, primary_amp, phi, sec_amp, year_len, drift_linear, drift_quad, impulse_sigma) .* build_tidal_signal(t_spinup, tides, year_len)
     
     # Additive Compensatory Sinusoids
     omega_ann = 2π
@@ -185,6 +191,7 @@ function build_manifold(t, tides, ramp_slope, phi, sec_amp, year_len, ic_A, ic_B
         base_spinup = mult_spinup
     end
     
+    # Spin-up integration (still useful to establish trend if needed, but we override final value)
     val = 0.0 
     for i in eachindex(t_spinup)
         ramp = copysign(ramp_slope, val)
@@ -192,7 +199,7 @@ function build_manifold(t, tides, ramp_slope, phi, sec_amp, year_len, ic_A, ic_B
     end
     
     # Main run
-    mult = build_annual_comb(t, phi, sec_amp, year_len, drift_linear, drift_quad) .* build_tidal_signal(t, tides, year_len)
+    mult = build_annual_comb(t, primary_amp, phi, sec_amp, year_len, drift_linear, drift_quad, impulse_sigma) .* build_tidal_signal(t, tides, year_len)
     
     if include_additive
         comp = @. comp_ann_amp * sin(omega_ann * t + comp_ann_phase) + 
@@ -203,7 +210,11 @@ function build_manifold(t, tides, ramp_slope, phi, sec_amp, year_len, ic_A, ic_B
     end
     
     M_forced = zeros(eltype(t), length(t))
-    current_val = val
+    # Use explicit initial condition ic_A instead of spin-up result
+    current_val = ic_A
+    
+    # ic_B is currently reserved/unused in this 1st-order model
+    
     for i in 1:length(t)
         ramp = copysign(ramp_slope, current_val)
         current_val = base[i] + current_val - ramp
@@ -316,6 +327,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     current_ramp = Float64(get(json_obj, "ramp_slope", 0.001))
     current_phi = Float64(get(json_obj, "annual_phase", 0.0))
     current_year_len = Float64(get(json_obj, "year_length", 365.242))
+    current_primary_amp = Float64(get(json_obj, "primary_impulse_amp", 1.0))
     current_sec_amp = Float64(get(json_obj, "secondary_impulse_amp", 0.0))
     current_d_lin = Float64(get(json_obj, "drift_linear", 0.0))
     current_d_quad = Float64(get(json_obj, "drift_quad", 0.0))
@@ -324,6 +336,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     current_csa_amp = Float64(get(json_obj, "comp_semi_amp", 0.0))
     current_csa_phase = Float64(get(json_obj, "comp_semi_phase", 0.0))
     current_dc = Float64(get(json_obj, "dc_offset", 0.0))
+    current_sigma = Float64(get(json_obj, "impulse_sigma", 1.0/78.0))
     
     # Use input initial conditions as starting point
     current_ic_A = ic_A
@@ -333,6 +346,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     best_ramp = current_ramp
     best_phi = current_phi
     best_year_len = current_year_len
+    best_primary_amp = current_primary_amp
     best_sec_amp = current_sec_amp
     best_d_lin = current_d_lin
     best_d_quad = current_d_quad
@@ -341,6 +355,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     best_csa_amp = current_csa_amp
     best_csa_phase = current_csa_phase
     best_dc = current_dc
+    best_sigma = current_sigma
     best_ic_A = current_ic_A
     best_ic_B = current_ic_B
     
@@ -388,12 +403,44 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     inc_add = !manifold_only
 
     # Initial Baseline
-    M = build_manifold(t_target, current_tides, current_ramp, current_phi, current_sec_amp, current_year_len, current_ic_A, current_ic_B, current_d_lin, current_d_quad,
-                       current_ca_amp, current_ca_phase, current_csa_amp, current_csa_phase, current_dc; include_additive=inc_add)
+    M = build_manifold(t_target, current_tides, current_ramp, current_primary_amp, current_phi, current_sec_amp, current_year_len, current_ic_A, current_ic_B, current_d_lin, current_d_quad,
+                       current_ca_amp, current_ca_phase, current_csa_amp, current_csa_phase, current_dc, current_sigma; include_additive=inc_add)
     r_best = calc_objective(M, I_target)
     
     println("Initial Correlation: $r_best")
+
+    ################################################
     
+    # Pre-Optimization: Grid Search for Initial Conditions (ic_A)
+    # The initial condition of the integrator affects the transient at the start of the time-series.
+    # Scan a reasonable range (e.g., -2.0 to 2.0) to match the starting level of the target data.
+    println("Running Grid Search for Initial Condition A...")
+    best_ic_scan_A = current_ic_A
+    r_scan_best_ic = r_best
+    
+    # Range based on typical normalized anomaly data (-2.0 to 2.0)
+    ic_scan_steps = range(-4.0, stop=4.0, length=200) 
+    for ic_val in ic_scan_steps
+        M_scan = build_manifold(t_target, current_tides, current_ramp, current_primary_amp, current_phi, current_sec_amp, current_year_len, ic_val, current_ic_B, current_d_lin, current_d_quad,
+                               current_ca_amp, current_ca_phase, current_csa_amp, current_csa_phase, current_dc, current_sigma; include_additive=inc_add)
+        r_scan = calc_objective(M_scan, I_target)
+        if r_scan > r_scan_best_ic
+            r_scan_best_ic = r_scan
+            best_ic_scan_A = ic_val
+        end
+    end
+    
+    if r_scan_best_ic > r_best
+        println("  Found better Initial Condition A: $best_ic_scan_A (r=$r_scan_best_ic vs previous $r_best)")
+        # current_ic_A = best_ic_scan_A
+        # best_ic_A = best_ic_scan_A
+        # r_best = r_scan_best_ic
+    else
+        println("  Initial Condition A retained.")
+    end
+
+    ################################
+
     # Pre-Optimization: Grid Search for Annual Phase
     # The annual phase (impulse timing) can have local optima due to narrow impulse width.
     # Scan through one full period (~1.0 year) to find the best basin.
@@ -404,8 +451,8 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     # 24 steps (twice per month)
     scan_steps = range(0.0, stop=1.0, length=25)[1:end-1] 
     for p_val in scan_steps
-        M_scan = build_manifold(t_target, current_tides, current_ramp, p_val, current_sec_amp, current_year_len, current_ic_A, current_ic_B, current_d_lin, current_d_quad,
-                               current_ca_amp, current_ca_phase, current_csa_amp, current_csa_phase, current_dc; include_additive=inc_add)
+        M_scan = build_manifold(t_target, current_tides, current_ramp, current_primary_amp, p_val, current_sec_amp, current_year_len, current_ic_A, current_ic_B, current_d_lin, current_d_quad,
+                               current_ca_amp, current_ca_phase, current_csa_amp, current_csa_phase, current_dc, current_sigma; include_additive=inc_add)
         r_scan = calc_objective(M_scan, I_target)
         if r_scan > r_scan_best
             r_scan_best = r_scan
@@ -421,6 +468,9 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     else
         println("  Initial phase retained.")
     end
+
+    ################################################
+
 
     # Loop
     # Increase iterations for manifold-only mode to find global optimum
@@ -446,6 +496,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     curr_ramp = best_ramp
     curr_phi = best_phi # Ensure curr_phi starts at the best found phase
     curr_year_len = best_year_len
+    curr_primary_amp = best_primary_amp
     curr_sec_amp = best_sec_amp
     curr_d_lin = best_d_lin
     curr_d_quad = best_d_quad
@@ -456,6 +507,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
     curr_dc = best_dc
     curr_ic_A = best_ic_A
     curr_ic_B = best_ic_B
+    curr_sigma = best_sigma
     curr_r = r_best
     
     for i in 1:n_iter
@@ -463,6 +515,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
         cand_ramp = curr_ramp
         cand_phi = curr_phi
         cand_year_len = curr_year_len
+        cand_primary_amp = curr_primary_amp
         cand_sec_amp = curr_sec_amp
         cand_d_lin = curr_d_lin
         cand_d_quad = curr_d_quad
@@ -473,6 +526,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
         cand_dc = curr_dc
         cand_ic_A = curr_ic_A
         cand_ic_B = curr_ic_B
+        cand_sigma = curr_sigma
         
         # Mutate Tides
         for (idx, td) in enumerate(cand_tides)
@@ -484,6 +538,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
         
         # Mutate Global Params
         if rand() < 0.2; cand_ramp = mutate_relative(cand_ramp; neg_prob=0.0); end
+        if rand() < 0.2; cand_primary_amp = mutate_relative(cand_primary_amp); end
         if rand() < 0.2; cand_phi += randn() * 0.05; end
         if rand() < 0.2; cand_year_len = mutate_relative(cand_year_len; scale=0.00001); end # neg_prob=0.0); end
         if rand() < 0.2; cand_sec_amp = mutate_relative(cand_sec_amp); end
@@ -514,9 +569,14 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
             cand_dc += randn() * (sigma_I * 0.005)
         end
         
+        # Mutate Impulse Width (Sigma)
+        if rand() < 0.2
+            cand_sigma = mutate_relative(cand_sigma)
+        end
+        
         # Evaluate
-        M_cand = build_manifold(t_target, cand_tides, cand_ramp, cand_phi, cand_sec_amp, cand_year_len, cand_ic_A, cand_ic_B, cand_d_lin, cand_d_quad,
-                                cand_ca_amp, cand_ca_phase, cand_csa_amp, cand_csa_phase, cand_dc; include_additive=inc_add)
+        M_cand = build_manifold(t_target, cand_tides, cand_ramp, cand_primary_amp, cand_phi, cand_sec_amp, cand_year_len, cand_ic_A, cand_ic_B, cand_d_lin, cand_d_quad,
+                                cand_ca_amp, cand_ca_phase, cand_csa_amp, cand_csa_phase, cand_dc, cand_sigma; include_additive=inc_add)
         r_cand = calc_objective(M_cand, I_target)
         
         # Metropolis-Hastings
@@ -524,6 +584,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
         if delta > 0 || rand() < exp(delta * 10.0 / T) 
             curr_tides = cand_tides
             curr_ramp = cand_ramp
+            curr_primary_amp = cand_primary_amp
             curr_phi = cand_phi
             curr_year_len = cand_year_len
             curr_sec_amp = cand_sec_amp
@@ -534,6 +595,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
             curr_csa_amp = cand_csa_amp
             curr_csa_phase = cand_csa_phase
             curr_dc = cand_dc
+            curr_sigma = cand_sigma
             curr_ic_A = cand_ic_A
             curr_ic_B = cand_ic_B
             curr_r = r_cand
@@ -543,6 +605,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
                 r_best = r_cand
                 best_tides = deepcopy(cand_tides)
                 best_ramp = cand_ramp
+                best_primary_amp = cand_primary_amp
                 best_phi = cand_phi
                 best_year_len = cand_year_len
                 best_sec_amp = cand_sec_amp
@@ -553,6 +616,7 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
                 best_csa_amp = cand_csa_amp
                 best_csa_phase = cand_csa_phase
                 best_dc = cand_dc
+                best_sigma = cand_sigma
                 best_ic_A = cand_ic_A
                 best_ic_B = cand_ic_B
                 
@@ -569,14 +633,14 @@ function optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_on
         end
     end
     
-    return best_tides, best_ramp, best_phi, best_sec_amp, best_year_len, best_d_lin, best_d_quad, best_ca_amp, best_ca_phase, best_csa_amp, best_csa_phase, best_dc, best_ic_A, best_ic_B, r_best
+    return best_tides, best_ramp, best_primary_amp, best_phi, best_sec_amp, best_year_len, best_d_lin, best_d_quad, best_ca_amp, best_ca_phase, best_csa_amp, best_csa_phase, best_dc, best_sigma, best_ic_A, best_ic_B, r_best
 end
 
 # ---------- Main ----------
 
 function main(ts_path::String, json_path::String; skip_optim=false, manifold_only=false, final_mod_path::Union{String, Nothing}=nothing, staged_path::Union{String, Nothing}=nothing)
     t, I = read_timeseries(ts_path)
-    tides, damping, kappa, annual_phase, ic_A, ic_B, ramp_slope, dc_param, json_obj = read_params(json_path)
+    tides, damping, kappa, annual_phase, ic_A, ic_B, ramp_slope, dc_param, impulse_sigma, primary_amp, json_obj = read_params(json_path)
 
     # Use active_coeffs list for reconstruction
     local active_coeffs = Tuple{Int, ComplexF64}[]
@@ -584,6 +648,7 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
     local M_final
     local best_sec_amp = 0.0
     local best_year_len = 365.242
+    local best_primary_amp = primary_amp
 
     if !skip_optim && staged_path !== nothing
         println("Running Staged Optimization using calibration file: $staged_path")
@@ -597,7 +662,7 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         # Stage 1: Fit Manifold to Calibration File (threshold 0.996)
         kappa_stage1 = collect(-2000:2000)
         
-        best_tides, best_ramp, best_phi, sec_amp, year_len, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, best_dc, b_ic_A, b_ic_B, best_r = optimize_manifold_random(t_cal, I_cal, json_obj, ic_A, ic_B, kappa_stage1; manifold_only=true, stop_threshold=0.96)
+        best_tides, best_ramp, best_primary_amp, best_phi, sec_amp, year_len, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, best_dc, best_sigma, b_ic_A, b_ic_B, best_r = optimize_manifold_random(t_cal, I_cal, json_obj, ic_A, ic_B, kappa_stage1; manifold_only=true, stop_threshold=0.96)
         
         println("Stage 1 Complete. Best Calibration Correlation: $best_r")
         
@@ -608,6 +673,7 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         # Save intermediate params
         json_obj["tides"] = best_tides
         json_obj["ramp_slope"] = best_ramp
+        json_obj["primary_impulse_amp"] = best_primary_amp
         json_obj["annual_phase"] = best_phi
         json_obj["secondary_impulse_amp"] = best_sec_amp
         json_obj["year_length"] = best_year_len
@@ -618,6 +684,7 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         json_obj["comp_semi_amp"] = b_csa_amp
         json_obj["comp_semi_phase"] = b_csa_ph
         json_obj["dc_offset"] = best_dc
+        json_obj["impulse_sigma"] = best_sigma
         json_obj["initial_condition"] = Dict("A" => b_ic_A, "B" => b_ic_B)
         write_params(json_path, json_obj)
         println("Saved Stage 1 parameters to $json_path")
@@ -627,7 +694,7 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         
         # Construct M_final using clean manifold (inc_add=false)
         inc_add = false 
-        M_final = build_manifold(t, best_tides, best_ramp, best_phi, sec_amp, year_len, b_ic_A, b_ic_B, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, best_dc; include_additive=inc_add)
+        M_final = build_manifold(t, best_tides, best_ramp, best_primary_amp, best_phi, sec_amp, year_len, b_ic_A, b_ic_B, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, best_dc, best_sigma; include_additive=inc_add)
         M_final .*= 1.0
         
         # Run OMP on target
@@ -664,16 +731,18 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         kappa = collect(-2000:2000)
         
         # Optimize
-        best_tides, best_ramp, best_phi, sec_amp, year_len, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, best_dc, b_ic_A, b_ic_B, best_r = optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_only=manifold_only)
+        best_tides, best_ramp, best_primary_amp, best_phi, sec_amp, year_len, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, best_dc, best_sigma, b_ic_A, b_ic_B, best_r = optimize_manifold_random(t, I, json_obj, ic_A, ic_B, kappa; manifold_only=manifold_only)
         
         println("Optimization Complete. Best Correlation: $best_r")
         println("Optimized Year Length: $year_len")
         println("Optimized Ramp Slope: $best_ramp")
+        println("Optimized Primary Amp: $best_primary_amp")
         println("Optimized Drift Linear: $best_d_lin")
         println("Optimized Drift Quad: $best_d_quad")
         println("Optimized Comp. Annual: Amp=$b_ca_amp, Phase=$b_ca_ph")
         println("Optimized Comp. Semi-Annual: Amp=$b_csa_amp, Phase=$b_csa_ph")
         println("Optimized DC Offset: $best_dc")
+        println("Optimized Impulse Sigma: $best_sigma")
         println("Optimized Initial Conditions: A=$b_ic_A, B=$b_ic_B")
         
         best_sec_amp = sec_amp
@@ -681,12 +750,13 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         
         # Reconstruct final manifold using same additive flag as optimization
         inc_add = !manifold_only
-        M_final = build_manifold(t, best_tides, best_ramp, best_phi, sec_amp, year_len, b_ic_A, b_ic_B, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, best_dc; include_additive=inc_add)
+        M_final = build_manifold(t, best_tides, best_ramp, best_primary_amp, best_phi, sec_amp, year_len, b_ic_A, b_ic_B, best_d_lin, best_d_quad, b_ca_amp, b_ca_ph, b_csa_amp, b_csa_ph, best_dc, best_sigma; include_additive=inc_add)
         M_final .*= 1.0
 
         # Update JSON (always update manifold params)
         json_obj["tides"] = best_tides
         json_obj["ramp_slope"] = best_ramp
+        json_obj["primary_impulse_amp"] = best_primary_amp
         json_obj["annual_phase"] = best_phi
         json_obj["secondary_impulse_amp"] = best_sec_amp
         json_obj["year_length"] = best_year_len
@@ -697,6 +767,7 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         json_obj["comp_semi_amp"] = b_csa_amp
         json_obj["comp_semi_phase"] = b_csa_ph
         json_obj["dc_offset"] = best_dc
+        json_obj["impulse_sigma"] = best_sigma
         json_obj["initial_condition"] = Dict("A" => b_ic_A, "B" => b_ic_B)
         
         if manifold_only
@@ -792,6 +863,7 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         best_sec_amp = Float64(get(json_obj, "secondary_impulse_amp", 0.0))
         best_year_len = Float64(get(json_obj, "year_length", 365.242))
         best_ramp = Float64(get(json_obj, "ramp_slope", 0.001))
+        best_primary_amp = Float64(get(json_obj, "primary_impulse_amp", 1.0))
         d_lin = Float64(get(json_obj, "drift_linear", 0.0))
         d_quad = Float64(get(json_obj, "drift_quad", 0.0))
         
@@ -800,7 +872,10 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         csa_amp = Float64(get(json_obj, "comp_semi_amp", 0.0))
         csa_ph = Float64(get(json_obj, "comp_semi_phase", 0.0))
         
-        M_final = build_manifold(t, tides, best_ramp, annual_phase, best_sec_amp, best_year_len, ic_A, ic_B, d_lin, d_quad, ca_amp, ca_ph, csa_amp, csa_ph)
+        dc_val = Float64(get(json_obj, "dc_offset", 0.0))
+        sigma = Float64(get(json_obj, "impulse_sigma", 0.0128))
+        
+        M_final = build_manifold(t, tides, best_ramp, best_primary_amp, annual_phase, best_sec_amp, best_year_len, ic_A, ic_B, d_lin, d_quad, ca_amp, ca_ph, csa_amp, csa_ph, dc_val, sigma)
         M_final .*= 1.0
         
         # Load active coeffs
@@ -847,8 +922,8 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
     
     # Check if 11manifold.dat exists for comparison
     M_empirical = fill(NaN, length(t))
-    if isfile("11manifold.dat")
-        t_force, I_force = read_timeseries("11manifold.dat")
+    if isfile("11manifold1.dat")
+        t_force, I_force = read_timeseries("11manifold1.dat")
         
         # Create dictionary for lookup with rounded keys to avoid float precision issues
         # Monthly data is ~0.0833, so 4 digits is safe
@@ -869,9 +944,9 @@ function main(ts_path::String, json_path::String; skip_optim=false, manifold_onl
         
         if !isempty(valid_emp)
             r_manifold = cor(valid_model, valid_emp)
-            println("Correlation between Parametric Manifold and Empirical 11manifold.dat (n=$(length(valid_emp))): $r_manifold")
+            println("Correlation between Parametric Manifold and Empirical 11manifold1.dat (n=$(length(valid_emp))): $r_manifold")
         else
-             println("Warning: No overlapping time points found with 11manifold.dat")
+             println("Warning: No overlapping time points found with 11manifold1.dat")
         end
     end
 
