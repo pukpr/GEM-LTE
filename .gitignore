@@ -26,3 +26,7 @@ lte_results.csv
 
 lt.exe.resp.*
 lt.exe.par.*
+
+# Excel temp/lock files
+~$*.xlsm
+~$*.xlsx
