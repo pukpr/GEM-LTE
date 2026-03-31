@@ -108,6 +108,9 @@ package GEM.LTE.Primitives is
    -- Correlation coefficient on spectrum
    function FT_CC (Model, Data, Forcing : in Data_Pairs) return Long_Float;
 
+   -- Hoyer Peakedness
+   function Hoyer_Spectral_Peak (Model, Data, Forcing : in Data_Pairs) return Long_Float;
+
    -- Minimum Entropy
    function Min_Entropy_Power_Spectrum
      (X, Y : in Data_Pairs) return Long_Float;

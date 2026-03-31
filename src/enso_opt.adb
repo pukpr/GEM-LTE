@@ -16,6 +16,7 @@ with Text_IO;
 with GEM.dLOD;
 with GNAT.OS_Lib;
 with Ada.Calendar;
+with Interfaces.C;
 
 procedure ENSO_Opt
 is  -- gprbuild lte.gpr enso_opt -largs -Wl, --stack=40000000
@@ -51,6 +52,31 @@ is  -- gprbuild lte.gpr enso_opt -largs -Wl, --stack=40000000
       C => (others => 0));
 
 begin
+   --  Stack size limit is now raised by the launcher (ulimit -s unlimited)
+   --  before this executable is invoked, so the setrlimit block below is
+   --  no longer needed here.
+   --
+   --  --  Remove the main thread stack size limit (equivalent to ulimit -s unlimited).
+   --  --  The default ~8 MB limit causes STORAGE_ERROR with large data sets.
+   --  declare
+   --     RLIMIT_STACK : constant Interfaces.C.int := 3;
+   --     type rlim_t is mod 2 ** 64;
+   --     type Rlimit is record
+   --        rlim_cur, rlim_max : rlim_t;
+   --     end record;
+   --     pragma Convention (C, Rlimit);
+   --     function setrlimit
+   --       (resource : Interfaces.C.int; rlp : access Rlimit)
+   --        return Interfaces.C.int;
+   --     pragma Import (C, setrlimit, "setrlimit");
+   --     R : aliased Rlimit := (rlim_t'Last, rlim_t'Last);
+   --     use type Interfaces.C.int;
+   --  begin
+   --     if setrlimit (RLIMIT_STACK, R'Access) /= 0 then
+   --        Text_IO.Put_Line ("Warning: could not remove stack size limit");
+   --     end if;
+   --  end;
+
    declare
       --  AP = Amplitude/Phase data from day-length-of-day (dLOD) measurements
       --  Used as reference forcing for the tidal model

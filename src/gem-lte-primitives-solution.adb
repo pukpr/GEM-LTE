@@ -421,6 +421,7 @@ package body GEM.LTE.Primitives.Solution is
       CTW_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "CTW";
       DER_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "DER";
       EMD_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "EMD";
+      Hoy_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "HOYER";
       DTW_CC : constant Boolean := GEM.Getenv ("METRIC", "CC") = "DC";
       EMD_CC : constant Boolean := GEM.Getenv ("METRIC", "CC") = "EC";
       EMD_DER : constant Boolean := GEM.Getenv ("METRIC", "CC") = "ED";
@@ -482,6 +483,9 @@ package body GEM.LTE.Primitives.Solution is
             return DTW_Distance (X, Y, DTW_Window);
          elsif EMD_Metric then
             return EMD (X, Y);
+         elsif Hoy_Metric then
+            return -- Ada.Numerics.Long_Elementary_Functions.Sqrt ()
+                   (Hoyer_Spectral_Peak (X, Y, Z) + CC (X, Y)) * 0.5;
          elsif DTW_CC then
             return
               Ada.Numerics.Long_Elementary_Functions.Sqrt

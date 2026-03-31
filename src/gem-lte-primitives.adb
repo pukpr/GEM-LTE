@@ -40,7 +40,7 @@ package body GEM.LTE.Primitives is
    --  Configuration flags from environment variables
    Aliased_Period : constant Boolean := GEM.Getenv ("ALIAS", False);
    Min_Entropy : constant Boolean := GEM.Getenv ("METRIC", "") = "ME";
-   Linear_Step : constant Boolean := GEM.Getenv ("STEP", False);
+   Linear_Step : constant Boolean := GEM.Getenv ("STEP", True);
    Every_N_Line : constant Integer := GEM.Getenv ("EVERY", 1);
    Magnify : constant Integer := GEM.Getenv ("MAG", 1);
    Clip : constant Long_Float := GEM.Getenv ("CLIP", 0.0);
@@ -218,7 +218,7 @@ package body GEM.LTE.Primitives is
    -- If Start is inside the series, create "pre-history" by running backwards
       for I in reverse (Raw'First + 1) .. Start_Index loop
          Ramp := Long_Float'Copy_Sign (lagC, Res (I).Value);
-         Res (I - 1).Value := -Raw (I - 1).Value + Res (I).Value + Ramp;
+         Res (I - 1).Value := -Raw (I - 1).Value + Res (I).Value - Ramp; -- + Ramp
       end loop;
 
       return Res;
@@ -1199,7 +1199,31 @@ package body GEM.LTE.Primitives is
       return DTW_Distance (Model_S, Data_S, 9);
    end FT_CC;
 
+   -- Hoyer_Spectral_Peak
    --
+    function Hoyer_Spectral_Peak (Model, Data, Forcing : in Data_Pairs) return Long_Float is
+      Model_S : Data_Pairs := Model;
+      Data_S : Data_Pairs := Data;
+      L1, L2 : Long_Float := 0.0;
+      Len : Long_Float;
+      RMS : Long_Float;
+      Num, Den : Long_Float;
+      use Ada.Numerics.Long_Elementary_Functions;
+   begin
+      ME_Power_Spectrum
+        (Forcing => Forcing, Model => Model, Data => Data, Model_Spectrum => Model_S,
+         Data_Spectrum => Data_S, RMS => RMS);
+      Len := Long_Float(Data_S'Length);
+      for I in Data_S'First+1 ..  Data_S'Last loop
+         L1 := L1 + Data_S(I).Value;
+         L2 := L2 + Data_S(I).Value * Data_S(I).Value;
+      end loop;
+      L2 := Sqrt(L2);
+      Num := Sqrt(Len) - L1/L2;
+      Den := Sqrt(Len) - 1.0;
+      return Num/Den;
+   end Hoyer_Spectral_Peak;  
+   
    procedure Dump (Model, Data : in Data_Pairs; Run_Time : Long_Float := 200.0)
    is
    begin

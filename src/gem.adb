@@ -1,6 +1,6 @@
---  ============================================================================
---  GEM - General Environment Management Utilities
---  ============================================================================
+--  =============================================================================
+--  GEM - GeoEnergyMath or General Environment Management utilities, take ur pick
+--  =============================================================================
 --
 --  PURPOSE:
 --    Provides centralized configuration management for the GEM-LTE system.
