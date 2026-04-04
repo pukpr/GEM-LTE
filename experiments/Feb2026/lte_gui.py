@@ -372,16 +372,11 @@ class App(tk.Tk):
 
     def _cmd_plot_lpap(self):
         """Menu command: Analyze → Plot Tidal Periodicities (lpap)."""
-        target_dir = self._target_dir.get()
-        if target_dir == "(no directory selected)":
-            # Prompt the user to pick a directory first
-            directory = filedialog.askdirectory(
-                title="Select directory containing lt.exe.p"
-            )
-            if not directory:
-                return
-            self._target_dir.set(directory)
-            target_dir = directory
+        try:
+            target_dir = str(self._run_dir())
+        except RuntimeError as exc:
+            messagebox.showerror("No selection", str(exc))
+            return
 
         try:
             lpap = load_lpap(target_dir)
