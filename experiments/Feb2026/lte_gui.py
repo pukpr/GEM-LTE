@@ -13,7 +13,7 @@ import subprocess
 import threading
 from pathlib import Path
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 
 import matplotlib
 matplotlib.use("TkAgg")
@@ -332,30 +332,30 @@ class App(tk.Tk):
         file_menu = tk.Menu(menubar, tearoff=False)
         file_menu.add_command(
             label="Restore from github",
-            # 
             # rm  lt.exe.p lt.exe.*.dat.p lt.exe.resp
             # git restore lt.exe.p lt.exe.*.dat.p lt.exe.resp
+            command=self._cmd_restore_from_github,
         )
         file_menu.add_command(
             label="Copy from named index",
-            # 
             # rm  lt.exe.p lt.exe.*.dat.p lt.exe.resp
             # cp ../INDEX_DIR/lt.exe.p ../INDEX_DIR/lt.exe.resp .
+            command=self._cmd_copy_from_index,
         )
         file_menu.add_command(
             label="Edit RESP file",
-            # 
             # gedit lt.exe.resp
+            command=self._cmd_edit_resp,
         )
         file_menu.add_command(
             label="Edit JSON file",
-            # 
-            # gedit lt.exe.p 
+            # gedit lt.exe.p
+            command=self._cmd_edit_json,
         )
         file_menu.add_command(
             label="Remove JSON file",
-            # 
-            # gedit lt.exe.*.dat.p 
+            # gedit lt.exe.*.dat.p
+            command=self._cmd_remove_json_dat,
         )
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.destroy)
@@ -375,6 +375,87 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # Menu Callbacks
     # ------------------------------------------------------------------
+
+    def _cmd_restore_from_github(self):
+        """Menu command: File → Restore from github."""
+        try:
+            run_dir = self._run_dir()
+        except RuntimeError as exc:
+            messagebox.showerror("No selection", str(exc))
+            return
+        if IS_WINDOWS:
+            cmd = "del /F /Q lt.exe.p lt.exe.*.dat.p lt.exe.resp & git restore lt.exe.p lt.exe.*.dat.p lt.exe.resp"
+            subprocess.Popen(["cmd.exe", "/c", cmd], cwd=str(run_dir))
+        else:
+            cmd = "rm -f lt.exe.p lt.exe.*.dat.p lt.exe.resp && git restore lt.exe.p lt.exe.*.dat.p lt.exe.resp"
+            subprocess.Popen(["bash", "-c", cmd], cwd=str(run_dir))
+
+    def _cmd_copy_from_index(self):
+        """Menu command: File → Copy from named index."""
+        try:
+            run_dir = self._run_dir()
+        except RuntimeError as exc:
+            messagebox.showerror("No selection", str(exc))
+            return
+        index_dir = simpledialog.askstring(
+            "Copy from named index",
+            "Enter source index directory name:",
+            parent=self,
+        )
+        if not index_dir:
+            return
+        if IS_WINDOWS:
+            src = index_dir.replace("/", "\\")
+            cmd = (
+                f"del /F /Q lt.exe.p lt.exe.*.dat.p lt.exe.resp"
+                f" & copy ..\\{src}\\lt.exe.p . & copy ..\\{src}\\lt.exe.resp ."
+            )
+            subprocess.Popen(["cmd.exe", "/c", cmd], cwd=str(run_dir))
+        else:
+            src = shlex.quote(index_dir)
+            cmd = f"rm -f lt.exe.p lt.exe.*.dat.p lt.exe.resp && cp ../{src}/lt.exe.p ../{src}/lt.exe.resp ."
+            subprocess.Popen(["bash", "-c", cmd], cwd=str(run_dir))
+
+    def _cmd_edit_resp(self):
+        """Menu command: File → Edit RESP file."""
+        try:
+            run_dir = self._run_dir()
+        except RuntimeError as exc:
+            messagebox.showerror("No selection", str(exc))
+            return
+        if IS_WINDOWS:
+            subprocess.Popen(["notepad", "lt.exe.resp"], cwd=str(run_dir))
+        else:
+            subprocess.Popen(["gedit", "lt.exe.resp"], cwd=str(run_dir))
+
+    def _cmd_edit_json(self):
+        """Menu command: File → Edit JSON file."""
+        try:
+            run_dir = self._run_dir()
+        except RuntimeError as exc:
+            messagebox.showerror("No selection", str(exc))
+            return
+        if IS_WINDOWS:
+            subprocess.Popen(["notepad", "lt.exe.p"], cwd=str(run_dir))
+        else:
+            subprocess.Popen(["gedit", "lt.exe.p"], cwd=str(run_dir))
+
+    def _cmd_remove_json_dat(self):
+        """Menu command: File → Remove JSON file (edit lt.exe.*.dat.p)."""
+        try:
+            run_dir = self._run_dir()
+        except RuntimeError as exc:
+            messagebox.showerror("No selection", str(exc))
+            return
+        if IS_WINDOWS:
+            files = list(run_dir.glob("lt.exe.*.dat.p"))
+            if not files:
+                messagebox.showinfo("No files", "No lt.exe.*.dat.p files found.")
+                return
+            for f in files:
+                subprocess.Popen(["notepad", str(f)])
+        else:
+            subprocess.Popen(["bash", "-c", "gedit lt.exe.*.dat.p"], cwd=str(run_dir))
 
     def _cmd_plot_lpap(self):
         """Menu command: Analyze → Plot Tidal Periodicities (lpap)."""
