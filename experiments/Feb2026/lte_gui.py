@@ -15,11 +15,16 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import numpy as np
 import datetime
 
 
 # ---------------------------------------------------------------------------
-# Core computation
+# Core long period tides computation
 # ---------------------------------------------------------------------------
 
 def load_lpap(target_dir: str) -> list:
@@ -315,7 +320,6 @@ class App(tk.Tk):
         self._build_ui()
         self._set_root(self.root_dir)
         self._build_menu()
-        # self._build_body()
         
     # ------------------------------------------------------------------
     # Layout
@@ -327,8 +331,31 @@ class App(tk.Tk):
         # ── File menu ──────────────────────────────────────────────────
         file_menu = tk.Menu(menubar, tearoff=False)
         file_menu.add_command(
-            label="Set target directory…",
-            command=self._choose_directory,
+            label="Restore from github",
+            # 
+            # rm  lt.exe.p lt.exe.*.dat.p lt.exe.resp
+            # git restore lt.exe.p lt.exe.*.dat.p lt.exe.resp
+        )
+        file_menu.add_command(
+            label="Copy from named index",
+            # 
+            # rm  lt.exe.p lt.exe.*.dat.p lt.exe.resp
+            # cp ../INDEX_DIR/lt.exe.p ../INDEX_DIR/lt.exe.resp .
+        )
+        file_menu.add_command(
+            label="Edit RESP file",
+            # 
+            # gedit lt.exe.resp
+        )
+        file_menu.add_command(
+            label="Edit JSON file",
+            # 
+            # gedit lt.exe.p 
+        )
+        file_menu.add_command(
+            label="Remove JSON file",
+            # 
+            # gedit lt.exe.*.dat.p 
         )
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.destroy)
@@ -344,31 +371,10 @@ class App(tk.Tk):
 
         self.config(menu=menubar)
 
-    def _build_body(self):
-        pad = {"padx": 10, "pady": 6}
-        tk.Label(self, text="Target directory:").grid(
-            row=0, column=0, sticky="w", **pad
-        )
-        tk.Label(
-            self,
-            textvariable=self._target_dir,
-            relief="sunken",
-            width=42,
-            anchor="w",
-        ).grid(row=0, column=1, sticky="ew", **pad)
-        tk.Button(
-            self, text="Browse…", command=self._choose_directory
-        ).grid(row=1, column=1, sticky="e", **pad)
-        self.columnconfigure(1, weight=1)
 
     # ------------------------------------------------------------------
-    # Callbacks
+    # Menu Callbacks
     # ------------------------------------------------------------------
-
-    def _choose_directory(self):
-        directory = filedialog.askdirectory(title="Select target directory")
-        if directory:
-            self._target_dir.set(directory)
 
     def _cmd_plot_lpap(self):
         """Menu command: Analyze → Plot Tidal Periodicities (lpap)."""
