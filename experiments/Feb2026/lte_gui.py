@@ -4,11 +4,132 @@
 from __future__ import annotations
 
 import os
+import sys
 import json
+import runpy
+import shlex
+import shutil
 import subprocess
+import threading
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+
+import datetime
+
+
+# ---------------------------------------------------------------------------
+# Core computation
+# ---------------------------------------------------------------------------
+
+def load_lpap(target_dir: str) -> list:
+    """
+    Load the 'lpap' list from 'lt.exe.p' in *target_dir*.
+
+    The file is expected to be valid JSON.  Two formats are accepted:
+      • A JSON object with a top-level key "lpap" whose value is the list.
+      • A bare JSON array (the list itself).
+
+    Each element of the list must be indexable as:
+        element[0] – period in days
+        element[1] – amplitude
+        element[2] – phase in radians
+
+    Returns
+    -------
+    list of [period_days, amplitude, phase] sublists / tuples
+    """
+    path = os.path.join(target_dir, "lt.exe.p")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"'lt.exe.p' not found in:\n  {target_dir}")
+
+    with open(path, "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+
+    if isinstance(data, dict):
+        if "lpap" not in data:
+            raise KeyError("Key 'lpap' not found in lt.exe.p JSON object.")
+        lpap = data["lpap"]
+    elif isinstance(data, list):
+        lpap = data
+    else:
+        raise TypeError("lt.exe.p must contain a JSON object or a JSON array.")
+
+    if not lpap:
+        raise ValueError("The 'lpap' list is empty.")
+
+    return lpap
+
+
+def compose_sinusoids(lpap: list, t_days: np.ndarray) -> np.ndarray:
+    """
+    y(t) = Σ_i  amplitude_i · sin( 2π / period_i · t  +  phase_i )
+
+    Parameters
+    ----------
+    lpap    : list of [period_days, amplitude, phase_radians]
+    t_days  : 1-D array of time values in days
+
+    Returns
+    -------
+    y : ndarray of the same shape as *t_days*
+    """
+    y = np.zeros_like(t_days, dtype=float)
+    for entry in lpap:
+        period_days = float(entry[0])
+        amplitude   = float(entry[1])
+        phase       = float(entry[2])
+        if period_days == 0.0:
+            continue
+        omega = 2.0 * np.pi / period_days
+        y += amplitude * np.sin(omega * t_days + phase)
+    return y
+
+
+# ---------------------------------------------------------------------------
+# Plot helper
+# ---------------------------------------------------------------------------
+
+DAYS_PER_YEAR = 365.25  # mean Julian year (accounts for leap years)
+
+
+def _date_array(start_year: int, n_years: int, dt_days: float = 1.0):
+    """Return (t_days, dates) arrays for *n_years* at *dt_days* resolution."""
+    t0 = datetime.date(start_year, 1, 1)
+    n_steps = int(n_years * DAYS_PER_YEAR / dt_days)
+    t_days = np.arange(n_steps, dtype=float) * dt_days
+    dates = [t0 + datetime.timedelta(days=float(d)) for d in t_days]
+    return t_days, dates
+
+
+def plot_lpap(lpap: list, start_year: int = 1950, n_years: int = 50):
+    """
+    Plot the composed sum of sinusoids defined by *lpap* over *n_years*
+    starting at *start_year*.
+    """
+    t_days, dates = _date_array(start_year, n_years, dt_days=1.0)
+    y = compose_sinusoids(lpap, t_days)
+
+    fig, ax = plt.subplots(figsize=(14, 5))
+    ax.plot(dates, y, lw=0.8, color="steelblue")
+    ax.axhline(0, color="k", lw=0.4)
+    ax.set_title(
+        f"Tidal Periodicities (lpap) — composed sum of {len(lpap)} sinusoid(s)\n"
+        f"{start_year} – {start_year + n_years}",
+        fontsize=11,
+    )
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Amplitude (a.u.)")
+    ax.xaxis.set_major_locator(mdates.YearLocator(5))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    plt.xticks(rotation=45, ha="right")
+    ax.grid(True, ls=":", lw=0.4, alpha=0.6)
+    fig.tight_layout()
+    plt.show()
+
+#######################################################################################
+
+IS_WINDOWS = sys.platform == "win32"
 
 # Optional PNG scaling
 try:
@@ -27,19 +148,69 @@ except Exception:
 
 # ---------------- CONFIG ----------------
 
-PYTHON = "python3"                 # Windows launcher
-PLOT_REL = r"..\plot.py"      # relative to INDEX directory
+PYTHON = sys.executable            # use the same interpreter running this script
 
 
 # ---------------- HELPERS ----------------
 
-def resolve_lt_cmd(run_dir: Path, use_json: bool = False) -> str:
-    json_flag = " -j" if use_json else ""
-    if (run_dir / "..\\lt.exe").exists():
-        return r"..\\lt.exe" + json_flag
-    if (run_dir / "..\\lt").exists():
-        return r"..\\lt" + json_flag
-    raise FileNotFoundError(f"No lt or lt.exe in {run_dir}")
+def resolve_lt_cmd(run_dir: Path, use_json: bool = False) -> list[str]:
+    """Return the lt command as an argument list."""
+    json_flag = ["-j"] if use_json else []
+    parent = run_dir.parent
+    for name in ("lt.exe", "lt"):
+        lt_path = parent / name
+        if lt_path.exists():
+            return [str(lt_path)] + json_flag
+    raise FileNotFoundError(f"No lt or lt.exe found in {parent}")
+
+
+def _find_terminal_linux() -> list[str] | None:
+    """Return a terminal emulator prefix that can run a command, or None."""
+    candidates = [
+        (["xterm", "-e"],),
+        (["gnome-terminal", "--"],),
+        (["konsole", "-e"],),
+        (["xfce4-terminal", "-e"],),
+        (["lxterminal", "-e"],),
+        (["mate-terminal", "-e"],),
+    ]
+    for (args,) in candidates:
+        if shutil.which(args[0]):
+            return args
+    return None
+
+
+def _open_terminal(cmd: list[str], cwd: Path, env: dict) -> None:
+    """Open a new terminal window running *cmd* (list), keep it open after exit."""
+    if IS_WINDOWS:
+        subprocess.Popen(
+            ["cmd.exe", "/k"] + cmd,
+            cwd=str(cwd),
+            env=env,
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+        )
+        return
+
+    title = str(cwd)
+    set_title = f'echo -ne "\\033]0;{title}\\007"; '
+    
+    term = _find_terminal_linux()
+    if term is None:
+        # No GUI terminal found — run in background without a new window
+        bare_cmd = " ".join(shlex.quote(a) for a in cmd)
+        subprocess.Popen(
+            ["bash", "-c", "ulimit -s unlimited && " + bare_cmd],
+            cwd=str(cwd), env=env,
+        )
+        return
+
+    term_name = term[0]
+    # gnome-terminal uses -- to separate its args from the command
+    shell_cmd = set_title + "ulimit -s unlimited && " + " ".join(shlex.quote(a) for a in cmd) + "; exec bash"
+    subprocess.Popen(
+        term + ["bash", "-c", shell_cmd],
+        cwd=str(cwd), env=env,
+    )
 
 
 def load_id_map(id_file: Path) -> dict[str, dict]:
@@ -143,6 +314,86 @@ class App(tk.Tk):
 
         self._build_ui()
         self._set_root(self.root_dir)
+        self._build_menu()
+        # self._build_body()
+        
+    # ------------------------------------------------------------------
+    # Layout
+    # ------------------------------------------------------------------
+
+    def _build_menu(self):
+        menubar = tk.Menu(self)
+
+        # ── File menu ──────────────────────────────────────────────────
+        file_menu = tk.Menu(menubar, tearoff=False)
+        file_menu.add_command(
+            label="Set target directory…",
+            command=self._choose_directory,
+        )
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.destroy)
+        menubar.add_cascade(label="File", menu=file_menu)
+
+        # ── Analyze menu ───────────────────────────────────────────────
+        analyze_menu = tk.Menu(menubar, tearoff=False)
+        analyze_menu.add_command(
+            label="Plot Tidal Periodicities (lpap)…",
+            command=self._cmd_plot_lpap,
+        )
+        menubar.add_cascade(label="Analyze", menu=analyze_menu)
+
+        self.config(menu=menubar)
+
+    def _build_body(self):
+        pad = {"padx": 10, "pady": 6}
+        tk.Label(self, text="Target directory:").grid(
+            row=0, column=0, sticky="w", **pad
+        )
+        tk.Label(
+            self,
+            textvariable=self._target_dir,
+            relief="sunken",
+            width=42,
+            anchor="w",
+        ).grid(row=0, column=1, sticky="ew", **pad)
+        tk.Button(
+            self, text="Browse…", command=self._choose_directory
+        ).grid(row=1, column=1, sticky="e", **pad)
+        self.columnconfigure(1, weight=1)
+
+    # ------------------------------------------------------------------
+    # Callbacks
+    # ------------------------------------------------------------------
+
+    def _choose_directory(self):
+        directory = filedialog.askdirectory(title="Select target directory")
+        if directory:
+            self._target_dir.set(directory)
+
+    def _cmd_plot_lpap(self):
+        """Menu command: Analyze → Plot Tidal Periodicities (lpap)."""
+        target_dir = self._target_dir.get()
+        if target_dir == "(no directory selected)":
+            # Prompt the user to pick a directory first
+            directory = filedialog.askdirectory(
+                title="Select directory containing lt.exe.p"
+            )
+            if not directory:
+                return
+            self._target_dir.set(directory)
+            target_dir = directory
+
+        try:
+            lpap = load_lpap(target_dir)
+        except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            messagebox.showerror("Error loading lt.exe.p", str(exc))
+            return
+
+        try:
+            plot_lpap(lpap, start_year=1950, n_years=50)
+        except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
+            messagebox.showerror("Plot error", str(exc))
+        
 
     # ---------- UI ----------
 
@@ -246,8 +497,14 @@ class App(tk.Tk):
             right_fields, text="DTW", variable=self.metric_var, value="DTW"
         ).pack(side="left", padx=(6, 0))
 
+        ttk.Radiobutton(
+            right_fields, text="H", variable=self.metric_var, value="HOYER"
+        ).pack(side="left", padx=(6, 0))
+
+
         # Interval editors (LAST on the row)
-        ttk.Label(right_fields, text="  Test Interval:").pack(side="left", padx=(12, 6))
+#        ttk.Label(right_fields, text="  Test Interval:").pack(side="left", padx=(12, 6))
+        ttk.Label(right_fields, text="  CV:").pack(side="left", padx=(12, 6))
         ttk.Entry(right_fields, textvariable=self.interval_begin_var, width=6).pack(side="left")
         ttk.Label(right_fields, text="to").pack(side="left", padx=6)
         ttk.Entry(right_fields, textvariable=self.interval_end_var, width=6).pack(side="left")
@@ -347,7 +604,6 @@ class App(tk.Tk):
         try:
             use_json = self.use_json_var.get()
             lt_cmd = resolve_lt_cmd(run_dir, use_json)
-            # lt_cmd = resolve_lt_cmd(run_dir.parent, use_json)
         except Exception as e:
             messagebox.showerror("Missing lt", str(e))
             return
@@ -358,13 +614,10 @@ class App(tk.Tk):
             return
 
         env = os.environ.copy()
-        # env["METRIC"] = "cc"
         env["METRIC"] = self.metric_var.get().strip().upper()
         env["TIMEOUT"] = f"{timeout:.6f}"
-        # env["TRAIN_START"] = "1940"
-        # env["TRAIN_END"] = "1970"
-        env["TRAIN_START"] = b # self.interval_begin_var.get().strip()
-        env["TRAIN_END"] = e # self.interval_end_var.get().strip()
+        env["TRAIN_START"] = b
+        env["TRAIN_END"] = e
         env["CLIMATE_INDEX"] = f"{index}.dat"
         env["IDATE"] = "1920.9"
         env["EXCLUDE"] = "true" if self.exclude_var.get() else "false"
@@ -372,13 +625,7 @@ class App(tk.Tk):
         env["F9"] = "1" if self.filter_var.get() else "0"
         env["TEST_ONLY"] = "true" if self.test_only_var.get() else "false"
 
-
-        subprocess.Popen(
-            ["cmd.exe", "/k", lt_cmd],
-            cwd=str(run_dir),
-            env=env,
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
+        _open_terminal(lt_cmd, run_dir, env)
 
     def run_plot(self) -> None:
         try:
@@ -389,31 +636,57 @@ class App(tk.Tk):
 
         index = run_dir.name.strip().strip('"').strip("'")
 
-        plot_path = (run_dir / PLOT_REL).resolve()
+        plot_path = (run_dir.parent / "plot.py").resolve()
         if not plot_path.exists():
             messagebox.showerror(
                 "Missing plot.py",
-                f"Could not find plot.py at:\n{plot_path}\n\nAdjust PLOT_REL at top of script."
+                f"Could not find plot.py at:\n{plot_path}"
             )
             return
 
-        args = [
-            PYTHON,
-            str(plot_path),
-            index,
-            "Feb2026",
-            # "1940",
-            # "1970",
-            self.interval_begin_var.get().strip(),
-            self.interval_end_var.get().strip(),
-            "0",
-        ]
+        begin = self.interval_begin_var.get().strip()
+        end   = self.interval_end_var.get().strip()
 
-        subprocess.Popen(
-            args,
-            cwd=str(run_dir),
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
+        if IS_WINDOWS:
+            cmd = [PYTHON, str(plot_path), index, "Feb2026", begin, end, "0"]
+            _open_terminal(cmd, run_dir, os.environ.copy())
+            return
+
+        # On Linux: execute plot.py in-process (no terminal window).
+        # Runs in a background thread so the GUI stays responsive; auto-refreshes
+        # the PNG preview when the script finishes.
+        def _run() -> None:
+            saved_argv = sys.argv[:]
+            saved_cwd  = os.getcwd()
+            saved_mpl  = os.environ.get("MPLBACKEND")
+
+            sys.argv = [str(plot_path), index, "Feb2026", begin, end, "0"]
+            os.chdir(str(run_dir))
+            os.environ["MPLBACKEND"] = "Agg"  # non-interactive; prevents any window
+
+            try:
+                runpy.run_path(str(plot_path), run_name="__main__")
+            except SystemExit:
+                pass
+            except Exception as exc:
+                self.after(0, lambda exc=exc: messagebox.showerror("Plot error", str(exc)))
+            finally:
+                sys.argv = saved_argv
+                os.chdir(saved_cwd)
+                if saved_mpl is None:
+                    os.environ.pop("MPLBACKEND", None)
+                else:
+                    os.environ["MPLBACKEND"] = saved_mpl
+                # Release any matplotlib figures created by plot.py
+                try:
+                    import matplotlib.pyplot as _plt
+                    _plt.close("all")
+                except Exception:
+                    pass
+
+            self.after(0, self.show_png)
+
+        threading.Thread(target=_run, daemon=True).start()
 
     # ---------- PNG ----------
 

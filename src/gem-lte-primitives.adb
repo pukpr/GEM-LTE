@@ -218,7 +218,7 @@ package body GEM.LTE.Primitives is
    -- If Start is inside the series, create "pre-history" by running backwards
       for I in reverse (Raw'First + 1) .. Start_Index loop
          Ramp := Long_Float'Copy_Sign (lagC, Res (I).Value);
-         Res (I - 1).Value := -Raw (I - 1).Value + Res (I).Value - Ramp; -- + Ramp
+         Res (I - 1).Value := -Raw (I - 1).Value + Res (I).Value + Ramp; -- + Ramp
       end loop;
 
       return Res;
