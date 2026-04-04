@@ -355,7 +355,7 @@ class App(tk.Tk):
         file_menu.add_command(
             label="Remove JSON file",
             # gedit lt.exe.*.dat.p
-            command=self._cmd_edit_json_dat,
+            command=self._cmd_remove_json_dat,
         )
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.destroy)
@@ -383,10 +383,11 @@ class App(tk.Tk):
         except RuntimeError as exc:
             messagebox.showerror("No selection", str(exc))
             return
-        cmd = "rm -f lt.exe.p lt.exe.*.dat.p lt.exe.resp && git restore lt.exe.p lt.exe.*.dat.p lt.exe.resp"
         if IS_WINDOWS:
+            cmd = "del /F /Q lt.exe.p lt.exe.*.dat.p lt.exe.resp & git restore lt.exe.p lt.exe.*.dat.p lt.exe.resp"
             subprocess.Popen(["cmd.exe", "/c", cmd], cwd=str(run_dir))
         else:
+            cmd = "rm -f lt.exe.p lt.exe.*.dat.p lt.exe.resp && git restore lt.exe.p lt.exe.*.dat.p lt.exe.resp"
             subprocess.Popen(["bash", "-c", cmd], cwd=str(run_dir))
 
     def _cmd_copy_from_index(self):
@@ -403,11 +404,16 @@ class App(tk.Tk):
         )
         if not index_dir:
             return
-        src = shlex.quote(index_dir)
-        cmd = f"rm -f lt.exe.p lt.exe.*.dat.p lt.exe.resp && cp ../{src}/lt.exe.p ../{src}/lt.exe.resp ."
         if IS_WINDOWS:
+            src = index_dir.replace("/", "\\")
+            cmd = (
+                f"del /F /Q lt.exe.p lt.exe.*.dat.p lt.exe.resp"
+                f" & copy ..\\{src}\\lt.exe.p . & copy ..\\{src}\\lt.exe.resp ."
+            )
             subprocess.Popen(["cmd.exe", "/c", cmd], cwd=str(run_dir))
         else:
+            src = shlex.quote(index_dir)
+            cmd = f"rm -f lt.exe.p lt.exe.*.dat.p lt.exe.resp && cp ../{src}/lt.exe.p ../{src}/lt.exe.resp ."
             subprocess.Popen(["bash", "-c", cmd], cwd=str(run_dir))
 
     def _cmd_edit_resp(self):
@@ -434,7 +440,7 @@ class App(tk.Tk):
         else:
             subprocess.Popen(["gedit", "lt.exe.p"], cwd=str(run_dir))
 
-    def _cmd_edit_json_dat(self):
+    def _cmd_remove_json_dat(self):
         """Menu command: File → Remove JSON file (edit lt.exe.*.dat.p)."""
         try:
             run_dir = self._run_dir()
@@ -442,7 +448,12 @@ class App(tk.Tk):
             messagebox.showerror("No selection", str(exc))
             return
         if IS_WINDOWS:
-            subprocess.Popen(["cmd.exe", "/c", "notepad lt.exe.*.dat.p"], cwd=str(run_dir))
+            files = list(run_dir.glob("lt.exe.*.dat.p"))
+            if not files:
+                messagebox.showinfo("No files", "No lt.exe.*.dat.p files found.")
+                return
+            for f in files:
+                subprocess.Popen(["notepad", str(f)])
         else:
             subprocess.Popen(["bash", "-c", "gedit lt.exe.*.dat.p"], cwd=str(run_dir))
 
