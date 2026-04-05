@@ -132,6 +132,51 @@ def plot_lpap(lpap: list, start_year: int = 1950, n_years: int = 50):
     fig.tight_layout()
     plt.show()
 
+
+def plot_lpap_amplitudes(lpap: list):
+    """
+    Horizontal bar chart of absolute-value amplitudes for each tidal
+    periodicity in *lpap*.  Phase is excluded.
+
+    Each bar is labelled with the period (in days) on the y-axis and the
+    x-axis tick labels are formatted to 5 significant digits.
+    """
+    periods = [float(e[0]) for e in lpap]
+    amplitudes = [abs(float(e[1])) for e in lpap]
+
+    # Build y-axis labels: "period" in days, formatted to 5 sig-figs
+    labels = [f"{p:.5g} d" for p in periods]
+
+    n = len(amplitudes)
+    y_pos = np.arange(n)
+
+    fig, ax = plt.subplots(figsize=(10, max(4, 0.35 * n)))
+    ax.barh(y_pos, amplitudes, align="center", color="steelblue", edgecolor="none")
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.invert_yaxis()  # longest period at the top
+
+    # Format x-axis ticks to 5 significant digits
+    def _sig5(x, _pos):
+        if x == 0:
+            return "0"
+        from math import log10, floor
+        digits = 5 - 1 - floor(log10(abs(x)))
+        digits = max(0, digits)
+        return f"{x:.{digits}f}"
+
+    from matplotlib.ticker import FuncFormatter
+    ax.xaxis.set_major_formatter(FuncFormatter(_sig5))
+
+    ax.set_xlabel("Amplitude (a.u.)")
+    ax.set_title(
+        f"Tidal Periodicities — absolute amplitudes ({n} component(s))",
+        fontsize=11,
+    )
+    ax.grid(True, axis="x", ls=":", lw=0.4, alpha=0.6)
+    fig.tight_layout()
+    plt.show()
+
 #######################################################################################
 
 IS_WINDOWS = sys.platform == "win32"
@@ -367,6 +412,10 @@ class App(tk.Tk):
             label="Plot Tidal Periodicities (lpap)…",
             command=self._cmd_plot_lpap,
         )
+        analyze_menu.add_command(
+            label="Plot Tidal Amplitude Spectrum (lpap)…",
+            command=self._cmd_plot_lpap_amplitudes,
+        )
         menubar.add_cascade(label="Analyze", menu=analyze_menu)
 
         self.config(menu=menubar)
@@ -476,6 +525,25 @@ class App(tk.Tk):
         except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
             messagebox.showerror("Plot error", str(exc))
         
+
+    def _cmd_plot_lpap_amplitudes(self):
+        """Menu command: Analyze → Plot Tidal Amplitude Spectrum (lpap)."""
+        try:
+            target_dir = str(self._run_dir())
+        except RuntimeError as exc:
+            messagebox.showerror("No selection", str(exc))
+            return
+
+        try:
+            lpap = load_lpap(target_dir)
+        except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            messagebox.showerror("Error loading lt.exe.p", str(exc))
+            return
+
+        try:
+            plot_lpap_amplitudes(lpap)
+        except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
+            messagebox.showerror("Plot error", str(exc))
 
     # ---------- UI ----------
 
