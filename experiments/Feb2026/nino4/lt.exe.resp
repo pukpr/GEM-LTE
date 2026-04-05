@@ -37,9 +37,9 @@ MERMS                          FALSE
 -METRIC                         CC
 MLR                            FALSE
 -NH                             ""
-NH                            "1 1 1"
+-NH                            ""
 -NH                            "1 1 1 1 1 1 1 1 1 1"
-NH                             "1 1 1 1 1 1"
+NH                             "1 1"
 NM                             2
 PARETO                         false
 RESET                          FALSE
