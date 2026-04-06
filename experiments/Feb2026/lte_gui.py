@@ -6,7 +6,6 @@ from __future__ import annotations
 import os
 import sys
 import json
-import runpy
 import shlex
 import shutil
 import subprocess
@@ -802,37 +801,29 @@ class App(tk.Tk):
             _open_terminal(cmd, run_dir, os.environ.copy())
             return
 
-        # On Linux: execute plot.py in-process (no terminal window).
-        # Runs in a background thread so the GUI stays responsive; auto-refreshes
-        # the PNG preview when the script finishes.
+        # On Linux: execute plot.py in a subprocess so that matplotlib starts
+        # fresh with the Agg backend (the GUI process already loaded TkAgg on
+        # the main thread, so running plot.py in-process via runpy would trigger
+        # "Starting a Matplotlib GUI outside of the main thread" warnings).
+        # The subprocess is launched from a daemon thread so the GUI stays
+        # responsive; the PNG preview is auto-refreshed when the script finishes.
         def _run() -> None:
-            saved_argv = sys.argv[:]
-            saved_cwd  = os.getcwd()
-            saved_mpl  = os.environ.get("MPLBACKEND")
-
-            sys.argv = [str(plot_path), index, "Feb2026", begin, end, "0"]
-            os.chdir(str(run_dir))
-            os.environ["MPLBACKEND"] = "Agg"  # non-interactive; prevents any window
-
+            env = os.environ.copy()
+            env["MPLBACKEND"] = "Agg"  # non-interactive; prevents any window
+            cmd = [PYTHON, str(plot_path), index, "Feb2026", begin, end, "0"]
             try:
-                runpy.run_path(str(plot_path), run_name="__main__")
-            except SystemExit:
-                pass
+                result = subprocess.run(
+                    cmd,
+                    cwd=str(run_dir),
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode != 0:
+                    err = (result.stderr or result.stdout).strip()
+                    self.after(0, lambda err=err: messagebox.showerror("Plot error", err))
             except Exception as exc:
                 self.after(0, lambda exc=exc: messagebox.showerror("Plot error", str(exc)))
-            finally:
-                sys.argv = saved_argv
-                os.chdir(saved_cwd)
-                if saved_mpl is None:
-                    os.environ.pop("MPLBACKEND", None)
-                else:
-                    os.environ["MPLBACKEND"] = saved_mpl
-                # Release any matplotlib figures created by plot.py
-                try:
-                    import matplotlib.pyplot as _plt
-                    _plt.close("all")
-                except Exception:
-                    pass
 
             self.after(0, self.show_png)
 
