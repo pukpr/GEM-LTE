@@ -106,7 +106,7 @@ def _date_array(start_year: int, n_years: int, dt_days: float = 1.0):
     return t_days, dates
 
 
-def plot_lpap(lpap: list, start_year: int = 1950, n_years: int = 50):
+def plot_lpap(lpap: list, index: str, start_year: int = 1950, n_years: int = 50):
     """
     Plot the composed sum of sinusoids defined by *lpap* over *n_years*
     starting at *start_year*.
@@ -117,8 +117,9 @@ def plot_lpap(lpap: list, start_year: int = 1950, n_years: int = 50):
     fig, ax = plt.subplots(figsize=(14, 5))
     ax.plot(dates, y, lw=0.8, color="steelblue")
     ax.axhline(0, color="k", lw=0.4)
+    idx = Path(index).stem
     ax.set_title(
-        f"Tidal Periodicities (lpap) — composed sum of {len(lpap)} sinusoid(s)\n"
+        f"{idx} — composed sum of {len(lpap)} tidal factors\n"
         f"{start_year} – {start_year + n_years}",
         fontsize=11,
     )
@@ -132,7 +133,7 @@ def plot_lpap(lpap: list, start_year: int = 1950, n_years: int = 50):
     plt.show()
 
 
-def plot_lpap_amplitudes(lpap: list):
+def plot_lpap_amplitudes(lpap: list, index: str):
     """
     Horizontal bar chart of absolute-value amplitudes for each tidal
     periodicity in *lpap*.  Phase is excluded.
@@ -168,8 +169,9 @@ def plot_lpap_amplitudes(lpap: list):
     ax.xaxis.set_major_formatter(FuncFormatter(_sig5))
 
     ax.set_xlabel("Amplitude (a.u.)")
+    idx = Path(index).stem
     ax.set_title(
-        f"Tidal Periodicities — absolute amplitudes ({n} component(s))",
+        f"{idx} — absolute amplitudes ({n} tidal factors)",
         fontsize=11,
     )
     ax.grid(True, axis="x", ls=":", lw=0.4, alpha=0.6)
@@ -520,7 +522,7 @@ class App(tk.Tk):
             return
 
         try:
-            plot_lpap(lpap, start_year=1950, n_years=50)
+            plot_lpap(lpap, target_dir, start_year=1950, n_years=50)
         except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
             messagebox.showerror("Plot error", str(exc))
         
@@ -540,7 +542,7 @@ class App(tk.Tk):
             return
 
         try:
-            plot_lpap_amplitudes(lpap)
+            plot_lpap_amplitudes(lpap, target_dir)
         except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
             messagebox.showerror("Plot error", str(exc))
 
