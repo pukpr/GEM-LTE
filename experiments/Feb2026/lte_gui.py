@@ -486,7 +486,12 @@ class App(tk.Tk):
 
         self._image_ref = None
         self._pil_image_ref = None
-        
+
+        # README tooltip state
+        self._tooltip_win: tk.Toplevel | None = None
+        self._tooltip_after_id: str | None = None
+        self._tooltip_item: str | None = None
+
         # JSON loading checkbox state
         self.use_json_var = tk.BooleanVar(value=True)  # Default to JSON mode
 
@@ -774,6 +779,8 @@ class App(tk.Tk):
         self.dir_list = tk.Listbox(left, height=28)
         self.dir_list.pack(fill="both", expand=True)
         self.dir_list.bind("<<ListboxSelect>>", lambda e: self._on_select())
+        self.dir_list.bind("<Motion>", self._on_list_motion)
+        self.dir_list.bind("<Leave>", self._on_list_leave)
 
         sel_frame = ttk.LabelFrame(right, text="Selected directory + ID.yml info", padding=8)
         sel_frame.pack(fill="x")
@@ -891,6 +898,60 @@ class App(tk.Tk):
         self.country_var.set("")
         self._clear_image()
         self.refresh_list()
+
+    def _on_list_motion(self, event: tk.Event) -> None:
+        idx = self.dir_list.nearest(event.y)
+        if idx < 0 or idx >= self.dir_list.size():
+            self._hide_readme_tooltip()
+            return
+        item = self.dir_list.get(idx)
+        if item == self._tooltip_item:
+            return
+        self._hide_readme_tooltip()
+        self._tooltip_item = item
+        readme_path = self.root_dir / item / "README.md"
+        if not readme_path.is_file():
+            return
+        try:
+            text = readme_path.read_text(encoding="utf-8").strip()
+        except Exception:
+            return
+        if not text:
+            return
+        # Schedule the tooltip to appear after a short delay
+        self._tooltip_after_id = self.after(400, lambda: self._show_readme_tooltip(text, event))
+
+    def _on_list_leave(self, event: tk.Event) -> None:
+        self._hide_readme_tooltip()
+
+    def _show_readme_tooltip(self, text: str, event: tk.Event) -> None:
+        self._hide_readme_tooltip(cancel_only=True)
+        win = tk.Toplevel(self)
+        win.wm_overrideredirect(True)
+        win.wm_attributes("-topmost", True)
+        win.wm_geometry(f"+{event.x_root + 20}+{event.y_root + 10}")
+        lbl = tk.Label(
+            win,
+            text=text,
+            justify="left",
+            background="#ffffe0",
+            relief="solid",
+            borderwidth=1,
+            wraplength=420,
+            padx=6,
+            pady=4,
+        )
+        lbl.pack()
+        self._tooltip_win = win
+
+    def _hide_readme_tooltip(self, cancel_only: bool = False) -> None:
+        if self._tooltip_after_id is not None:
+            self.after_cancel(self._tooltip_after_id)
+            self._tooltip_after_id = None
+        if not cancel_only and self._tooltip_win is not None:
+            self._tooltip_win.destroy()
+            self._tooltip_win = None
+            self._tooltip_item = None
 
     def refresh_list(self) -> None:
         self.dir_list.delete(0, tk.END)
