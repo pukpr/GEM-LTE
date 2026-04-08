@@ -1,0 +1,2 @@
+MSL site: WARNEMUNDE 2, Germany. Coastal tide gauge at 54.17°N, 12.10°E on the Baltic Sea.
+Warnemünde is best known as a popular Baltic Sea beach resort and a major cruise ship port, serving as the maritime gateway to the city of Rostock.
