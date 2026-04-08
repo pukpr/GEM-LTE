@@ -1,0 +1,2 @@
+MSL site: NEWLYN, UK. Coastal tide gauge at 50.10°N, 5.54°W on the English Channel (Cornwall).
+Newlyn is best known as one of England's most important working fishing ports and as the home of the Newlyn School of artists, whose late-19th-century plein-air paintings brought international fame to this Cornish fishing community — and its tide gauge defines Ordnance Datum, the benchmark for all elevations in Great Britain.
