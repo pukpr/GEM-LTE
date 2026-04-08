@@ -178,6 +178,138 @@ def plot_lpap_amplitudes(lpap: list, index: str):
     fig.tight_layout()
     plt.show()
 
+
+def plot_lpap_scatter_all(
+    subdirs_info: list,
+    start_year: int = 1950,
+    n_years: int = 50,
+) -> None:
+    """
+    Plot composed sinusoids for *all* datasets (one per subdir) as scatter
+    dots (no connecting lines), so multiple overlapping series can be
+    compared visually.
+
+    Parameters
+    ----------
+    subdirs_info : list of (subdir_path: str, label: str)
+    start_year   : first year of the time axis
+    n_years      : length of the time axis in years
+    """
+    t_days, dates = _date_array(start_year, n_years, dt_days=1.0)
+
+    fig, ax = plt.subplots(figsize=(14, 5))
+    ax.axhline(0, color="k", lw=0.4)
+
+    n_total = max(len(subdirs_info), 1)
+    colors = plt.cm.tab20(np.linspace(0, 1, n_total))
+
+    loaded = 0
+    for i, (subdir, label) in enumerate(subdirs_info):
+        try:
+            lpap = load_lpap(subdir)
+            y = compose_sinusoids(lpap, t_days)
+            ax.plot(
+                dates, y,
+                marker=".", markersize=1, linestyle="none",
+                color=colors[i % n_total], alpha=0.6,
+                label=label,
+            )
+            loaded += 1
+        except Exception:
+            pass
+
+    ax.set_title(
+        f"All datasets — composed tidal sinusoids "
+        f"({loaded} of {len(subdirs_info)} loaded)\n"
+        f"{start_year} – {start_year + n_years}",
+        fontsize=11,
+    )
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Amplitude (a.u.)")
+    ax.xaxis.set_major_locator(mdates.YearLocator(5))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    plt.xticks(rotation=45, ha="right")
+    ax.grid(True, ls=":", lw=0.4, alpha=0.6)
+    fig.tight_layout()
+    plt.show()
+
+
+def plot_lpap_amplitudes_all(subdirs_info: list) -> None:
+    """
+    Plot tidal amplitude spectra for *all* datasets as outlined (no fill)
+    horizontal bar charts overlaid on one axes, so amplitude scatter across
+    datasets can be visualised.
+
+    Parameters
+    ----------
+    subdirs_info : list of (subdir_path: str, label: str)
+    """
+    all_data: list = []
+    for subdir, label in subdirs_info:
+        try:
+            lpap = load_lpap(subdir)
+            periods    = [float(e[0]) for e in lpap]
+            amplitudes = [abs(float(e[1])) for e in lpap]
+            all_data.append((periods, amplitudes, label))
+        except Exception:
+            pass
+
+    if not all_data:
+        raise ValueError("No valid datasets found in any subdirectory.")
+
+    # Build a union of all unique periods and map each to a y-position.
+    all_periods_set: set = set()
+    for periods, _, _ in all_data:
+        all_periods_set.update(periods)
+    all_periods = sorted(all_periods_set)
+
+    n = len(all_periods)
+    y_pos_map = {p: i for i, p in enumerate(all_periods)}
+    y_pos     = np.arange(n)
+    labels    = [f"{p:.5g} d" for p in all_periods]
+
+    fig, ax = plt.subplots(figsize=(10, max(4, 0.35 * n)))
+
+    n_total = max(len(all_data), 1)
+    colors  = plt.cm.tab20(np.linspace(0, 1, n_total))
+
+    for i, (periods, amplitudes, label) in enumerate(all_data):
+        ys = [y_pos_map[p] for p in periods]
+        ax.barh(
+            ys, amplitudes,
+            align="center",
+            fill=False,
+            edgecolor=colors[i % n_total],
+            linewidth=0.8,
+            label=label,
+            alpha=0.8,
+        )
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.invert_yaxis()
+
+    def _sig5(x, _pos):
+        if x == 0:
+            return "0"
+        from math import log10, floor
+        digits = 5 - 1 - floor(log10(abs(x)))
+        digits = max(0, digits)
+        return f"{x:.{digits}f}"
+
+    from matplotlib.ticker import FuncFormatter
+    ax.xaxis.set_major_formatter(FuncFormatter(_sig5))
+
+    ax.set_xlabel("Amplitude (a.u.)")
+    ax.set_title(
+        f"All datasets — tidal amplitude spectrum ({len(all_data)} datasets)",
+        fontsize=11,
+    )
+    ax.grid(True, axis="x", ls=":", lw=0.4, alpha=0.6)
+    fig.tight_layout()
+    plt.show()
+
+
 #######################################################################################
 
 IS_WINDOWS = sys.platform == "win32"
@@ -417,6 +549,15 @@ class App(tk.Tk):
             label="Plot Tidal Amplitude Spectrum (lpap)…",
             command=self._cmd_plot_lpap_amplitudes,
         )
+        analyze_menu.add_separator()
+        analyze_menu.add_command(
+            label="Plot Tidal Periodicities — all subdirs (scatter)…",
+            command=self._cmd_plot_lpap_all,
+        )
+        analyze_menu.add_command(
+            label="Plot Tidal Amplitude Spectrum — all subdirs…",
+            command=self._cmd_plot_lpap_amplitudes_all,
+        )
         menubar.add_cascade(label="Analyze", menu=analyze_menu)
 
         self.config(menu=menubar)
@@ -543,6 +684,68 @@ class App(tk.Tk):
 
         try:
             plot_lpap_amplitudes(lpap, target_dir)
+        except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
+            messagebox.showerror("Plot error", str(exc))
+
+    # ------------------------------------------------------------------
+    # All-subdirs helpers
+    # ------------------------------------------------------------------
+
+    def _get_all_subdirs_info(self) -> list:
+        """
+        Return [(subdir_path, label), …] for every subdirectory under
+        ``self.root_dir`` that contains a ``lt.exe.p`` file.
+
+        Skips the standard non-data directories (locs, scripts, rlr_data).
+        """
+        SKIP = {"locs", "scripts", "rlr_data"}
+        result = []
+        try:
+            for p in sorted(self.root_dir.iterdir()):
+                if p.is_dir() and p.name not in SKIP:
+                    if (p / "lt.exe.p").exists():
+                        result.append((str(p), p.name))
+        except Exception as exc:
+            raise RuntimeError(str(exc)) from exc
+        return result
+
+    def _cmd_plot_lpap_all(self):
+        """Menu command: Analyze → Plot Tidal Periodicities — all subdirs (scatter)."""
+        try:
+            subdirs_info = self._get_all_subdirs_info()
+        except RuntimeError as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+
+        if not subdirs_info:
+            messagebox.showinfo(
+                "No data",
+                "No subdirectories with lt.exe.p were found under the current root."
+            )
+            return
+
+        try:
+            plot_lpap_scatter_all(subdirs_info, start_year=1950, n_years=50)
+        except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
+            messagebox.showerror("Plot error", str(exc))
+
+    def _cmd_plot_lpap_amplitudes_all(self):
+        """Menu command: Analyze → Plot Tidal Amplitude Spectrum — all subdirs."""
+        try:
+            subdirs_info = self._get_all_subdirs_info()
+        except RuntimeError as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+
+        if not subdirs_info:
+            messagebox.showinfo(
+                "No data",
+                "No subdirectories with lt.exe.p were found under the current root."
+            )
+            return
+
+        try:
+            plot_lpap_amplitudes_all(subdirs_info)
         except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
             messagebox.showerror("Plot error", str(exc))
 
