@@ -36,7 +36,16 @@ The forcing is multiplied by an annual Gaussian comb—a train of narrow pulses,
 whose width (`delB`) and offset (`delA ≈ 4.56`) are fixed across all tide-gauge experiments—
 before being integrated over time.  The integration accumulates phase, producing a
 slowly-varying continuous manifold that encodes the long-period envelope of the lunisolar
-beating pattern.
+beating pattern. The superposition of the underlying long-period lunar tridal factors looks like the following -- note that this considers all (apart from QBO30, which is a special wavenumber=0 geometry) sites as varying colors:
+
+<img width="871" height="308" alt="image" src="https://github.com/user-attachments/assets/f40ec7ac-ec0f-4f21-b7d6-ebc198ce505f" />
+
+The bar chart of the strengths of the tidal factors is shown as the following with the spread indicated as varying colors:
+
+<img width="499" height="536" alt="image" src="https://github.com/user-attachments/assets/7f975360-9db7-45c2-8046-a70c92b76784" />
+
+The beat between the 27.212d day and 27.3216 day factor lead to an 18.6 year envolope, while the beat bewteen the strongest 27.2122 day and the 27.5545 day anomalistic factor leads to a weaker 6-year modulation. All the other lunar tidal factors reinforce these periods (with another 8.85 year modulation that is hard to distinguish from the 9.3 year harmonic).
+
 
 A critical architectural feature is that the **background acceleration `bg = 1.4145 × 10⁻⁴`
 yr⁻¹** is identical across all 77 experiments that share the same `lt.exe.par` template; only
