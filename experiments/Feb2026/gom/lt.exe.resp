@@ -1,0 +1,7 @@
+FLIP                           0.01
+SPREAD_MIN                     0.00001
+SPREAD_MAX                     0.25
+MAXH                           30
+NH                             "1 1"
+NM                             2
+YEAR                           0.005
