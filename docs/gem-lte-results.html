@@ -563,30 +563,28 @@ optgroup { font-weight: 700; color: var(--color-text-muted); }
 <script>
 const BASE = 'https://raw.githubusercontent.com/pukpr/GEM-LTE/main/experiments/Feb2026/';
 
-
 const AGGREGATE_MSL_SITES = [
-  {"id":"baltic","name":"Baltic / North Sea / Scandinavia aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — 211 sites composite on Baltic, N Sea, Scandinavia","count":211},
-  {"id":"japan","name":"Japan aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — 187 sites composite for Japan","count":187},
-  {"id":"australia","name":"Australia aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — aggregate of 95 stations in Australia","count":95},
-  {"id":"britain","name":"West UK and Brittany aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — 78 sites composite on west UK and Brittany","count":78},
-  {"id":"ecoast","name":"US East Coast aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — 91 sites composite on east coast of USA","count":91},
-  {"id":"maritimes","name":"Canada Maritimes aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — 33 sites composite for Canada Maritimes","count":33},
-  {"id":"mediterranean","name":"Mediterranean and Black Sea aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — 158 sites composite on mediterranean and black sea","count":158},
-  {"id":"nz","name":"New Zealand aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — 19 sites composite for New Zealand","count":19},
-  {"id":"sea","name":"SE Asia aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — SE Asia sites composite","count":null},
-  {"id":"spacific","name":"Central Pacific aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — 102 sites composite in central pacific","count":102},
-  {"id":"gom","name":"Gulf of Mexico aggregate","r_val":null,"r_full":null,"span":"Composite","type":"aggregate_msl","note":"Aggregate MSL — Gulf of Mexico composite","count":null}
+  {id:'baltic', name:'Baltic / North Sea / Scandinavia aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 211 sites composite on Baltic, N Sea, Scandinavia', count:211},
+  {id:'japan', name:'Japan aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 187 sites composite for Japan', count:187},
+  {id:'australia', name:'Australia aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — aggregate of 95 stations in Australia', count:95},
+  {id:'britain', name:'West UK and Brittany aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 78 sites composite on west UK and Brittany', count:78},
+  {id:'ecoast', name:'US East Coast aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 91 sites composite on east coast of USA', count:91},
+  {id:'gom', name:'Gulf of Mexico aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — Gulf of Mexico composite'},
+  {id:'maritimes', name:'Canada Maritimes aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 33 sites composite for Canada Maritimes', count:33},
+  {id:'mediterranean', name:'Mediterranean and Black Sea aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 158 sites composite on mediterranean and black sea', count:158},
+  {id:'nz', name:'New Zealand aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 19 sites composite for New Zealand', count:19},
+  {id:'sea', name:'SE Asia aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — SE Asia sites composite'},
+  {id:'spacific', name:'Central Pacific aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 102 sites composite in central pacific', count:102}
 ];
 
 const ALL_SITES = [{"id": "11", "name": "Warnem\u00fcnde 2, Germany", "r_val": 0.721, "r_full": 0.823, "span": "1855\u20132024", "type": "msl"}, {"id": "88", "name": "Ratan, Sweden", "r_val": 0.707, "r_full": 0.727, "span": "1892\u20132025", "type": "msl"}, {"id": "68", "name": "Landsort, Sweden", "r_val": 0.701, "r_full": 0.745, "span": "1887\u20132007", "type": "msl"}, {"id": "78", "name": "Stockholm, Sweden", "r_val": 0.698, "r_full": 0.751, "span": "1889\u20132025", "type": "msl"}, {"id": "72", "name": "Ystad, Sweden", "r_val": 0.638, "r_full": 0.726, "span": "1887\u20131982", "type": "msl"}, {"id": "203", "name": "Furu\u00f6grund, Sweden", "r_val": 0.63, "r_full": 0.736, "span": "1916\u20132025", "type": "msl"}, {"id": "73", "name": "Varberg, Sweden", "r_val": 0.627, "r_full": 0.734, "span": "1887\u20131982", "type": "msl"}, {"id": "179", "name": "Sm\u00f6gen, Sweden", "r_val": 0.626, "r_full": 0.742, "span": "1911\u20132025", "type": "msl"}, {"id": "7", "name": "Cuxhaven 2, Germany", "r_val": 0.619, "r_full": 0.685, "span": "1843\u20132024", "type": "msl"}, {"id": "82", "name": "Copenhagen, Denmark", "r_val": 0.618, "r_full": 0.739, "span": "1889\u20132018", "type": "msl"}, {"id": "14", "name": "Helsinki, Finland", "r_val": 0.61, "r_full": 0.708, "span": "1879\u20132025", "type": "msl"}, {"id": "70", "name": "Kungsholmsfort, Sweden", "r_val": 0.608, "r_full": 0.735, "span": "1887\u20132025", "type": "msl"}, {"id": "330", "name": "Klagshamn, Sweden", "r_val": 0.602, "r_full": 0.762, "span": "1930\u20132025", "type": "msl"}, {"id": "81", "name": "Fredericia, Denmark", "r_val": 0.601, "r_full": 0.74, "span": "1911\u20132025", "type": "msl"}, {"id": "172", "name": "M\u00e4ntyluoto, Finland", "r_val": 0.598, "r_full": 0.707, "span": "1911\u20132025", "type": "msl"}, {"id": "71", "name": "Hanko/Hang\u00f6, Finland", "r_val": 0.574, "r_full": 0.683, "span": "1888\u20132025", "type": "msl"}, {"id": "69", "name": "\u00d6land N. Cape, Sweden", "r_val": 0.568, "r_full": 0.735, "span": "1887\u20132025", "type": "msl"}, {"id": "285", "name": "Kaskinen/Kasko, Finland", "r_val": 0.556, "r_full": 0.705, "span": "1927\u20132025", "type": "msl"}, {"id": "229", "name": "Kemi, Finland", "r_val": 0.548, "r_full": 0.695, "span": "1920\u20132024", "type": "msl"}, {"id": "57", "name": "Vaasa/Vasa, Finland", "r_val": 0.547, "r_full": 0.692, "span": "1884\u20132023", "type": "msl"}, {"id": "95", "name": "North Shields, UK", "r_val": 0.536, "r_full": 0.672, "span": "1895\u20132025", "type": "msl"}, {"id": "98", "name": "Slipshavn, Denmark", "r_val": 0.531, "r_full": 0.733, "span": "1896\u20132018", "type": "msl"}, {"id": "8", "name": "Wismar 2, Germany", "r_val": 0.53, "r_full": 0.748, "span": "1849\u20132024", "type": "msl"}, {"id": "240", "name": "Raahe/Brahestad, Finland", "r_val": 0.528, "r_full": 0.667, "span": "1923\u20132025", "type": "msl"}, {"id": "79", "name": "Oulu/Ule\u00e5borg, Finland", "r_val": 0.526, "r_full": 0.706, "span": "1889\u20132025", "type": "msl"}, {"id": "24", "name": "Delfzijl, Netherlands", "r_val": 0.518, "r_full": 0.679, "span": "1865\u20132024", "type": "msl"}, {"id": "113", "name": "Kors\u00f8r, Denmark", "r_val": 0.509, "r_full": 0.697, "span": "1897\u20132018", "type": "msl"}, {"id": "80", "name": "Esbjerg, Denmark", "r_val": 0.5, "r_full": 0.694, "span": "1889\u20132018", "type": "msl"}, {"id": "256", "name": "La Jolla, CA, USA", "r_val": 0.465, "r_full": 0.68, "span": "1925\u20132025", "type": "msl"}, {"id": "2", "name": "\u015awinouj\u015bcie, Poland", "r_val": 0.446, "r_full": 0.641, "span": "1811\u20132000", "type": "msl"}, {"id": "89", "name": "Hirtshals, Denmark", "r_val": 0.431, "r_full": 0.679, "span": "1892\u20132018", "type": "msl"}, {"id": "91", "name": "Frederikshavn, Denmark", "r_val": 0.43, "r_full": 0.684, "span": "1894\u20132018", "type": "msl"}, {"id": "62", "name": "Oslo, Norway", "r_val": 0.429, "r_full": 0.642, "span": "1886\u20132025", "type": "msl"}, {"id": "42", "name": "Sevastopol, Ukraine", "r_val": 0.413, "r_full": 0.698, "span": "1910\u20131995", "type": "msl"}, {"id": "25", "name": "Harlingen, Netherlands", "r_val": 0.413, "r_full": 0.681, "span": "1865\u20132024", "type": "msl"}, {"id": "225", "name": "Ketchikan, AK, USA", "r_val": 0.409, "r_full": 0.623, "span": "1919\u20132025", "type": "msl"}, {"id": "236", "name": "West-Terschelling, Neth.", "r_val": 0.401, "r_full": 0.641, "span": "1921\u20132024", "type": "msl"}, {"id": "23", "name": "Den Helder, Netherlands", "r_val": 0.398, "r_full": 0.68, "span": "1865\u20132024", "type": "msl"}, {"id": "47", "name": "Stavanger, Norway", "r_val": 0.387, "r_full": 0.654, "span": "1919\u20132025", "type": "msl"}, {"id": "1", "name": "Brest, France", "r_val": 0.377, "r_full": 0.679, "span": "1807\u20132025", "type": "msl"}, {"id": "58", "name": "Bergen, Norway", "r_val": 0.373, "r_full": 0.686, "span": "1915\u20132025", "type": "msl"}, {"id": "155", "name": "Honolulu, HI, USA", "r_val": 0.372, "r_full": 0.678, "span": "1905\u20132024", "type": "msl"}, {"id": "20", "name": "Vlissingen, Netherlands", "r_val": 0.371, "r_full": 0.632, "span": "1862\u20132024", "type": "msl"}, {"id": "111", "name": "Fremantle, Australia", "r_val": 0.367, "r_full": 0.688, "span": "1897\u20132023", "type": "msl"}, {"id": "161", "name": "Galveston II, TX, USA", "r_val": 0.363, "r_full": 0.667, "span": "1908\u20132025", "type": "msl"}, {"id": "76", "name": "Aarhus, Denmark", "r_val": 0.348, "r_full": 0.654, "span": "1889\u20132018", "type": "msl"}, {"id": "154", "name": "Trieste, Italy", "r_val": 0.331, "r_full": 0.517, "span": "1877\u20132021", "type": "msl"}, {"id": "32", "name": "IJmuiden, Netherlands", "r_val": 0.309, "r_full": 0.617, "span": "1871\u20132024", "type": "msl"}, {"id": "41", "name": "Poti, Georgia", "r_val": 0.306, "r_full": 0.651, "span": "1874\u20132020", "type": "msl"}, {"id": "239", "name": "Turku/\u00c5bo, Finland", "r_val": 0.306, "r_full": 0.617, "span": "1922\u20132024", "type": "msl"}, {"id": "5", "name": "Holyhead, UK", "r_val": 0.303, "r_full": 0.297, "span": "1938\u20132025", "type": "msl"}, {"id": "246", "name": "Pensacola, FL, USA", "r_val": 0.268, "r_full": 0.663, "span": "1923\u20132025", "type": "msl"}, {"id": "127", "name": "Seattle, WA, USA", "r_val": 0.233, "r_full": 0.57, "span": "1899\u20132025", "type": "msl"}, {"id": "22", "name": "Hoek van Holland, Neth.", "r_val": 0.222, "r_full": 0.61, "span": "1864\u20132024", "type": "msl"}, {"id": "245", "name": "Los Angeles, CA, USA", "r_val": 0.214, "r_full": 0.697, "span": "1924\u20132025", "type": "msl"}, {"id": "183", "name": "Portland, ME, USA", "r_val": 0.212, "r_full": 0.661, "span": "1912\u20132025", "type": "msl"}, {"id": "302", "name": "Tregde, Norway", "r_val": 0.208, "r_full": 0.64, "span": "1928\u20132025", "type": "msl"}, {"id": "249", "name": "F\u00f6gl\u00f6/Degerby, \u00c5land Is.", "r_val": 0.201, "r_full": 0.577, "span": "1924\u20132025", "type": "msl"}, {"id": "202", "name": "Newlyn, UK", "r_val": 0.175, "r_full": 0.466, "span": "1915\u20132025", "type": "msl"}, {"id": "234", "name": "Charleston I, SC, USA", "r_val": 0.119, "r_full": 0.559, "span": "1922\u20132024", "type": "msl"}, {"id": "nino4", "name": "NINO4 (W. Pacific)", "r_val": 0.639, "r_full": 0.803, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "ic3tsfc", "name": "ic3tsfc (recon. Pacific SST)", "r_val": 0.616, "r_full": 0.78, "span": "1880\u20132016", "note": "Climate Index"}, {"id": "amo", "name": "AMO (N. Atlantic)", "r_val": 0.543, "r_full": 0.791, "span": "1880\u20132023", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "nao", "name": "NAO", "r_val": 0.501, "r_full": 0.775, "span": "1880\u20132023", "note": "Climate Index \u2014 closely linked to Baltic MSL"}, {"id": "nino34", "name": "NINO3.4", "r_val": 0.449, "r_full": 0.698, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "emi", "name": "EMI (ENSO Modoki)", "r_val": 0.402, "r_full": 0.665, "span": "1880\u20132019", "note": "Climate Index"}, {"id": "iodw", "name": "IOD West pole", "r_val": 0.398, "r_full": 0.882, "span": "1880\u20132022", "note": "Climate Index"}, {"id": "nino3", "name": "NINO3", "r_val": 0.382, "r_full": 0.701, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "iode", "name": "IOD East pole", "r_val": 0.364, "r_full": 0.782, "span": "1880\u20132022", "note": "Climate Index"}, {"id": "pdo", "name": "PDO", "r_val": 0.362, "r_full": 0.655, "span": "1880\u20132022", "note": "Climate Index"}, {"id": "m4", "name": "M4 (NPGO)", "r_val": 0.341, "r_full": 0.715, "span": "1910\u20132024", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "darwin1880", "name": "Darwin SOI", "r_val": 0.308, "r_full": 0.648, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "m6", "name": "M6 (Atlantic Ni\u00f1o)", "r_val": 0.212, "r_full": 0.582, "span": "1910\u20132024", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "brestexcl", "name": "Brest from 1880", "r_val": 0.22, "r_full": 0.664, "span": "1880\u20132020", "note": "MSL site variant"}, {"id": "nino12", "name": "NINO1+2 (E. Pacific)", "r_val": 0.218, "r_full": 0.609, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "tsa", "name": "TSA (Trop. S. Atlantic)", "r_val": 0.166, "r_full": 0.772, "span": "1880\u20132025", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "iod", "name": "IOD (composite)", "r_val": 0.156, "r_full": 0.669, "span": "1880\u20132022", "note": "Climate Index"}, {"id": "tna", "name": "TNA (Trop. N. Atlantic)", "r_val": 0.128, "r_full": 0.761, "span": "1880\u20132025", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "denison", "name": "Ft Denison, Australia", "r_val": 0.411, "r_full": 0.54, "span": "1888\u20132024", "note": "MSL site"}];
 
 // Separate into MSL and climate
 const MSL_SITES = ALL_SITES.filter(s => s.type === 'msl');
-const AGG_MSL_SITES = AGGREGATE_MSL_SITES;
 const CLIMATE_SITES = ALL_SITES.filter(s => s.type !== 'msl');
 
 // All combined for dual dropdowns
-const ALL_COMBINED = [...ALL_SITES, ...AGGREGATE_MSL_SITES].sort((a,b) => (b.r_val ?? -1) - (a.r_val ?? -1));
+const ALL_COMBINED = [...ALL_SITES].sort((a,b) => b.r_val - a.r_val);
 
 // PNG URL builder
 function pngUrl(id) {
@@ -607,7 +605,7 @@ function typeLabel(s) {
     if (s.note.includes('MSL site variant')) return '<span class="badge badge-msl">MSL variant</span>';
     return '<span class="badge badge-climate">Climate Index</span>';
   }
-  return '<span class="badge badge-msl">MSL</span>'; 
+  return '<span class="badge badge-msl">MSL</span>';
 }
 
 // Populate MSL dropdown
@@ -633,26 +631,13 @@ function populateMSL() {
 
   // Build by correlation
   const sorted = [...MSL_SITES].sort((a,b) => b.r_val - a.r_val);
-  const aggGroup = document.createElement('optgroup');
-  aggGroup.label = 'Aggregate MSL Regions';
-  AGG_MSL_SITES.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.id;
-    opt.textContent = s.id + ' — ' + s.name + (s.count ? ` (${s.count} sites)` : '');
-    aggGroup.appendChild(opt);
-  });
-  sel.appendChild(aggGroup);
-
-  const siteGroup = document.createElement('optgroup');
-  siteGroup.label = 'Individual MSL Tide Gauges';
 
   sorted.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s.id;
     opt.textContent = s.id + ' — ' + s.name + ' (r=' + s.r_val.toFixed(3) + ')';
-    siteGroup.appendChild(opt);
+    sel.appendChild(opt);
   });
-  sel.appendChild(siteGroup);
 }
 
 // Populate climate dropdown
@@ -697,12 +682,6 @@ function populateDual() {
     const ogMSL = document.createElement('optgroup'); ogMSL.label = '── MSL Tide Gauges ──';
     const ogClimate = document.createElement('optgroup'); ogClimate.label = '── Climate Indices ──';
 
-    AGG_MSL_SITES.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = s.id + ' — ' + s.name + (s.count ? ` (${s.count} sites)` : '');
-      ogMSL.appendChild(opt);
-    });
     sorted.filter(s => s.type === 'msl').forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.id;
@@ -729,11 +708,10 @@ function buildCard(siteId) {
   const s = ALL_SITES.find(x => x.id === siteId);
   if (!s) return '';
 
-  const hasMetrics = typeof s.r_val === 'number';
-  const rValClass = rClass(s.r_val || 0);
+  const rValClass = rClass(s.r_val);
   const rFullClass = rClass(s.r_full || 0);
-  const rValPct = hasMetrics ? Math.round(s.r_val * 100) : 0;
-  const rFullPct = typeof s.r_full === 'number' ? Math.round(s.r_full * 100) : 0;
+  const rValPct = Math.round(s.r_val * 100);
+  const rFullPct = Math.round((s.r_full || 0) * 100);
   const noteHtml = s.note ? '<div class="result-note">' + s.note + '</div>' : '';
   const typeHtml = typeLabel(s);
   const imgUrl = pngUrl(s.id);
@@ -751,7 +729,6 @@ function buildCard(siteId) {
         <span class="result-site-id">${s.id}</span>
       </div>
       <div class="corr-bar-wrap">
-        ${hasMetrics ? `
         <div class="corr-bar-row">
           <span class="corr-bar-label">r (1940–70)</span>
           <div class="corr-bar-track"><div class="corr-bar-fill val" style="width:${rValPct}%"></div></div>
@@ -761,8 +738,7 @@ function buildCard(siteId) {
           <span class="corr-bar-label">r (full record)</span>
           <div class="corr-bar-track"><div class="corr-bar-fill full" style="width:${rFullPct}%"></div></div>
           <span class="corr-bar-num ${rFullClass}">${(s.r_full||0).toFixed(3)}</span>
-        </div>` : `
-        <div style="padding:var(--space-2) 0;font-size:var(--text-xs);color:var(--color-text-muted)">Aggregate regional MSL composite from subdirectory README metadata${s.count ? ` · ${s.count} contributing sites` : ''}</div>`}
+        </div>
       </div>
       <div class="result-img-wrap" id="img-wrap-${s.id}">
         <div class="img-loading" style="width:100%;height:200px"></div>
@@ -835,7 +811,7 @@ function updateDual() {
 // Build full results table
 function buildTable() {
   const tbody = document.getElementById('table-body');
-  const allSorted = [...ALL_SITES, ...AGGREGATE_MSL_SITES].sort((a,b) => (b.r_val ?? -1) - (a.r_val ?? -1));
+  const allSorted = [...ALL_SITES, ...AGGREGATE_MSL_SITES].sort((a,b) => (typeof b.r_val === 'number' ? b.r_val : -1) - (typeof a.r_val === 'number' ? a.r_val : -1));
 
   allSorted.forEach((s, i) => {
     const tr = document.createElement('tr');
