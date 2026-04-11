@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEM-LTE Feb 2026 Cross-Validation Results</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@400,700&display=swap" rel="stylesheet">
+<style>
+/* ============ DESIGN TOKENS ============ */
+:root, [data-theme="light"] {
+  --color-bg: #f4f3ef;
+  --color-surface: #f8f7f4;
+  --color-surface-2: #fafaf8;
+  --color-surface-offset: #eeece7;
+  --color-surface-offset-2: #e8e6e1;
+  --color-divider: #d8d5cf;
+  --color-border: #ccc9c2;
+  --color-text: #1e1c15;
+  --color-text-muted: #6e6c67;
+  --color-text-faint: #b0aea8;
+  --color-primary: #01696f;
+  --color-primary-hover: #0c4e54;
+  --color-primary-highlight: #cedcd8;
+  --color-accent: #4e7fa8;
+  --color-success: #437a22;
+  --color-warning: #964219;
+  --color-error: #a12c7b;
+  --color-gold: #d19900;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --shadow-sm: 0 1px 3px oklch(0.2 0.01 80 / 0.08);
+  --shadow-md: 0 4px 14px oklch(0.2 0.01 80 / 0.10);
+  --shadow-lg: 0 12px 32px oklch(0.2 0.01 80 / 0.14);
+  --font-body: 'Satoshi', 'Helvetica Neue', sans-serif;
+  --font-display: 'Cabinet Grotesk', 'Helvetica Neue', sans-serif;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+  --space-12: 3rem; --space-16: 4rem;
+  --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+  --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+  --text-2xl: clamp(2rem, 1.2rem + 2.5vw, 3rem);
+  --transition: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-theme="dark"] {
+  --color-bg: #131210;
+  --color-surface: #1a1916;
+  --color-surface-2: #1f1e1b;
+  --color-surface-offset: #252420;
+  --color-surface-offset-2: #2a2926;
+  --color-divider: #2e2d2a;
+  --color-border: #373633;
+  --color-text: #d0ceca;
+  --color-text-muted: #7a7875;
+  --color-text-faint: #524f4d;
+  --color-primary: #4da6ad;
+  --color-primary-hover: #2e8b92;
+  --color-primary-highlight: #1d3a3c;
+  --color-accent: #6b9cc4;
+  --color-success: #72b048;
+  --color-warning: #c0712f;
+  --color-error: #d460aa;
+  --color-gold: #e8bc45;
+  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.25);
+  --shadow-md: 0 4px 14px oklch(0 0 0 / 0.35);
+  --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.45);
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme]) { --color-bg: #f4f3ef; } }
+
+/* ============ BASE ============ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+body {
+  min-height: 100dvh; font-family: var(--font-body);
+  font-size: var(--text-base); color: var(--color-text);
+  background: var(--color-bg); line-height: 1.6;
+}
+img { display: block; max-width: 100%; }
+button { cursor: pointer; background: none; border: none; font: inherit; color: inherit; }
+a, button { transition: color var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition); }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; border-radius: var(--radius-sm); }
+
+/* ============ LAYOUT ============ */
+.page-wrap { max-width: 1280px; margin-inline: auto; padding-inline: var(--space-6); }
+
+/* ============ HEADER ============ */
+.site-header {
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-surface);
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+.header-inner {
+  max-width: 1280px; margin-inline: auto; padding-inline: var(--space-6);
+  display: flex; align-items: center; gap: var(--space-4);
+  height: 60px;
+}
+.logo {
+  display: flex; align-items: center; gap: var(--space-3);
+  text-decoration: none; color: var(--color-text);
+  flex-shrink: 0;
+}
+.logo-icon { color: var(--color-primary); }
+.logo-text {
+  font-family: var(--font-display); font-size: var(--text-lg);
+  font-weight: 700; letter-spacing: -0.02em; line-height: 1.1;
+}
+.logo-sub { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: 400; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+.theme-btn {
+  width: 36px; height: 36px; border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface-offset);
+}
+.theme-btn:hover { color: var(--color-text); border-color: var(--color-primary); }
+.gh-link {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
+  font-size: var(--text-sm); font-weight: 500; text-decoration: none;
+  color: var(--color-text-muted); border: 1px solid var(--color-border);
+  background: var(--color-surface-offset);
+}
+.gh-link:hover { color: var(--color-primary); border-color: var(--color-primary); }
+
+/* ============ HERO STRIP ============ */
+.hero-strip {
+  background: linear-gradient(in oklab, var(--color-surface) 0%, var(--color-bg) 100%);
+  border-bottom: 1px solid var(--color-divider);
+  padding: var(--space-8) 0 var(--space-6);
+}
+.hero-title {
+  font-family: var(--font-display); font-size: var(--text-2xl);
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+  color: var(--color-text);
+}
+.hero-title span { color: var(--color-primary); }
+.hero-meta { margin-top: var(--space-3); color: var(--color-text-muted); font-size: var(--text-sm); max-width: 70ch; }
+.stat-row {
+  margin-top: var(--space-6); display: flex; gap: var(--space-4); flex-wrap: wrap;
+}
+.stat-pill {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-full); font-size: var(--text-sm);
+}
+.stat-pill .val { font-weight: 700; color: var(--color-primary); }
+
+/* ============ MAIN CONTENT ============ */
+.main-content {
+  padding-block: var(--space-8);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-8);
+}
+
+/* ============ PANEL CARD ============ */
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.panel-head {
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-surface-2);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);
+}
+.panel-title { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; }
+.panel-body { padding: var(--space-6); }
+
+/* ============ CONTROLS ============ */
+.controls-grid {
+  display: grid; gap: var(--space-5);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) { .controls-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1024px) { .controls-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+.field-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.field-label {
+  font-size: var(--text-sm); font-weight: 600;
+  color: var(--color-text-muted); text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.select-wrap { position: relative; }
+.select-wrap select {
+  width: 100%; padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-offset);
+  color: var(--color-text); font-size: var(--text-sm);
+  appearance: none; cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.select-wrap select:hover { border-color: var(--color-primary); }
+.select-wrap select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 18%, transparent); outline: none; }
+.select-arrow {
+  position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%);
+  pointer-events: none; color: var(--color-text-muted); width: 16px; height: 16px;
+}
+
+/* ============ RESULT DISPLAY ============ */
+.result-area {
+  display: grid; gap: var(--space-6);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) { .result-area.dual { grid-template-columns: 1fr 1fr; } }
+
+.result-card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden; transition: box-shadow var(--transition);
+}
+.result-card:hover { box-shadow: var(--shadow-md); }
+.result-card-head {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-surface-offset);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3);
+}
+.result-site-name { font-weight: 700; font-size: var(--text-base); line-height: 1.3; }
+.result-site-id {
+  font-size: var(--text-xs); color: var(--color-text-muted);
+  background: var(--color-surface-offset-2);
+  padding: 2px var(--space-2); border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  white-space: nowrap; flex-shrink: 0;
+}
+.result-meta {
+  padding: var(--space-3) var(--space-5);
+  display: flex; gap: var(--space-4); flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-surface);
+}
+.meta-item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); }
+.meta-label { color: var(--color-text-muted); }
+.meta-val { font-weight: 700; }
+.corr-bar-wrap {
+  padding: var(--space-2) var(--space-5);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-divider);
+}
+.corr-bar-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-1); }
+.corr-bar-label { font-size: var(--text-xs); color: var(--color-text-muted); width: 90px; flex-shrink: 0; }
+.corr-bar-track {
+  flex: 1; height: 6px; border-radius: 3px;
+  background: var(--color-surface-offset-2); overflow: hidden;
+}
+.corr-bar-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.corr-bar-fill.val { background: var(--color-primary); }
+.corr-bar-fill.full { background: var(--color-accent); }
+.corr-bar-num { font-size: var(--text-xs); font-weight: 700; width: 36px; text-align: right; flex-shrink: 0; }
+.result-img-wrap {
+  padding: var(--space-4);
+  background: var(--color-bg);
+  min-height: 220px; display: flex; align-items: center; justify-content: center;
+}
+.result-img-wrap img { border-radius: var(--radius-md); width: 100%; height: auto; }
+.result-note {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-xs); color: var(--color-text-muted);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-divider);
+  font-style: italic;
+}
+
+/* ============ EMPTY / LOADING STATE ============ */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: var(--space-16) var(--space-8); text-align: center;
+  gap: var(--space-4); color: var(--color-text-muted);
+}
+.empty-state svg { color: var(--color-text-faint); }
+.empty-state h3 { color: var(--color-text); font-size: var(--text-lg); }
+.empty-state p { max-width: 36ch; font-size: var(--text-sm); }
+.img-loading {
+  width: 100%; aspect-ratio: 3/1.2;
+  background: linear-gradient(90deg, var(--color-surface-offset) 25%, var(--color-surface-offset-2) 50%, var(--color-surface-offset) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+/* ============ TAB BAR ============ */
+.tab-bar {
+  display: flex; gap: var(--space-1); padding: var(--space-1);
+  background: var(--color-surface-offset); border-radius: var(--radius-md);
+  width: fit-content;
+}
+.tab-btn {
+  padding: var(--space-2) var(--space-4); border-radius: calc(var(--radius-md) - 2px);
+  font-size: var(--text-sm); font-weight: 500; cursor: pointer;
+  color: var(--color-text-muted); transition: all var(--transition);
+}
+.tab-btn.active {
+  background: var(--color-surface-2); color: var(--color-text);
+  box-shadow: var(--shadow-sm); font-weight: 600;
+}
+.tab-btn:hover:not(.active) { color: var(--color-text); }
+
+/* ============ TABLE ============ */
+.results-table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: var(--text-sm); }
+thead th {
+  padding: var(--space-3) var(--space-4); text-align: left;
+  border-bottom: 2px solid var(--color-divider);
+  font-weight: 600; color: var(--color-text-muted);
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em;
+  background: var(--color-surface-2); white-space: nowrap;
+}
+tbody td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-divider); vertical-align: middle; }
+tbody tr:hover { background: var(--color-surface-offset); }
+tbody tr { cursor: pointer; transition: background var(--transition); }
+.td-name { font-weight: 500; max-width: 220px; }
+.td-id { font-family: monospace; color: var(--color-text-muted); font-size: var(--text-xs); }
+.td-r { font-weight: 700; font-variant-numeric: tabular-nums; }
+.r-chip {
+  display: inline-block; padding: 2px var(--space-2);
+  border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.r-high { background: color-mix(in oklab, var(--color-success) 20%, transparent); color: var(--color-success); }
+.r-mid { background: color-mix(in oklab, var(--color-gold) 20%, transparent); color: var(--color-gold); }
+.r-low { background: color-mix(in oklab, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+.badge {
+  display: inline-block; padding: 2px var(--space-2);
+  border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 600;
+}
+.badge-msl { background: color-mix(in oklab, var(--color-primary) 15%, transparent); color: var(--color-primary); }
+.badge-climate { background: color-mix(in oklab, var(--color-accent) 15%, transparent); color: var(--color-accent); }
+.badge-agg { background: color-mix(in oklab, var(--color-gold) 15%, transparent); color: var(--color-gold); }
+
+/* ============ FOOTER ============ */
+.site-footer {
+  margin-top: var(--space-12);
+  border-top: 1px solid var(--color-divider);
+  padding: var(--space-8) 0;
+  background: var(--color-surface);
+}
+.footer-inner {
+  max-width: 1280px; margin-inline: auto; padding-inline: var(--space-6);
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: var(--space-4);
+  font-size: var(--text-xs); color: var(--color-text-muted);
+}
+.footer-inner a { color: var(--color-primary); text-decoration: none; }
+.footer-inner a:hover { text-decoration: underline; }
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 640px) {
+  .hero-title { font-size: clamp(1.4rem, 5vw, 2rem); }
+  .panel-head { flex-direction: column; }
+  .header-inner { padding-inline: var(--space-4); }
+  .page-wrap { padding-inline: var(--space-4); }
+  .panel-body { padding: var(--space-4); }
+}
+
+/* ============ SECTION DIVIDER ============ */
+.section-label {
+  font-size: var(--text-xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--color-text-faint);
+  padding: var(--space-2) 0 var(--space-1);
+  border-bottom: 1px solid var(--color-divider);
+  margin-bottom: var(--space-2);
+}
+optgroup { font-weight: 700; color: var(--color-text-muted); }
+
+/* ============ RADIUS-FULL ============ */
+.radius-full { border-radius: var(--radius-full); }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="site-header">
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <svg class="logo-icon" width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="GEM-LTE logo">
+        <circle cx="15" cy="15" r="13" stroke="currentColor" stroke-width="2"/>
+        <path d="M4 15 Q8 7 15 15 Q22 23 26 15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <circle cx="15" cy="15" r="3" fill="currentColor"/>
+      </svg>
+      <div>
+        <div class="logo-text">GEM-LTE</div>
+        <div class="logo-sub">Cross-Validation · Feb 2026</div>
+      </div>
+    </a>
+    <div class="header-right">
+      <a class="gh-link" href="https://github.com/pukpr/GEM-LTE/tree/main/experiments/Feb2026" target="_blank" rel="noopener noreferrer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <button class="theme-btn" data-theme-toggle aria-label="Toggle theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== HERO STRIP ===== -->
+<div class="hero-strip">
+  <div class="page-wrap">
+    <h1 class="hero-title">GEM-LTE <span>1940–1970</span> Holdout Validation</h1>
+    <p class="hero-meta">
+      Cross-validation results for <strong>79 tide-gauge and climate-index time series</strong> using the GEM-LTE (Laplace's Tidal Equation) model.
+      Model trained on data <em>outside</em> 1940–1970; results show how well it predicts the withheld interval.
+    </p>
+    <div class="stat-row">
+      <div class="stat-pill"><span>Sites</span> <span class="val">79</span></div>
+      <div class="stat-pill"><span>Best r (1940–70)</span> <span class="val">0.721</span></div>
+      <div class="stat-pill"><span>Top site</span> <span class="val">Warnemünde 2</span></div>
+      <div class="stat-pill"><span>Holdout window</span> <span class="val">1940–1970</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="page-wrap">
+<div class="main-content">
+
+  <!-- ========= SINGLE VIEW PANEL ========= -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Single Site Viewer</div>
+      <div class="tab-bar" role="tablist">
+        <button class="tab-btn active" role="tab" aria-selected="true" data-tab="msl" onclick="switchTab('msl')">MSL Tide Gauges</button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="climate" onclick="switchTab('climate')">Climate Indices</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <!-- MSL Dropdown -->
+      <div id="msl-controls" class="controls-grid">
+        <div class="field-group">
+          <label class="field-label" for="msl-select">Select MSL Tide Gauge Site</label>
+          <div class="select-wrap">
+            <select id="msl-select" onchange="updateSingle('msl', this.value)" aria-label="Select MSL site">
+              <option value="">— choose a site —</option>
+            </select>
+            <svg class="select-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+          </div>
+        </div>
+      </div>
+      <!-- Climate Dropdown -->
+      <div id="climate-controls" class="controls-grid" style="display:none">
+        <div class="field-group">
+          <label class="field-label" for="climate-select">Select Climate Index</label>
+          <div class="select-wrap">
+            <select id="climate-select" onchange="updateSingle('climate', this.value)" aria-label="Select climate index">
+              <option value="">— choose an index —</option>
+            </select>
+            <svg class="select-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: var(--space-6)">
+        <div id="single-result">
+          <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <h3>Select a site above</h3>
+            <p>Choose a tide gauge or climate index to view its 1940–1970 validation chart and performance metrics.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= DUAL COMPARE PANEL ========= -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Side-by-Side Comparison</div>
+      <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Select any two sites or indices to compare</span>
+    </div>
+    <div class="panel-body">
+      <div class="controls-grid">
+        <div class="field-group">
+          <label class="field-label" for="compare-a">Left Panel</label>
+          <div class="select-wrap">
+            <select id="compare-a" onchange="updateDual()" aria-label="Left comparison site">
+              <option value="">— choose left —</option>
+            </select>
+            <svg class="select-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="compare-b">Right Panel</label>
+          <div class="select-wrap">
+            <select id="compare-b" onchange="updateDual()" aria-label="Right comparison site">
+              <option value="">— choose right —</option>
+            </select>
+            <svg class="select-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: var(--space-6)">
+        <div id="dual-result" class="result-area dual">
+          <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <h3>Choose two sites to compare</h3>
+            <p>Select entries from both dropdowns to view charts side by side.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= FULL TABLE PANEL ========= -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">All Results — Ranked by r (1940–70)</div>
+      <div style="font-size:var(--text-xs);color:var(--color-text-muted)">Click any row to view its chart in the Single Site Viewer</div>
+    </div>
+    <div class="panel-body" style="padding:0">
+      <div class="results-table-wrap">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Site ID</th>
+              <th>Location / Index</th>
+              <th>Type</th>
+              <th>r (1940–70)</th>
+              <th>r (full)</th>
+              <th>Record Span</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end main-content -->
+</div><!-- end page-wrap -->
+
+<!-- ===== FOOTER ===== -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      GEM-LTE February 2026 Cross-Validation ·
+      <a href="https://github.com/pukpr/GEM-LTE" target="_blank" rel="noopener">pukpr/GEM-LTE</a> ·
+      Mathematical framework: <a href="https://github.com/pukpr/gem" target="_blank" rel="noopener">Wiley/AGU 2019</a>
+    </div>
+    <div>Results data via raw.githubusercontent.com</div>
+  </div>
+</footer>
+
+<!-- ===== SCRIPT ===== -->
+<script>
+const BASE = 'https://raw.githubusercontent.com/pukpr/GEM-LTE/main/experiments/Feb2026/';
+
+const ALL_SITES = [{"id": "11", "name": "Warnem\u00fcnde 2, Germany", "r_val": 0.721, "r_full": 0.823, "span": "1855\u20132024", "type": "msl"}, {"id": "88", "name": "Ratan, Sweden", "r_val": 0.707, "r_full": 0.727, "span": "1892\u20132025", "type": "msl"}, {"id": "68", "name": "Landsort, Sweden", "r_val": 0.701, "r_full": 0.745, "span": "1887\u20132007", "type": "msl"}, {"id": "78", "name": "Stockholm, Sweden", "r_val": 0.698, "r_full": 0.751, "span": "1889\u20132025", "type": "msl"}, {"id": "72", "name": "Ystad, Sweden", "r_val": 0.638, "r_full": 0.726, "span": "1887\u20131982", "type": "msl"}, {"id": "203", "name": "Furu\u00f6grund, Sweden", "r_val": 0.63, "r_full": 0.736, "span": "1916\u20132025", "type": "msl"}, {"id": "73", "name": "Varberg, Sweden", "r_val": 0.627, "r_full": 0.734, "span": "1887\u20131982", "type": "msl"}, {"id": "179", "name": "Sm\u00f6gen, Sweden", "r_val": 0.626, "r_full": 0.742, "span": "1911\u20132025", "type": "msl"}, {"id": "7", "name": "Cuxhaven 2, Germany", "r_val": 0.619, "r_full": 0.685, "span": "1843\u20132024", "type": "msl"}, {"id": "82", "name": "Copenhagen, Denmark", "r_val": 0.618, "r_full": 0.739, "span": "1889\u20132018", "type": "msl"}, {"id": "14", "name": "Helsinki, Finland", "r_val": 0.61, "r_full": 0.708, "span": "1879\u20132025", "type": "msl"}, {"id": "70", "name": "Kungsholmsfort, Sweden", "r_val": 0.608, "r_full": 0.735, "span": "1887\u20132025", "type": "msl"}, {"id": "330", "name": "Klagshamn, Sweden", "r_val": 0.602, "r_full": 0.762, "span": "1930\u20132025", "type": "msl"}, {"id": "81", "name": "Fredericia, Denmark", "r_val": 0.601, "r_full": 0.74, "span": "1911\u20132025", "type": "msl"}, {"id": "172", "name": "M\u00e4ntyluoto, Finland", "r_val": 0.598, "r_full": 0.707, "span": "1911\u20132025", "type": "msl"}, {"id": "71", "name": "Hanko/Hang\u00f6, Finland", "r_val": 0.574, "r_full": 0.683, "span": "1888\u20132025", "type": "msl"}, {"id": "69", "name": "\u00d6land N. Cape, Sweden", "r_val": 0.568, "r_full": 0.735, "span": "1887\u20132025", "type": "msl"}, {"id": "285", "name": "Kaskinen/Kasko, Finland", "r_val": 0.556, "r_full": 0.705, "span": "1927\u20132025", "type": "msl"}, {"id": "229", "name": "Kemi, Finland", "r_val": 0.548, "r_full": 0.695, "span": "1920\u20132024", "type": "msl"}, {"id": "57", "name": "Vaasa/Vasa, Finland", "r_val": 0.547, "r_full": 0.692, "span": "1884\u20132023", "type": "msl"}, {"id": "95", "name": "North Shields, UK", "r_val": 0.536, "r_full": 0.672, "span": "1895\u20132025", "type": "msl"}, {"id": "98", "name": "Slipshavn, Denmark", "r_val": 0.531, "r_full": 0.733, "span": "1896\u20132018", "type": "msl"}, {"id": "8", "name": "Wismar 2, Germany", "r_val": 0.53, "r_full": 0.748, "span": "1849\u20132024", "type": "msl"}, {"id": "240", "name": "Raahe/Brahestad, Finland", "r_val": 0.528, "r_full": 0.667, "span": "1923\u20132025", "type": "msl"}, {"id": "79", "name": "Oulu/Ule\u00e5borg, Finland", "r_val": 0.526, "r_full": 0.706, "span": "1889\u20132025", "type": "msl"}, {"id": "24", "name": "Delfzijl, Netherlands", "r_val": 0.518, "r_full": 0.679, "span": "1865\u20132024", "type": "msl"}, {"id": "113", "name": "Kors\u00f8r, Denmark", "r_val": 0.509, "r_full": 0.697, "span": "1897\u20132018", "type": "msl"}, {"id": "80", "name": "Esbjerg, Denmark", "r_val": 0.5, "r_full": 0.694, "span": "1889\u20132018", "type": "msl"}, {"id": "256", "name": "La Jolla, CA, USA", "r_val": 0.465, "r_full": 0.68, "span": "1925\u20132025", "type": "msl"}, {"id": "2", "name": "\u015awinouj\u015bcie, Poland", "r_val": 0.446, "r_full": 0.641, "span": "1811\u20132000", "type": "msl"}, {"id": "89", "name": "Hirtshals, Denmark", "r_val": 0.431, "r_full": 0.679, "span": "1892\u20132018", "type": "msl"}, {"id": "91", "name": "Frederikshavn, Denmark", "r_val": 0.43, "r_full": 0.684, "span": "1894\u20132018", "type": "msl"}, {"id": "62", "name": "Oslo, Norway", "r_val": 0.429, "r_full": 0.642, "span": "1886\u20132025", "type": "msl"}, {"id": "42", "name": "Sevastopol, Ukraine", "r_val": 0.413, "r_full": 0.698, "span": "1910\u20131995", "type": "msl"}, {"id": "25", "name": "Harlingen, Netherlands", "r_val": 0.413, "r_full": 0.681, "span": "1865\u20132024", "type": "msl"}, {"id": "225", "name": "Ketchikan, AK, USA", "r_val": 0.409, "r_full": 0.623, "span": "1919\u20132025", "type": "msl"}, {"id": "236", "name": "West-Terschelling, Neth.", "r_val": 0.401, "r_full": 0.641, "span": "1921\u20132024", "type": "msl"}, {"id": "23", "name": "Den Helder, Netherlands", "r_val": 0.398, "r_full": 0.68, "span": "1865\u20132024", "type": "msl"}, {"id": "47", "name": "Stavanger, Norway", "r_val": 0.387, "r_full": 0.654, "span": "1919\u20132025", "type": "msl"}, {"id": "1", "name": "Brest, France", "r_val": 0.377, "r_full": 0.679, "span": "1807\u20132025", "type": "msl"}, {"id": "58", "name": "Bergen, Norway", "r_val": 0.373, "r_full": 0.686, "span": "1915\u20132025", "type": "msl"}, {"id": "155", "name": "Honolulu, HI, USA", "r_val": 0.372, "r_full": 0.678, "span": "1905\u20132024", "type": "msl"}, {"id": "20", "name": "Vlissingen, Netherlands", "r_val": 0.371, "r_full": 0.632, "span": "1862\u20132024", "type": "msl"}, {"id": "111", "name": "Fremantle, Australia", "r_val": 0.367, "r_full": 0.688, "span": "1897\u20132023", "type": "msl"}, {"id": "161", "name": "Galveston II, TX, USA", "r_val": 0.363, "r_full": 0.667, "span": "1908\u20132025", "type": "msl"}, {"id": "76", "name": "Aarhus, Denmark", "r_val": 0.348, "r_full": 0.654, "span": "1889\u20132018", "type": "msl"}, {"id": "154", "name": "Trieste, Italy", "r_val": 0.331, "r_full": 0.517, "span": "1877\u20132021", "type": "msl"}, {"id": "32", "name": "IJmuiden, Netherlands", "r_val": 0.309, "r_full": 0.617, "span": "1871\u20132024", "type": "msl"}, {"id": "41", "name": "Poti, Georgia", "r_val": 0.306, "r_full": 0.651, "span": "1874\u20132020", "type": "msl"}, {"id": "239", "name": "Turku/\u00c5bo, Finland", "r_val": 0.306, "r_full": 0.617, "span": "1922\u20132024", "type": "msl"}, {"id": "5", "name": "Holyhead, UK", "r_val": 0.303, "r_full": 0.297, "span": "1938\u20132025", "type": "msl"}, {"id": "246", "name": "Pensacola, FL, USA", "r_val": 0.268, "r_full": 0.663, "span": "1923\u20132025", "type": "msl"}, {"id": "127", "name": "Seattle, WA, USA", "r_val": 0.233, "r_full": 0.57, "span": "1899\u20132025", "type": "msl"}, {"id": "22", "name": "Hoek van Holland, Neth.", "r_val": 0.222, "r_full": 0.61, "span": "1864\u20132024", "type": "msl"}, {"id": "245", "name": "Los Angeles, CA, USA", "r_val": 0.214, "r_full": 0.697, "span": "1924\u20132025", "type": "msl"}, {"id": "183", "name": "Portland, ME, USA", "r_val": 0.212, "r_full": 0.661, "span": "1912\u20132025", "type": "msl"}, {"id": "302", "name": "Tregde, Norway", "r_val": 0.208, "r_full": 0.64, "span": "1928\u20132025", "type": "msl"}, {"id": "249", "name": "F\u00f6gl\u00f6/Degerby, \u00c5land Is.", "r_val": 0.201, "r_full": 0.577, "span": "1924\u20132025", "type": "msl"}, {"id": "202", "name": "Newlyn, UK", "r_val": 0.175, "r_full": 0.466, "span": "1915\u20132025", "type": "msl"}, {"id": "234", "name": "Charleston I, SC, USA", "r_val": 0.119, "r_full": 0.559, "span": "1922\u20132024", "type": "msl"}, {"id": "nino4", "name": "NINO4 (W. Pacific)", "r_val": 0.639, "r_full": 0.803, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "ic3tsfc", "name": "ic3tsfc (recon. Pacific SST)", "r_val": 0.616, "r_full": 0.78, "span": "1880\u20132016", "note": "Climate Index"}, {"id": "amo", "name": "AMO (N. Atlantic)", "r_val": 0.543, "r_full": 0.791, "span": "1880\u20132023", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "nao", "name": "NAO", "r_val": 0.501, "r_full": 0.775, "span": "1880\u20132023", "note": "Climate Index \u2014 closely linked to Baltic MSL"}, {"id": "nino34", "name": "NINO3.4", "r_val": 0.449, "r_full": 0.698, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "emi", "name": "EMI (ENSO Modoki)", "r_val": 0.402, "r_full": 0.665, "span": "1880\u20132019", "note": "Climate Index"}, {"id": "iodw", "name": "IOD West pole", "r_val": 0.398, "r_full": 0.882, "span": "1880\u20132022", "note": "Climate Index"}, {"id": "nino3", "name": "NINO3", "r_val": 0.382, "r_full": 0.701, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "iode", "name": "IOD East pole", "r_val": 0.364, "r_full": 0.782, "span": "1880\u20132022", "note": "Climate Index"}, {"id": "pdo", "name": "PDO", "r_val": 0.362, "r_full": 0.655, "span": "1880\u20132022", "note": "Climate Index"}, {"id": "m4", "name": "M4 (NPGO)", "r_val": 0.341, "r_full": 0.715, "span": "1910\u20132024", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "darwin1880", "name": "Darwin SOI", "r_val": 0.308, "r_full": 0.648, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "m6", "name": "M6 (Atlantic Ni\u00f1o)", "r_val": 0.212, "r_full": 0.582, "span": "1910\u20132024", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "brestexcl", "name": "Brest from 1880", "r_val": 0.22, "r_full": 0.664, "span": "1880\u20132020", "note": "MSL site variant"}, {"id": "nino12", "name": "NINO1+2 (E. Pacific)", "r_val": 0.218, "r_full": 0.609, "span": "1880\u20132024", "note": "Climate Index"}, {"id": "tsa", "name": "TSA (Trop. S. Atlantic)", "r_val": 0.166, "r_full": 0.772, "span": "1880\u20132025", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "iod", "name": "IOD (composite)", "r_val": 0.156, "r_full": 0.669, "span": "1880\u20132022", "note": "Climate Index"}, {"id": "tna", "name": "TNA (Trop. N. Atlantic)", "r_val": 0.128, "r_full": 0.761, "span": "1880\u20132025", "note": "Climate Index \u2014 regionally aggregated MSL"}, {"id": "denison", "name": "Ft Denison, Australia", "r_val": 0.411, "r_full": 0.54, "span": "1888\u20132024", "note": "MSL site"}];
+
+// Separate into MSL and climate
+const MSL_SITES = ALL_SITES.filter(s => s.type === 'msl');
+const CLIMATE_SITES = ALL_SITES.filter(s => s.type !== 'msl');
+
+// All combined for dual dropdowns
+const ALL_COMBINED = [...ALL_SITES].sort((a,b) => b.r_val - a.r_val);
+
+// PNG URL builder
+function pngUrl(id) {
+  // Climate indices and special sites use their own subdirectory
+  return BASE + id + '/' + id + 'site1940-1970.png';
+}
+
+function rClass(r) {
+  if (r >= 0.55) return 'r-high';
+  if (r >= 0.35) return 'r-mid';
+  return 'r-low';
+}
+
+function typeLabel(s) {
+  if (s.note) {
+    if (s.note.includes('regionally aggregated')) return '<span class="badge badge-agg">Agg. MSL</span>';
+    if (s.note.includes('MSL site variant')) return '<span class="badge badge-msl">MSL variant</span>';
+    return '<span class="badge badge-climate">Climate Index</span>';
+  }
+  return '<span class="badge badge-msl">MSL</span>';
+}
+
+// Populate MSL dropdown
+function populateMSL() {
+  const sel = document.getElementById('msl-select');
+  // Group by region
+  const regions = [
+    { label: 'Baltic Sea — Top Performers', ids: ['11','88','68','78','72','203','73','179','82','70','330','81','172','71','69','285','229','57','240','79','8','113','98'] },
+    { label: 'North Sea & Kattegat', ids: ['7','24','23','25','22','32','236','80','89','91','76','95'] },
+    { label: 'UK & Irish Sea', ids: ['202','5'] },
+    { label: 'Norwegian Atlantic', ids: ['47','58','62','179','302'] },
+    { label: 'Baltic Outposts & Others', ids: ['14','79','57','285','229','240','172','71','239','249'] },
+    { label: 'France & Atlantic Open Coast', ids: ['1','brestexcl','20'] },
+    { label: 'Black Sea & Adriatic', ids: ['42','41','154'] },
+    { label: 'N. America — Atlantic', ids: ['1','183','234','246','161'] },
+    { label: 'N. America — Pacific', ids: ['256','245','127','225'] },
+    { label: 'Pacific & Global', ids: ['155','111','denison','2'] },
+  ];
+
+  // Build ordered set
+  const added = new Set();
+  const groups = [];
+
+  // Build by correlation
+  const sorted = [...MSL_SITES].sort((a,b) => b.r_val - a.r_val);
+
+  sorted.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.id + ' — ' + s.name + ' (r=' + s.r_val.toFixed(3) + ')';
+    sel.appendChild(opt);
+  });
+}
+
+// Populate climate dropdown
+function populateClimate() {
+  const sel = document.getElementById('climate-select');
+  const sorted = [...CLIMATE_SITES].sort((a,b) => b.r_val - a.r_val);
+
+  // Sub-groups
+  const pacific = sorted.filter(s => ['nino4','ic3tsfc','nino34','nino3','nino12','emi','pdo','m4'].includes(s.id));
+  const atlantic = sorted.filter(s => ['amo','nao','tna','tsa','m6'].includes(s.id));
+  const indian = sorted.filter(s => ['iodw','iode','iod'].includes(s.id));
+  const other = sorted.filter(s => !pacific.includes(s) && !atlantic.includes(s) && !indian.includes(s));
+
+  const addGroup = (label, items) => {
+    if (!items.length) return;
+    const og = document.createElement('optgroup');
+    og.label = label;
+    items.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      const note = s.note && s.note.includes('aggregated') ? ' ★' : '';
+      opt.textContent = s.id + ' — ' + s.name + note + ' (r=' + s.r_val.toFixed(3) + ')';
+      og.appendChild(opt);
+    });
+    sel.appendChild(og);
+  };
+
+  addGroup('Pacific Indices', pacific);
+  addGroup('Atlantic Indices', atlantic);
+  addGroup('Indian Ocean Indices', indian);
+  addGroup('Other / MSL Variants', other);
+}
+
+// Populate dual dropdowns
+function populateDual() {
+  const selA = document.getElementById('compare-a');
+  const selB = document.getElementById('compare-b');
+
+  const sorted = [...ALL_COMBINED];
+
+  const addOptions = (sel) => {
+    const ogMSL = document.createElement('optgroup'); ogMSL.label = '── MSL Tide Gauges ──';
+    const ogClimate = document.createElement('optgroup'); ogClimate.label = '── Climate Indices ──';
+
+    sorted.filter(s => s.type === 'msl').forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.id + ' — ' + s.name + ' (r=' + s.r_val.toFixed(3) + ')';
+      ogMSL.appendChild(opt);
+    });
+    sorted.filter(s => s.type !== 'msl').forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      const note = s.note && s.note.includes('aggregated') ? ' ★' : '';
+      opt.textContent = s.id + ' — ' + s.name + note + ' (r=' + s.r_val.toFixed(3) + ')';
+      ogClimate.appendChild(opt);
+    });
+    sel.appendChild(ogMSL);
+    sel.appendChild(ogClimate);
+  };
+
+  addOptions(selA);
+  addOptions(selB);
+}
+
+// Build result card HTML
+function buildCard(siteId) {
+  const s = ALL_SITES.find(x => x.id === siteId);
+  if (!s) return '';
+
+  const rValClass = rClass(s.r_val);
+  const rFullClass = rClass(s.r_full || 0);
+  const rValPct = Math.round(s.r_val * 100);
+  const rFullPct = Math.round((s.r_full || 0) * 100);
+  const noteHtml = s.note ? '<div class="result-note">' + s.note + '</div>' : '';
+  const typeHtml = typeLabel(s);
+  const imgUrl = pngUrl(s.id);
+
+  return `
+    <div class="result-card">
+      <div class="result-card-head">
+        <div>
+          <div class="result-site-name">${s.name}</div>
+          <div style="margin-top:var(--space-1);display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;">
+            ${typeHtml}
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted)">${s.span || ''}</span>
+          </div>
+        </div>
+        <span class="result-site-id">${s.id}</span>
+      </div>
+      <div class="corr-bar-wrap">
+        <div class="corr-bar-row">
+          <span class="corr-bar-label">r (1940–70)</span>
+          <div class="corr-bar-track"><div class="corr-bar-fill val" style="width:${rValPct}%"></div></div>
+          <span class="corr-bar-num ${rValClass}">${s.r_val.toFixed(3)}</span>
+        </div>
+        <div class="corr-bar-row">
+          <span class="corr-bar-label">r (full record)</span>
+          <div class="corr-bar-track"><div class="corr-bar-fill full" style="width:${rFullPct}%"></div></div>
+          <span class="corr-bar-num ${rFullClass}">${(s.r_full||0).toFixed(3)}</span>
+        </div>
+      </div>
+      <div class="result-img-wrap" id="img-wrap-${s.id}">
+        <div class="img-loading" style="width:100%;height:200px"></div>
+      </div>
+      ${noteHtml}
+    </div>
+  `;
+}
+
+function loadImg(siteId) {
+  const wrap = document.getElementById('img-wrap-' + siteId);
+  if (!wrap) return;
+  const img = new Image();
+  img.onload = () => { wrap.innerHTML = ''; wrap.appendChild(img); };
+  img.onerror = () => { wrap.innerHTML = '<div style="text-align:center;padding:var(--space-8);color:var(--color-text-muted);font-size:var(--text-sm)"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto var(--space-2)"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-6 6 6"/></svg><br>Chart not available for this site</div>'; };
+  img.src = pngUrl(siteId);
+  img.alt = 'Validation chart for site ' + siteId;
+  img.style.cssText = 'width:100%;height:auto;border-radius:var(--space-2)';
+}
+
+// Tab switching
+let currentTab = 'msl';
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+    b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false');
+  });
+  document.getElementById('msl-controls').style.display = tab === 'msl' ? '' : 'none';
+  document.getElementById('climate-controls').style.display = tab === 'climate' ? '' : 'none';
+  document.getElementById('single-result').innerHTML = `
+    <div class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <h3>Select a ${tab === 'msl' ? 'tide gauge' : 'climate index'} above</h3>
+      <p>Choose an entry from the dropdown to view its validation chart.</p>
+    </div>`;
+}
+
+function updateSingle(type, id) {
+  if (!id) return;
+  const container = document.getElementById('single-result');
+  container.innerHTML = buildCard(id);
+  loadImg(id);
+}
+
+function updateDual() {
+  const idA = document.getElementById('compare-a').value;
+  const idB = document.getElementById('compare-b').value;
+  const container = document.getElementById('dual-result');
+
+  if (!idA && !idB) {
+    container.innerHTML = `<div class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <h3>Choose two sites to compare</h3>
+      <p>Select entries from both dropdowns to view charts side by side.</p>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  container.classList.add('dual');
+
+  if (idA) { container.innerHTML += buildCard(idA); loadImg(idA); }
+  else { container.innerHTML += '<div class="result-card"><div class="empty-state" style="padding:var(--space-8)"><p>Select left panel</p></div></div>'; }
+
+  if (idB) { container.innerHTML += buildCard(idB); loadImg(idB); }
+  else { container.innerHTML += '<div class="result-card"><div class="empty-state" style="padding:var(--space-8)"><p>Select right panel</p></div></div>'; }
+}
+
+// Build full results table
+function buildTable() {
+  const tbody = document.getElementById('table-body');
+  const allSorted = [...ALL_SITES].sort((a,b) => b.r_val - a.r_val);
+
+  allSorted.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--color-text-muted);font-variant-numeric:tabular-nums">${i+1}</td>
+      <td class="td-id">${s.id}</td>
+      <td class="td-name">${s.name}</td>
+      <td>${typeLabel(s)}</td>
+      <td><span class="r-chip ${rClass(s.r_val)}">${s.r_val.toFixed(3)}</span></td>
+      <td><span class="r-chip ${rClass(s.r_full||0)}">${(s.r_full||0).toFixed(3)}</span></td>
+      <td style="color:var(--color-text-muted);font-size:var(--text-xs)">${s.span||''}</td>
+    `;
+    tr.addEventListener('click', () => {
+      // Switch to appropriate tab and show result
+      const tab = s.type === 'msl' ? 'msl' : 'climate';
+      switchTab(tab);
+      if (tab === 'msl') {
+        document.getElementById('msl-select').value = s.id;
+      } else {
+        document.getElementById('climate-select').value = s.id;
+      }
+      updateSingle(tab, s.id);
+      document.querySelector('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+// Theme toggle
+(function(){
+  const t = document.querySelector('[data-theme-toggle]');
+  const r = document.documentElement;
+  let d = r.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+  r.setAttribute('data-theme', d);
+  const sunSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+  const moonSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  if (t) {
+    t.innerHTML = d === 'dark' ? sunSvg : moonSvg;
+    t.addEventListener('click', () => {
+      d = d === 'dark' ? 'light' : 'dark';
+      r.setAttribute('data-theme', d);
+      t.innerHTML = d === 'dark' ? sunSvg : moonSvg;
+    });
+  }
+})();
+
+// Initialize
+populateMSL();
+populateClimate();
+populateDual();
+buildTable();
+</script>
+</body>
+</html>
