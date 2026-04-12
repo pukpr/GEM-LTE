@@ -67,7 +67,7 @@ def _fetch_psmsl_stations():
 
 _REGION_FILTERS = {
     "baltic-north-sea": None,
-    "central-south-pacific": None,
+    "south-america-pacific": None,
     "north-atlantic": None,
     "australia": None,
     "west-coast-usa": None,
@@ -77,6 +77,10 @@ _REGION_FILTERS = {
     "hawaii": None,
     "uk-west-brittany": None,
     "east-coast-usa": None,
+    "gulf-of-mexico": None,
+    "new-zealand": None,
+    "canada-maritimes": None,
+    "alaska-se": None,
 }
 
 
@@ -99,14 +103,12 @@ def get_region_station_ids(region):
             scandinavia = (55 <= lat <= 72) and (4 <= lon <= 32)
             return north_sea or baltic_sea or scandinavia
 
-    elif region == "central-south-pacific":
+    elif region == "south-america-pacific":
         def in_region(lat, lon):
-            # Pacific spans the dateline: western side (lon >= 110°E) and
+            # Pacific span of the South America coast
             # eastern side (lon <= -65°W), latitude -60°S to 35°N.
-            # This covers Australia, New Zealand, Pacific Island groups,
-            # Hawaii, and the South/Central Pacific basin.
-            in_lat = (-60 <= lat <= 35)
-            in_lon = (lon >= 110) or (lon <= -65)
+            in_lat = (-60 <= lat <= 15)
+            in_lon = (-100 <= lon <= -65)
             return in_lat and in_lon
 
     elif region == "australia":
@@ -187,16 +189,114 @@ def get_region_station_ids(region):
             # Maine/Canada border (~45°N), longitude band -82 to -65°W.
             return (24 <= lat <= 45) and (-82 <= lon <= -65)
 
+    elif region == "gulf-of-mexico":
+        def in_region(lat, lon):
+            # Gulf of Mexico: Yucatan (~18°N) to the northern coast (~31°N),
+            # Texas/Mexico coast (-98°W) to the Florida peninsula (-80°W).
+            # The -80°W eastern boundary excludes Atlantic-facing Florida stations.
+            return (18 <= lat <= 31) and (-98 <= lon <= -80)
+
+    elif region == "new-zealand":
+        def in_region(lat, lon):
+            # North Island to southern South Island + Stewart Island: ~47–34°S,
+            # 166–178°E.  Excludes Chatham Islands (~176°W) and Australian coast.
+            return (-47 <= lat <= -34) and (166 <= lon <= 178)
+
+    elif region == "canada-maritimes":
+        def in_region(lat, lon):
+            # Nova Scotia, New Brunswick (Bay of Fundy + Gulf of St. Lawrence),
+            # Prince Edward Island, and coastal Newfoundland/Labrador.
+            # Lat 43–52°N, lon -67 to -52°W keeps coastal Gulf/Atlantic stations
+            # and excludes St. Lawrence River inland sites (lon < -67°W).
+            return (43 <= lat <= 52) and (-67 <= lon <= -52)
+
+    elif region == "alaska-se":
+        def in_region(lat, lon):
+            # Southeast Alaska panhandle (Ketchikan to Yakutat) plus
+            # Prince Rupert / Dixon Entrance area of northern BC.
+            # Lat 54–61°N, lon -141 to -129°W.
+            return (54 <= lat <= 61) and (-141 <= lon <= -129)
+
     ids = {sid for sid, lat, lon in stations if in_region(lat, lon)}
     print(f"  Found {len(ids)} stations in '{region}' region.")
     return ids
+
+
+def get_region_station_locs(region):
+    """Return a dict {station_id: (lat, lon)} for all stations in the region."""
+    stations = _fetch_psmsl_stations()
+    if region is None:
+        return {sid: (lat, lon) for sid, lat, lon in stations}
+    region_ids = get_region_station_ids(region)
+    return {sid: (lat, lon) for sid, lat, lon in stations if sid in region_ids}
+
+
+def save_region_map(region_name, region_ids, active_ids):
+    """
+    Plot all stations in the region as grey dots; those that contributed data
+    within the selected date interval are drawn as filled red dots.
+    Saves to <region_name>_map.png.
+
+    Parameters
+    ----------
+    region_name : str
+        Used for the plot title and output filename.
+    region_ids : set or None
+        All station IDs in the region (None → global).
+    active_ids : set
+        Station IDs that have data in the filtered time window.
+    """
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+
+    all_stations = _fetch_psmsl_stations()
+    if region_ids is not None:
+        region_stations = [(sid, lat, lon) for sid, lat, lon in all_stations
+                           if sid in region_ids]
+    else:
+        region_stations = all_stations
+
+    lats_all = [lat for _, lat, _ in region_stations]
+    lons_all = [lon for _, _, lon in region_stations]
+    lats_act = [lat for sid, lat, lon in region_stations if sid in active_ids]
+    lons_act = [lon for sid, lat, lon in region_stations if sid in active_ids]
+
+    fig = plt.figure(figsize=(12, 6))
+    ax = plt.axes(projection=ccrs.Robinson())
+    ax.set_global()
+    ax.coastlines(linewidth=0.6)
+    ax.add_feature(cfeature.LAND, facecolor="lightgrey", edgecolor="black",
+                   linewidth=0.4)
+    ax.add_feature(cfeature.OCEAN, facecolor="white")
+
+    # All region stations: grey background dots
+    if lats_all:
+        ax.plot(lons_all, lats_all, "o", color="brown", markersize=3,
+                transform=ccrs.PlateCarree(), label="in region (no data in window)",
+                zorder=3)
+
+    # Stations active in the date window: red dots on top
+    if lats_act:
+        ax.plot(lons_act, lats_act, "o", color="red", markersize=4,
+                transform=ccrs.PlateCarree(), label="active in date window",
+                zorder=4)
+
+    title = region_name if region_name != "global" else "Global"
+    plt.title(f"{title}  —  {len(lats_act)} active / {len(lats_all)} total stations")
+    ax.legend(loc="lower left", fontsize=8)
+    plt.tight_layout()
+
+    outfile = f"{region_name}_map.png"
+    plt.savefig(outfile, dpi=150)
+    plt.close(fig)
+    print(f"Station map saved to '{outfile}'.")
 
 
 # -----------------------------
 # Regional average output
 # -----------------------------
 
-def write_regional_average(region_ids, region_name):
+def write_regional_average(region_ids, region_name, detrend=False):
     """
     Load the full 1880-2026 dataset, apply the region filter, then process in
     six consecutive 25-year windows (1880-1905, 1905-1930, …, 2005-2030).
@@ -245,6 +345,18 @@ def write_regional_average(region_ids, region_name):
             win["amp"] - win.groupby("station")["amp"].transform("mean")
         )
 
+        if detrend:
+            def _detrend_station(grp):
+                t = grp["date"].values
+                if len(t) < 2:
+                    return grp["amp_dm"]
+                coeffs = np.polyfit(t, grp["amp_dm"].values, 1)
+                return pd.Series(
+                    grp["amp_dm"].values - np.polyval(coeffs, t),
+                    index=grp.index,
+                )
+            win["amp_dm"] = win.groupby("station", group_keys=False).apply(_detrend_station)
+
         # Average across all contributing stations at each time step
         avg = win.groupby("date")["amp_dm"].mean().reset_index()
         avg.columns = ["date", "avg"]
@@ -274,6 +386,68 @@ def write_regional_average(region_ids, region_name):
           f"{result['date'].min():.4f} – {result['date'].max():.4f}).")
 
 
+def write_regional_average_all(region_ids, region_name, detrend=False):
+    """
+    Like write_regional_average but processes the entire time span in one pass
+    (no 25-year windowing).  Each station is demeaned over its full record,
+    then all stations are averaged at each time step, dates are corrected to
+    start-of-month, and a 12-point centred boxcar filter is applied.
+
+    Output: <region_name>.dat, two space-separated columns (date, amplitude).
+    """
+    df_full = pd.read_csv(
+        "filtered_psmsl_1880_2026.txt",
+        delim_whitespace=True,
+        header=None,
+        names=["station", "date", "amp"],
+    )
+    df_full = df_full[df_full["amp"] != -99999]
+
+    if region_ids is not None:
+        df_full = df_full[df_full["station"].isin(region_ids)]
+        if df_full.empty:
+            print(f"No data for region '{region_name}' in filtered_psmsl_1880_2026.txt.")
+            return
+
+    # Demean each station over its entire record
+    df_full = df_full.copy()
+    df_full["amp_dm"] = (
+        df_full["amp"] - df_full.groupby("station")["amp"].transform("mean")
+    )
+
+    if detrend:
+        def _detrend_station(grp):
+            t = grp["date"].values
+            if len(t) < 2:
+                return grp["amp_dm"]
+            coeffs = np.polyfit(t, grp["amp_dm"].values, 1)
+            return pd.Series(
+                grp["amp_dm"].values - np.polyval(coeffs, t),
+                index=grp.index,
+            )
+        df_full["amp_dm"] = df_full.groupby("station", group_keys=False).apply(_detrend_station)
+
+    # Average across all contributing stations at each time step
+    result = df_full.groupby("date")["amp_dm"].mean().reset_index()
+    result.columns = ["date", "avg"]
+    result = result.sort_values("date").reset_index(drop=True)
+
+    # Correct dates: PSMSL mid-month  →  start-of-month
+    result["date"] = np.round(result["date"] * 12 - 0.5) / 12
+
+    # 12-point centred boxcar filter to suppress the annual cycle
+    result["avg"] = result["avg"].rolling(window=12, center=True, min_periods=12).mean()
+    result = result.dropna(subset=["avg"]).reset_index(drop=True)
+
+    outfile = f"{region_name}.dat"
+    with open(outfile, "w") as fh:
+        for _, row in result.iterrows():
+            fh.write(f"{row['date']:.4f}  {row['avg']:.4f}\n")
+
+    print(f"Regional average (full span) written to '{outfile}' ({len(result)} time steps, "
+          f"{result['date'].min():.4f} – {result['date'].max():.4f}).")
+
+
 # -----------------------------
 # CLI argument parsing
 # -----------------------------
@@ -282,9 +456,10 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     "--region",
-    choices=["baltic-north-sea", "central-south-pacific", "north-atlantic",
+    choices=["baltic-north-sea", "south-america-pacific", "north-atlantic",
              "australia", "west-coast-usa", "japan", "mediterranean",
-             "southeast-asia", "hawaii", "uk-west-brittany", "east-coast-usa"],
+             "southeast-asia", "hawaii", "uk-west-brittany", "east-coast-usa",
+             "gulf-of-mexico", "new-zealand", "canada-maritimes", "alaska-se"],
     default=None,
     help="Only plot stations belonging to the specified region "
          "(fetches station coordinates from psmsl.org).",
@@ -322,6 +497,30 @@ parser.add_argument(
          "six 25-year sections to remove long-term trend, then stitches and "
          "writes one row per contributing time step.",
 )
+parser.add_argument(
+    "--detrend",
+    action="store_true",
+    default=False,
+    help="After all filtering, remove a least-squares linear trend from the "
+         "averaged output (applies to --average-output and --average-all).",
+)
+parser.add_argument(
+    "--average-all",
+    action="store_true",
+    default=False,
+    help="Like --average-output but demeans each station over its full record "
+         "(no 25-year windowing). Writes <region>.dat after applying a "
+         "12-point centred boxcar filter.",
+)
+parser.add_argument(
+    "--save-map",
+    action="store_true",
+    default=False,
+    help="Save a PNG map of all stations in the region. Grey dots = all stations "
+         "in the region; red dots = stations with data in the selected date window. "
+         "Output: <region>_map.png (or global_map.png).",
+)
+
 args = parser.parse_args()
 
 # -----------------------------
@@ -330,7 +529,7 @@ args = parser.parse_args()
 # Expected columns:
 # station_id   date_float   amplitude
 df = pd.read_csv(
-    "filtered_psmsl_1950_2026.txt",
+    "filtered_psmsl_1880_2026.txt",
     delim_whitespace=True,
     header=None,
     names=["station", "date", "amp"]
@@ -357,9 +556,16 @@ if df.empty:
     print(f"No data found between {args.start_date} and {args.end_date}. Exiting.")
     raise SystemExit(1)
 
+# Save station map if requested (active_ids = stations present after all filters)
+if args.save_map:
+    active_ids = set(df["station"].unique())
+    save_region_map(region_name, region_ids, active_ids)
+
 # Write regional average if requested (uses independent 1880-2026 data load)
 if args.average_output:
-    write_regional_average(region_ids, region_name)
+    write_regional_average(region_ids, region_name, detrend=args.detrend)
+if args.average_all:
+    write_regional_average_all(region_ids, region_name, detrend=args.detrend)
 
 # -----------------------------
 # Pre-compute processed series (demean + remove per-station annual cycle)
