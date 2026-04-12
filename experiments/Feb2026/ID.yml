@@ -1186,3 +1186,135 @@
   Quality: 93.57
   I: 60
   Country: BELGIUM
+'britain':
+  Code: '10001'
+  Name: Britain 78 sites composite
+  Latitude: 51.0
+  N/S: N
+  Longitude: 4.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: UNITED KINGDOM
+'ecoast':
+  Code: '10002'
+  Name: East Coast USA 91 sites composite
+  Latitude: 35.0
+  N/S: N
+  Longitude: 76.0
+  E/W: W
+  Start: 1893
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: UNITED STATES
+'nz':
+  Code: '10003'
+  Name: New Zealand 19 sites composite
+  Latitude: 42.0
+  N/S: S
+  Longitude: 172.0
+  E/W: E
+  Start: 1904
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: NEW ZEALAND
+'sea':
+  Code: '10004'
+  Name: SE Asia sites composite
+  Latitude: 10.0
+  N/S: N
+  Longitude: 110.0
+  E/W: E
+  Start: 1925
+  Stop: 2024
+  Quality: 100.0
+  I: 0
+  Country: SE ASIA
+'gom':
+  Code: '10005'
+  Name: Gulf of Mexico 64 sites composite
+  Latitude: 25.0
+  N/S: N
+  Longitude: 90.0
+  E/W: W
+  Start: 1897
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: GULF OF MEXICO
+'baltic':
+  Code: '10006'
+  Name: Baltic 211 sites composite
+  Latitude: 58.0
+  N/S: N
+  Longitude: 18.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: BALTIC
+'mediterranean':
+  Code: '10007'
+  Name: Mediterranean 158 sites composite
+  Latitude: 38.0
+  N/S: N
+  Longitude: 18.0
+  E/W: E
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: MEDITERRANEAN
+'maritimes':
+  Code: '10008'
+  Name: Canada Maritimes 33 sites composite
+  Latitude: 45.0
+  N/S: N
+  Longitude: 64.0
+  E/W: W
+  Start: 1896
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: CANADA
+'australia':
+  Code: '10009'
+  Name: Australia 95 sites composite
+  Latitude: 30.0
+  N/S: S
+  Longitude: 135.0
+  E/W: E
+  Start: 1886
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: AUSTRALIA
+'spacific':
+  Code: '10010'
+  Name: South Pacific 102 sites composite
+  Latitude: 5.0
+  N/S: N
+  Longitude: 175.0
+  E/W: W
+  Start: 1908
+  Stop: 2024
+  Quality: 100.0
+  I: 0
+  Country: PACIFIC
+'japan':
+  Code: '10011'
+  Name: Japan 187 sites composite
+  Latitude: 36.0
+  N/S: N
+  Longitude: 138.0
+  E/W: E
+  Start: 1894
+  Stop: 2024
+  Quality: 100.0
+  I: 0
+  Country: JAPAN
