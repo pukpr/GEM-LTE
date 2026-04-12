@@ -786,11 +786,14 @@ function updateDual() {
   container.innerHTML = '';
   container.classList.add('dual');
 
-  if (idA) { container.innerHTML += buildCard(idA); loadImg(idA); }
+  if (idA) { container.innerHTML += buildCard(idA); }
   else { container.innerHTML += '<div class="result-card"><div class="empty-state" style="padding:var(--space-8)"><p>Select left panel</p></div></div>'; }
 
-  if (idB) { container.innerHTML += buildCard(idB); loadImg(idB); }
+  if (idB) { container.innerHTML += buildCard(idB); }
   else { container.innerHTML += '<div class="result-card"><div class="empty-state" style="padding:var(--space-8)"><p>Select right panel</p></div></div>'; }
+
+  if (idA) loadImg(idA);
+  if (idB) loadImg(idB);
 }
 
 // Build full results table
