@@ -1318,3 +1318,27 @@
   Quality: 100.0
   I: 0
   Country: JAPAN
+'wcoast':
+  Code: '10012'
+  Name: West Coast USA 51 sites composite
+  Latitude: 38.0
+  N/S: N
+  Longitude: 122.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: UNITED STATES
+'alaska':
+  Code: '10013'
+  Name: Alaska SE 33 sites composite
+  Latitude: 57.0
+  N/S: N
+  Longitude: 134.0
+  E/W: W
+  Start: 1880
+  Stop: 2025
+  Quality: 100.0
+  I: 0
+  Country: UNITED STATES
