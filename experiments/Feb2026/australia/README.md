@@ -1,1 +1,1 @@
-aggregate of 95 stations in Australia
+95 sites composite fo Australia
