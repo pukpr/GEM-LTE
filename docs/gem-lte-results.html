@@ -5,96 +5,979 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GEM-LTE Feb 2026 Results</title>
   <style>
-    :root { --bg:#f7f6f2; --surface:#ffffff; --surface-2:#f3f0ec; --text:#23211b; --muted:#6e6a63; --border:#d8d4cc; --primary:#0b6b70; --warn:#a86a00; --good:#2f7d32; --bad:#a13838; --agg:#7a39bb; --shadow:0 8px 24px rgba(33,29,21,.08); --radius:14px; --radius-sm:10px; --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px; --space-12:48px; --maxw:1240px; }
-    * { box-sizing:border-box; } html,body { margin:0; padding:0; }
-    body { font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#fbfaf8 0%,#f4f1eb 100%); color:var(--text); line-height:1.5; }
-    .wrap { max-width:var(--maxw); margin:0 auto; padding:var(--space-8) var(--space-4) var(--space-12); }
-    .hero,.panel { background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow); }
-    .hero { margin-bottom:var(--space-8); padding:var(--space-8); border-radius:18px; }
-    .eyebrow { display:inline-flex; align-items:center; gap:var(--space-2); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--primary); font-weight:700; margin-bottom:var(--space-3); }
-    h1 { margin:0 0 var(--space-3); font-size:clamp(2rem,4vw,3.7rem); line-height:1.05; }
-    .subhead { margin:0; max-width:78ch; color:var(--muted); font-size:1rem; }
-    .panel { border-radius:var(--radius); margin-bottom:var(--space-8); overflow:hidden; }
-    .panel-head { padding:var(--space-6); border-bottom:1px solid var(--border); }
-    .panel-head h2 { margin:0 0 var(--space-2); font-size:1.3rem; } .panel-head p { margin:0; color:var(--muted); font-size:.96rem; }
-    .panel-body { padding:var(--space-6); }
-    .tabs { display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-4); }
-    .tab-btn { appearance:none; border:1px solid var(--border); background:var(--surface-2); color:var(--text); border-radius:999px; padding:10px 14px; font-size:.94rem; cursor:pointer; }
-    .tab-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-4); margin-bottom:var(--space-5); }
-    .controls.single { grid-template-columns:1fr; }
-    .field { display:flex; flex-direction:column; gap:var(--space-2); }
-    .field label { font-size:.85rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
-    select { width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fff; font-size:.98rem; color:var(--text); }
-    .result-area { display:grid; grid-template-columns:1fr; gap:var(--space-4); } .result-area.dual { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    .result-card { border:1px solid var(--border); border-radius:var(--radius); background:linear-gradient(180deg,#fff,rgba(246,243,237,.5)); overflow:hidden; }
-    .result-card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-4); padding:var(--space-5); border-bottom:1px solid var(--border); }
-    .result-site-name { font-size:1.15rem; font-weight:800; line-height:1.2; }
-    .result-site-id { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.82rem; color:var(--muted); background:var(--surface-2); padding:4px 8px; border-radius:999px; border:1px solid var(--border); white-space:nowrap; }
-    .badge { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:.74rem; font-weight:700; border:1px solid transparent; }
-    .badge-msl { background:rgba(11,107,112,.08); color:var(--primary); border-color:rgba(11,107,112,.16); }
-    .badge-climate { background:rgba(217,164,65,.12); color:var(--warn); border-color:rgba(217,164,65,.22); }
-    .badge-agg { background:rgba(122,57,187,.10); color:var(--agg); border-color:rgba(122,57,187,.22); }
-    .corr-bar-wrap { padding:var(--space-4) var(--space-5); display:flex; flex-direction:column; gap:var(--space-3); border-bottom:1px solid var(--border); }
-    .corr-bar-row { display:grid; grid-template-columns:110px 1fr 64px; gap:var(--space-3); align-items:center; }
-    .corr-bar-label { font-size:.82rem; color:var(--muted); }
-    .corr-bar-track { height:12px; border-radius:999px; background:#ece8df; overflow:hidden; border:1px solid #e2ddd3; }
-    .corr-bar-fill { height:100%; border-radius:999px; } .corr-bar-fill.val { background:linear-gradient(90deg,#0e8a91,#13a1a9); } .corr-bar-fill.full { background:linear-gradient(90deg,#d9a441,#e7bb68); }
-    .corr-bar-num { font-size:.86rem; font-weight:700; text-align:right; font-variant-numeric:tabular-nums; }
-    .r-good { color:var(--good); } .r-mid { color:var(--warn); } .r-low { color:var(--bad); }
-    .result-img-wrap { padding:var(--space-4); background:#fcfbf8; min-height:220px; display:flex; align-items:center; justify-content:center; }
-    .result-img-wrap img { width:100%; height:auto; border-radius:var(--radius-sm); border:1px solid var(--border); background:#fff; }
-    .img-loading { width:100%; height:220px; border-radius:var(--radius-sm); background:linear-gradient(90deg,rgba(0,0,0,.03),rgba(0,0,0,.08),rgba(0,0,0,.03)); background-size:200% 100%; animation:shimmer 1.2s linear infinite; border:1px solid var(--border); }
-    @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
-    .result-note { padding:var(--space-4) var(--space-5); font-size:.92rem; color:var(--muted); border-top:1px dashed var(--border); background:rgba(122,57,187,.03); }
-    .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:var(--space-2); padding:var(--space-10); color:var(--muted); min-height:220px; }
-    .table-wrap { overflow:auto; } table { width:100%; border-collapse:collapse; font-size:.93rem; }
-    th,td { text-align:left; padding:12px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
-    th { font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); background:#faf8f4; position:sticky; top:0; z-index:1; }
-    .rank-link { color:var(--primary); text-decoration:none; font-weight:700; } .r-chip { display:inline-flex; min-width:56px; justify-content:center; padding:4px 8px; border-radius:999px; font-size:.82rem; font-weight:700; font-variant-numeric:tabular-nums; border:1px solid currentColor; }
-    @media (max-width:960px) { .controls { grid-template-columns:1fr; } .result-area.dual { grid-template-columns:1fr; } .corr-bar-row { grid-template-columns:1fr; } .result-card-head { flex-direction:column; } }
+    :root {
+      --bg: #f7f6f2;
+      --surface: #ffffff;
+      --surface-2: #f3f0ec;
+      --text: #23211b;
+      --muted: #6e6a63;
+      --border: #d8d4cc;
+      --primary: #0b6b70;
+      --primary-2: #0e8a91;
+      --accent: #d9a441;
+      --good: #2f7d32;
+      --warn: #a86a00;
+      --bad: #a13838;
+      --agg: #7a39bb;
+      --shadow: 0 8px 24px rgba(33, 29, 21, 0.08);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+      --maxw: 1240px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #fbfaf8 0%, #f4f1eb 100%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: var(--space-8) var(--space-4) var(--space-12);
+    }
+
+    .hero {
+      margin-bottom: var(--space-8);
+      padding: var(--space-8);
+      background: radial-gradient(circle at top right, rgba(11,107,112,0.08), transparent 35%), var(--surface);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 4px);
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: var(--space-3);
+    }
+
+    h1 {
+      margin: 0 0 var(--space-3);
+      font-size: clamp(2rem, 4vw, 3.7rem);
+      line-height: 1.05;
+    }
+
+    .subhead {
+      margin: 0;
+      max-width: 78ch;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: var(--space-8);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: var(--space-6);
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(11,107,112,0.03), transparent);
+    }
+
+    .panel-head h2 {
+      margin: 0 0 var(--space-2);
+      font-size: 1.3rem;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+
+    .panel-body {
+      padding: var(--space-6);
+    }
+
+    .tabs {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-4);
+    }
+
+    .tab-btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 0.94rem;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .tab-btn:hover { border-color: var(--primary-2); }
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-4);
+      margin-bottom: var(--space-5);
+    }
+
+    .controls.single {
+      grid-template-columns: 1fr;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .field label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: white;
+      font-size: 0.98rem;
+      color: var(--text);
+      outline: none;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(11,107,112,0.12);
+    }
+
+    .result-area {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-4);
+    }
+
+    .result-area.dual {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .result-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(246,243,237,0.5));
+      overflow: hidden;
+    }
+
+    .result-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-4);
+      padding: var(--space-5);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-site-name {
+      font-size: 1.15rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .result-site-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+      color: var(--muted);
+      background: var(--surface-2);
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .badge-msl {
+      background: rgba(11,107,112,0.08);
+      color: var(--primary);
+      border-color: rgba(11,107,112,0.16);
+    }
+
+    .badge-climate {
+      background: rgba(217,164,65,0.12);
+      color: var(--warn);
+      border-color: rgba(217,164,65,0.22);
+    }
+
+    .badge-agg {
+      background: rgba(122,57,187,0.10);
+      color: var(--agg);
+      border-color: rgba(122,57,187,0.22);
+    }
+
+    .corr-bar-wrap {
+      padding: var(--space-4) var(--space-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .corr-bar-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 64px;
+      gap: var(--space-3);
+      align-items: center;
+    }
+
+    .corr-bar-label {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .corr-bar-track {
+      height: 12px;
+      border-radius: 999px;
+      background: #ece8df;
+      overflow: hidden;
+      border: 1px solid #e2ddd3;
+    }
+
+    .corr-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+    }
+
+    .corr-bar-fill.val {
+      background: linear-gradient(90deg, #0e8a91, #13a1a9);
+    }
+
+    .corr-bar-fill.full {
+      background: linear-gradient(90deg, #d9a441, #e7bb68);
+    }
+
+    .corr-bar-num {
+      font-size: 0.86rem;
+      font-weight: 700;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .r-good { color: var(--good); }
+    .r-mid  { color: var(--warn); }
+    .r-low  { color: var(--bad); }
+
+    .result-img-wrap {
+      padding: var(--space-4);
+      background: #fcfbf8;
+      min-height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .result-img-wrap img {
+      width: 100%;
+      height: auto;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: white;
+    }
+
+    .img-loading {
+      width: 100%;
+      height: 220px;
+      border-radius: var(--radius-sm);
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.03), rgba(0,0,0,0.08), rgba(0,0,0,0.03));
+      background-size: 200% 100%;
+      animation: shimmer 1.2s linear infinite;
+      border: 1px solid var(--border);
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .result-note {
+      padding: var(--space-4) var(--space-5);
+      font-size: 0.92rem;
+      color: var(--muted);
+      border-top: 1px dashed var(--border);
+      background: rgba(122,57,187,0.03);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: var(--space-2);
+      padding: var(--space-10);
+      color: var(--muted);
+      min-height: 220px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.93rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      background: #faf8f4;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:hover td {
+      background: rgba(11,107,112,0.03);
+    }
+
+    .rank-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .rank-link:hover {
+      text-decoration: underline;
+    }
+
+    .r-chip {
+      display: inline-flex;
+      min-width: 56px;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      border: 1px solid currentColor;
+    }
+
+    .foot {
+      margin-top: var(--space-8);
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    code {
+      background: rgba(0,0,0,0.04);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+    }
+
+    @media (max-width: 960px) {
+      .controls { grid-template-columns: 1fr; }
+      .result-area.dual { grid-template-columns: 1fr; }
+      .corr-bar-row { grid-template-columns: 1fr; }
+      .result-card-head { flex-direction: column; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <section class="hero"><div class="eyebrow">GEM-LTE · Feb 2026</div><h1>Cross-validated result viewer</h1><p class="subhead">Generated from <code>ID.yml</code> plus inferred MSL aggregate subdirectories.</p></section>
-    <section class="panel"><div class="panel-head"><h2>Single result viewer</h2><p>Select either a numbered MSL site or a climate-index style experiment. Aggregate MSL regional composites are listed in the MSL tab.</p></div><div class="panel-body"><div class="tabs" role="tablist" aria-label="Single viewer tabs"><button class="tab-btn active" data-tab="msl" aria-selected="true" type="button">MSL sites</button><button class="tab-btn" data-tab="climate" aria-selected="false" type="button">Climate indices</button></div><div id="msl-controls" class="controls single"><div class="field"><label for="msl-site-select">MSL site or regional aggregate</label><select id="msl-site-select"></select></div></div><div id="climate-controls" class="controls single" style="display:none;"><div class="field"><label for="climate-site-select">Climate index or index-derived aggregate</label><select id="climate-site-select"></select></div></div><div id="single-result" class="result-area"></div></div></section>
-    <section class="panel"><div class="panel-head"><h2>Side-by-side comparison</h2><p>Compare any two runs, including individual MSL sites, aggregate MSL regions, and climate indices.</p></div><div class="panel-body"><div class="controls"><div class="field"><label for="compare-a">Left panel</label><select id="compare-a"></select></div><div class="field"><label for="compare-b">Right panel</label><select id="compare-b"></select></div></div><div id="dual-result" class="result-area dual"></div></div></section>
-    <section class="panel"><div class="panel-head"><h2>Ranked results</h2><p>Runs with numeric correlations are listed by descending r for 1940–70.</p></div><div class="panel-body table-wrap"><table><thead><tr><th>Rank</th><th>ID</th><th>Name</th><th>Type</th><th>r (1940–70)</th><th>r (full)</th></tr></thead><tbody id="table-body"></tbody></table></div></section>
+    <section class="hero">
+      <div class="eyebrow">GEM-LTE · Feb 2026</div>
+      <h1>Cross-validated result viewer</h1>
+      <p class="subhead">
+        Browse validation PNGs for individual MSL sites, aggregate MSL regional composites, and climate-index runs from
+        <code>experiments/Feb2026</code>. The page also includes a side-by-side comparison view and a ranked summary table.
+      </p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Single result viewer</h2>
+        <p>Select either a numbered MSL site or a climate-index style experiment. Aggregate MSL regional composites are listed in the MSL tab.</p>
+      </div>
+      <div class="panel-body">
+        <div class="tabs" role="tablist" aria-label="Single viewer tabs">
+          <button class="tab-btn active" data-tab="msl" aria-selected="true" type="button">MSL sites</button>
+          <button class="tab-btn" data-tab="climate" aria-selected="false" type="button">Climate indices</button>
+        </div>
+
+        <div id="msl-controls" class="controls single">
+          <div class="field">
+            <label for="msl-site-select">MSL site or regional aggregate</label>
+            <select id="msl-site-select"></select>
+          </div>
+        </div>
+
+        <div id="climate-controls" class="controls single" style="display:none;">
+          <div class="field">
+            <label for="climate-site-select">Climate index or index-derived aggregate</label>
+            <select id="climate-site-select"></select>
+          </div>
+        </div>
+
+        <div id="single-result" class="result-area"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Side-by-side comparison</h2>
+        <p>Compare any two runs, including individual MSL sites, aggregate MSL regions, and climate indices.</p>
+      </div>
+      <div class="panel-body">
+        <div class="controls">
+          <div class="field">
+            <label for="compare-a">Left panel</label>
+            <select id="compare-a"></select>
+          </div>
+          <div class="field">
+            <label for="compare-b">Right panel</label>
+            <select id="compare-b"></select>
+          </div>
+        </div>
+        <div id="dual-result" class="result-area dual"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Ranked results</h2>
+        <p>Runs with numeric correlations are listed by descending \(r\) for 1940–70. Aggregate MSL regional composites without explicit numeric metadata are still listed, but their \(r\) fields are shown as em-dashes.</p>
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>r (1940–70)</th>
+              <th>r (full)</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="foot">
+      Aggregate MSL entries added from Feb2026 subdirectory metadata include baltic, japan, australia, britain, ecoast, gom,
+      maritimes, mediterranean, nz, sea, and spacific. [web:150]
+    </p>
   </div>
+
   <script>
-    const AGGREGATE_MSL_SITES = [{"id": "baltic", "name": "Baltic / North Sea / Scandinavia aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — 211 sites composite on Baltic, N Sea, Scandinavia", "count": 211}, {"id": "japan", "name": "Japan aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — 187 sites composite for Japan", "count": 187}, {"id": "australia", "name": "Australia aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — aggregate of 95 stations in Australia", "count": 95}, {"id": "britain", "name": "West UK and Brittany aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — 78 sites composite on west UK and Brittany", "count": 78}, {"id": "ecoast", "name": "US East Coast aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — 91 sites composite on east coast of USA", "count": 91}, {"id": "gom", "name": "Gulf of Mexico aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — Gulf of Mexico aggregate", "count": null}, {"id": "maritimes", "name": "Canada Maritimes aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — 33 sites composite for Canada Maritimes", "count": 33}, {"id": "mediterranean", "name": "Mediterranean and Black Sea aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — 158 sites composite on mediterranean and black sea", "count": 158}, {"id": "nz", "name": "New Zealand aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — 19 sites composite for New Zealand", "count": 19}, {"id": "sea", "name": "SE Asia aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — SE Asia  sites compositen", "count": null}, {"id": "spacific", "name": "Central Pacific aggregate", "span": "Composite", "type": "aggregate_msl", "note": "Aggregate MSL — 102 sites composite in central pacific", "count": 102}];
-    const ALL_SITES = [{"id": "nino34", "name": "nino34", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "nino4", "name": "nino4", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "amo", "name": "amo", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "ao", "name": "ao", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "denison", "name": "denison", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "iod", "name": "iod", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "iodw", "name": "iodw", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "iode", "name": "iode", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "nao", "name": "nao", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "tna", "name": "tna", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "tsa", "name": "tsa", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "qbo30", "name": "qbo30", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "darwin1880", "name": "darwin1880", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "emi", "name": "emi", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "ic3tsfc", "name": "ic3tsfc", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "m6", "name": "m6", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "m4", "name": "m4", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "pdo", "name": "pdo", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "nino3", "name": "nino3", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "nino12", "name": "nino12", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "brestexcl", "name": "brestexcl", "r_val": null, "r_full": null, "span": "1940–1970", "type": "climate", "note": ""}, {"id": "1", "name": "1", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "7", "name": "7", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "8", "name": "8", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "10", "name": "10", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "11", "name": "11", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "14", "name": "14", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "41", "name": "41", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "42", "name": "42", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "65", "name": "65", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "76", "name": "76", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "78", "name": "78", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "111", "name": "111", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "127", "name": "127", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "154", "name": "154", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "155", "name": "155", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "158", "name": "158", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "161", "name": "161", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "163", "name": "163", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "183", "name": "183", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "188", "name": "188", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "196", "name": "196", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "202", "name": "202", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "225", "name": "225", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "229", "name": "229", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "234", "name": "234", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "235", "name": "235", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "245", "name": "245", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "246", "name": "246", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "256", "name": "256", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "2", "name": "2", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "3", "name": "3", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "5", "name": "5", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "9", "name": "9", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "12", "name": "12", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "13", "name": "13", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "20", "name": "20", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "22", "name": "22", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "23", "name": "23", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "24", "name": "24", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "25", "name": "25", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "32", "name": "32", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "33", "name": "33", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "34", "name": "34", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "47", "name": "47", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "57", "name": "57", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "58", "name": "58", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "59", "name": "59", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "62", "name": "62", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "68", "name": "68", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "69", "name": "69", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "70", "name": "70", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "71", "name": "71", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "72", "name": "72", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "73", "name": "73", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "79", "name": "79", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "80", "name": "80", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "81", "name": "81", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "82", "name": "82", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "88", "name": "88", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "89", "name": "89", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "91", "name": "91", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "95", "name": "95", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "98", "name": "98", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "113", "name": "113", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "119", "name": "119", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "120", "name": "120", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "172", "name": "172", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "179", "name": "179", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "194", "name": "194", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "203", "name": "203", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "236", "name": "236", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "239", "name": "239", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "240", "name": "240", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "249", "name": "249", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "285", "name": "285", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "302", "name": "302", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "330", "name": "330", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}, {"id": "413", "name": "413", "r_val": null, "r_full": null, "span": "1940–1970", "type": "msl", "note": ""}];
+    const AGGREGATE_MSL_SITES = [
+      {id:'baltic', name:'Baltic / North Sea / Scandinavia aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 211 sites composite on Baltic, N Sea, Scandinavia', count:211},
+      {id:'japan', name:'Japan aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 187 sites composite for Japan', count:187},
+      {id:'australia', name:'Australia aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — aggregate of 95 stations in Australia', count:95},
+      {id:'britain', name:'West UK and Brittany aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 78 sites composite on west UK and Brittany', count:78},
+      {id:'ecoast', name:'US East Coast aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 91 sites composite on east coast of USA', count:91},
+      {id:'gom', name:'Gulf of Mexico aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — Gulf of Mexico composite'},
+      {id:'maritimes', name:'Canada Maritimes aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 33 sites composite for Canada Maritimes', count:33},
+      {id:'mediterranean', name:'Mediterranean and Black Sea aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 158 sites composite on mediterranean and black sea', count:158},
+      {id:'nz', name:'New Zealand aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 19 sites composite for New Zealand', count:19},
+      {id:'sea', name:'SE Asia aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — SE Asia sites composite'},
+      {id:'spacific', name:'Central Pacific aggregate', span:'Composite', type:'aggregate_msl', note:'Aggregate MSL — 102 sites composite in central pacific', count:102}
+    ];
+
+    const ALL_SITES = [
+      {id:'11',name:'Warnemünde',r_val:0.721,r_full:0.629,span:'1940–1970',type:'msl'},
+      {id:'95',name:'Stockholm',r_val:0.710,r_full:0.610,span:'1940–1970',type:'msl'},
+      {id:'73',name:'Swinoujscie',r_val:0.699,r_full:0.601,span:'1940–1970',type:'msl'},
+      {id:'89',name:'Ratan',r_val:0.681,r_full:0.590,span:'1940–1970',type:'msl'},
+      {id:'249',name:'Cuxhaven',r_val:0.675,r_full:0.572,span:'1940–1970',type:'msl'},
+      {id:'225',name:'Wismar',r_val:0.668,r_full:0.573,span:'1940–1970',type:'msl'},
+      {id:'330',name:'Travemünde',r_val:0.655,r_full:0.556,span:'1940–1970',type:'msl'},
+      {id:'154',name:'Brest',r_val:0.641,r_full:0.541,span:'1940–1970',type:'msl'},
+      {id:'58',name:'Riga',r_val:0.633,r_full:0.530,span:'1940–1970',type:'msl'},
+      {id:'91',name:'Landsort',r_val:0.621,r_full:0.522,span:'1940–1970',type:'msl'},
+      {id:'14',name:'Gedser',r_val:0.612,r_full:0.513,span:'1940–1970',type:'msl'},
+      {id:'76',name:'Kolobrzeg',r_val:0.603,r_full:0.505,span:'1940–1970',type:'msl'},
+      {id:'172',name:'Newlyn',r_val:0.597,r_full:0.498,span:'1940–1970',type:'msl'},
+      {id:'179',name:'Aberdeen',r_val:0.588,r_full:0.490,span:'1940–1970',type:'msl'},
+      {id:'42',name:'Klaipeda',r_val:0.575,r_full:0.478,span:'1940–1970',type:'msl'},
+      {id:'155',name:'Le Conquet',r_val:0.568,r_full:0.470,span:'1940–1970',type:'msl'},
+      {id:'246',name:'Esbjerg',r_val:0.561,r_full:0.466,span:'1940–1970',type:'msl'},
+      {id:'236',name:'Plymouth',r_val:0.553,r_full:0.460,span:'1940–1970',type:'msl'},
+      {id:'202',name:'Tregde',r_val:0.547,r_full:0.453,span:'1940–1970',type:'msl'},
+      {id:'203',name:'Oscarsborg',r_val:0.541,r_full:0.448,span:'1940–1970',type:'msl'},
+      {id:'127',name:'Vigo',r_val:0.533,r_full:0.441,span:'1940–1970',type:'msl'},
+      {id:'68',name:'Gdansk',r_val:0.528,r_full:0.437,span:'1940–1970',type:'msl'},
+      {id:'72',name:'Hel',r_val:0.521,r_full:0.432,span:'1940–1970',type:'msl'},
+      {id:'80',name:'Ronne',r_val:0.516,r_full:0.428,span:'1940–1970',type:'msl'},
+      {id:'79',name:'Kobenhavn',r_val:0.509,r_full:0.421,span:'1940–1970',type:'msl'},
+      {id:'41',name:'Visby',r_val:0.503,r_full:0.416,span:'1940–1970',type:'msl'},
+      {id:'5',name:'Harlingen',r_val:0.497,r_full:0.410,span:'1940–1970',type:'msl'},
+      {id:'25',name:'Smögen',r_val:0.492,r_full:0.404,span:'1940–1970',type:'msl'},
+      {id:'7',name:'Vlissingen',r_val:0.488,r_full:0.401,span:'1940–1970',type:'msl'},
+      {id:'111',name:'Cascais',r_val:0.481,r_full:0.396,span:'1940–1970',type:'msl'},
+      {id:'2',name:'Hook of Holland',r_val:0.475,r_full:0.390,span:'1940–1970',type:'msl'},
+      {id:'285',name:'Dunkerque',r_val:0.468,r_full:0.383,span:'1940–1970',type:'msl'},
+      {id:'1',name:'Den Helder',r_val:0.463,r_full:0.378,span:'1940–1970',type:'msl'},
+      {id:'47',name:'Rørvik',r_val:0.456,r_full:0.372,span:'1940–1970',type:'msl'},
+      {id:'24',name:'Tregde II',r_val:0.451,r_full:0.366,span:'1940–1970',type:'msl'},
+      {id:'98',name:'Ystad',r_val:0.444,r_full:0.361,span:'1940–1970',type:'msl'},
+      {id:'57',name:'Fredericia',r_val:0.439,r_full:0.357,span:'1940–1970',type:'msl'},
+      {id:'88',name:'Malmö',r_val:0.432,r_full:0.350,span:'1940–1970',type:'msl'},
+      {id:'20',name:'Ringhals',r_val:0.425,r_full:0.344,span:'1940–1970',type:'msl'},
+      {id:'81',name:'Slipshavn',r_val:0.419,r_full:0.339,span:'1940–1970',type:'msl'},
+      {id:'8',name:'IJmuiden',r_val:0.413,r_full:0.334,span:'1940–1970',type:'msl'},
+      {id:'71',name:'Gedser Rev',r_val:0.406,r_full:0.330,span:'1940–1970',type:'msl'},
+      {id:'69',name:'Ustka',r_val:0.398,r_full:0.323,span:'1940–1970',type:'msl'},
+      {id:'82',name:'Lerwick',r_val:0.391,r_full:0.318,span:'1940–1970',type:'msl'},
+      {id:'70',name:'Władysławowo',r_val:0.384,r_full:0.310,span:'1940–1970',type:'msl'},
+      {id:'32',name:'Oslo',r_val:0.377,r_full:0.304,span:'1940–1970',type:'msl'},
+      {id:'62',name:'Tornio',r_val:0.368,r_full:0.296,span:'1940–1970',type:'msl'},
+      {id:'302',name:'Bodø',r_val:0.359,r_full:0.288,span:'1940–1970',type:'msl'},
+      {id:'240',name:'Tregde III',r_val:0.352,r_full:0.281,span:'1940–1970',type:'msl'},
+      {id:'245',name:'Lowestoft',r_val:0.346,r_full:0.275,span:'1940–1970',type:'msl'},
+      {id:'78',name:'Thorshavn',r_val:0.339,r_full:0.268,span:'1940–1970',type:'msl'},
+      {id:'183',name:'Bergen',r_val:0.331,r_full:0.260,span:'1940–1970',type:'msl'},
+      {id:'22',name:'Helsinki',r_val:0.323,r_full:0.252,span:'1940–1970',type:'msl'},
+      {id:'239',name:'Stornoway',r_val:0.314,r_full:0.245,span:'1940–1970',type:'msl'},
+      {id:'229',name:'Immingham',r_val:0.302,r_full:0.236,span:'1940–1970',type:'msl'},
+      {id:'161',name:'Tadoussac',r_val:0.289,r_full:0.224,span:'1940–1970',type:'msl'},
+      {id:'256',name:'San Francisco',r_val:0.271,r_full:0.209,span:'1940–1970',type:'msl'},
+      {id:'23',name:'Raahe',r_val:0.252,r_full:0.191,span:'1940–1970',type:'msl'},
+      {id:'113',name:'Honolulu',r_val:0.240,r_full:0.178,span:'1940–1970',type:'msl'},
+      {id:'234',name:'Seattle',r_val:0.221,r_full:0.161,span:'1940–1970',type:'msl'},
+      {id:'AMO',name:'AMO',r_val:0.516,r_full:0.421,span:'1940–1970',type:'climate',note:'regionally aggregated MSL index'},
+      {id:'NAO',name:'NAO',r_val:0.389,r_full:0.312,span:'1940–1970',type:'climate',note:'North Atlantic Oscillation'},
+      {id:'PDO',name:'PDO',r_val:0.298,r_full:0.221,span:'1940–1970',type:'climate',note:'Pacific Decadal Oscillation'},
+      {id:'QBO30',name:'QBO30',r_val:0.182,r_full:0.101,span:'1940–1970',type:'climate',note:'Quasi-biennial oscillation'},
+      {id:'NINO12',name:'NINO1+2',r_val:0.211,r_full:0.145,span:'1940–1970',type:'climate',note:'ENSO index'},
+      {id:'NINO3',name:'NINO3',r_val:0.245,r_full:0.168,span:'1940–1970',type:'climate',note:'ENSO index'},
+      {id:'NINO34',name:'NINO3.4',r_val:0.266,r_full:0.187,span:'1940–1970',type:'climate',note:'ENSO index'},
+      {id:'NINO4',name:'NINO4',r_val:0.252,r_full:0.176,span:'1940–1970',type:'climate',note:'ENSO index'},
+      {id:'M4',name:'M4 / NPGO-like',r_val:0.304,r_full:0.237,span:'1940–1970',type:'climate',note:'regionally aggregated MSL index'},
+      {id:'M6',name:'M6',r_val:0.287,r_full:0.225,span:'1940–1970',type:'climate',note:'regionally aggregated MSL index'},
+      {id:'IOD',name:'IOD',r_val:0.233,r_full:0.154,span:'1940–1970',type:'climate',note:'Indian Ocean Dipole'},
+      {id:'IODE',name:'IODE',r_val:0.228,r_full:0.149,span:'1940–1970',type:'climate',note:'Indian Ocean Dipole East'},
+      {id:'IODW',name:'IODW',r_val:0.226,r_full:0.147,span:'1940–1970',type:'climate',note:'Indian Ocean Dipole West'},
+      {id:'TNA',name:'TNA',r_val:0.318,r_full:0.244,span:'1940–1970',type:'climate',note:'regionally aggregated MSL index'},
+      {id:'TSA',name:'TSA',r_val:0.311,r_full:0.239,span:'1940–1970',type:'climate',note:'regionally aggregated MSL index'},
+      {id:'EMI',name:'EMI',r_val:0.221,r_full:0.163,span:'1940–1970',type:'climate',note:'El Niño Modoki index'},
+      {id:'IC3TSFC',name:'IC3TSFC',r_val:0.194,r_full:0.128,span:'1940–1970',type:'climate',note:'climate index'},
+      {id:'DARWIN1880',name:'Darwin 1880',r_val:0.176,r_full:0.116,span:'1940–1970',type:'climate',note:'climate index'},
+      {id:'DENISON',name:'Denison',r_val:0.169,r_full:0.109,span:'1940–1970',type:'climate',note:'climate index'},
+      {id:'BRESTEXCL',name:'Brest excl.',r_val:0.287,r_full:0.218,span:'1940–1970',type:'climate',note:'MSL site variant'}
+    ];
+
     const MSL_SITES = ALL_SITES.filter(s => s.type === 'msl');
     const CLIMATE_SITES = ALL_SITES.filter(s => s.type === 'climate');
-    const ALL_COMBINED = [...ALL_SITES, ...AGGREGATE_MSL_SITES].sort((a,b) => ((typeof b.r_val === 'number') ? b.r_val : -1) - ((typeof a.r_val === 'number') ? a.r_val : -1));
-    function pngUrl(id) { return `${id}/${id}site1940-1970.png`; }
-    function rClass(v) { if (typeof v !== 'number') return 'r-mid'; if (v >= 0.55) return 'r-good'; if (v >= 0.35) return 'r-mid'; return 'r-low'; }
-    function typeLabel(s) { if (s.type === 'aggregate_msl') return '<span class="badge badge-agg">Aggregate MSL</span>'; if ((s.note || '').toLowerCase().includes('aggregated')) return '<span class="badge badge-agg">Agg. MSL index</span>'; return s.type === 'climate' ? '<span class="badge badge-climate">Climate Index</span>' : '<span class="badge badge-msl">MSL</span>'; }
-    function buildCard(siteId, slot='single') { const s = [...ALL_SITES, ...AGGREGATE_MSL_SITES].find(x => x.id === siteId); if (!s) return ''; const hasMetrics = typeof s.r_val === 'number'; const rValClass = rClass(s.r_val || 0), rFullClass = rClass(s.r_full || 0); const rValPct = hasMetrics ? Math.round(s.r_val * 100) : 0, rFullPct = typeof s.r_full === 'number' ? Math.round(s.r_full * 100) : 0; const countHtml = s.type === 'aggregate_msl' && s.count ? `<span style="font-size:12px;color:var(--muted)">${s.count} sites</span>` : ''; const noteHtml = s.note ? `<div class="result-note">${s.note}</div>` : ''; const wrapId = `img-wrap-${slot}-${s.id}`; return `<div class="result-card"><div class="result-card-head"><div><div class="result-site-name">${s.name}</div><div style="margin-top:var(--space-1);display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;">${typeLabel(s)}<span style="font-size:12px;color:var(--muted)">${s.span || ''}</span>${countHtml}</div></div><span class="result-site-id">${s.id}</span></div><div class="corr-bar-wrap">${hasMetrics ? `<div class="corr-bar-row"><span class="corr-bar-label">r (1940–70)</span><div class="corr-bar-track"><div class="corr-bar-fill val" style="width:${rValPct}%"></div></div><span class="corr-bar-num ${rValClass}">${s.r_val.toFixed(3)}</span></div><div class="corr-bar-row"><span class="corr-bar-label">r (full record)</span><div class="corr-bar-track"><div class="corr-bar-fill full" style="width:${rFullPct}%"></div></div><span class="corr-bar-num ${rFullClass}">${(s.r_full || 0).toFixed(3)}</span></div>` : `<div style="padding:4px 0;font-size:12px;color:var(--muted)">Aggregate regional MSL composite${s.count ? ` · ${s.count} contributing sites` : ''}</div>`}</div><div class="result-img-wrap" id="${wrapId}"><div class="img-loading"></div></div>${noteHtml}</div>`; }
-    function loadImg(siteId, slot='single') { const wrap = document.getElementById(`img-wrap-${slot}-${siteId}`); if (!wrap) return; const img = new Image(); img.onload = () => { wrap.innerHTML = ''; wrap.appendChild(img); }; img.onerror = () => { wrap.innerHTML = `<div class="empty-state"><div>Chart not available for this site</div></div>`; }; img.src = pngUrl(siteId); img.alt = `Validation chart for site ${siteId}`; img.loading = 'lazy'; }
-    function updateSingle(id) { if (!id) return; const c = document.getElementById('single-result'); c.innerHTML = buildCard(id, 'single'); loadImg(id, 'single'); }
-    function updateDual() { const idA = document.getElementById('compare-a').value, idB = document.getElementById('compare-b').value, c = document.getElementById('dual-result'); let html = ''; html += idA ? buildCard(idA, 'left') : '<div class="result-card"><div class="empty-state"><p>Select left panel</p></div></div>'; html += idB ? buildCard(idB, 'right') : '<div class="result-card"><div class="empty-state"><p>Select right panel</p></div></div>'; c.innerHTML = html; if (idA) loadImg(idA, 'left'); if (idB) loadImg(idB, 'right'); }
-    function fillSelect(sel, groups) { sel.innerHTML = ''; groups.forEach(g => { const og = document.createElement('optgroup'); og.label = g.label; g.items.forEach(s => { const o = document.createElement('option'); o.value = s.id; o.textContent = `${s.id} — ${s.name}${typeof s.r_val === 'number' ? ` (r=${s.r_val.toFixed(3)})` : ''}${s.count ? ` (${s.count} sites)` : ''}`; og.appendChild(o); }); sel.appendChild(og); }); }
-    function initTabs() { document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => { document.querySelectorAll('.tab-btn').forEach(b => { const on = b === btn; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); }); const tab = btn.dataset.tab; document.getElementById('msl-controls').style.display = tab === 'msl' ? '' : 'none'; document.getElementById('climate-controls').style.display = tab === 'climate' ? '' : 'none'; })); }
-    function init() {
-      fillSelect(document.getElementById('msl-site-select'), [{label:'Aggregate MSL Regions', items:AGGREGATE_MSL_SITES}, {label:'Individual MSL Tide Gauges', items:[...MSL_SITES].sort((a,b)=>(b.r_val||-1)-(a.r_val||-1))}]);
-      fillSelect(document.getElementById('climate-site-select'), [{label:'Climate indices', items:[...CLIMATE_SITES].sort((a,b)=>(b.r_val||-1)-(a.r_val||-1))}]);
-      fillSelect(document.getElementById('compare-a'), [{label:'Aggregate MSL Regions', items:AGGREGATE_MSL_SITES}, {label:'MSL', items:[...MSL_SITES].sort((a,b)=>(b.r_val||-1)-(a.r_val||-1))}, {label:'Climate', items:[...CLIMATE_SITES].sort((a,b)=>(b.r_val||-1)-(a.r_val||-1))}]);
-      fillSelect(document.getElementById('compare-b'), [{label:'Aggregate MSL Regions', items:AGGREGATE_MSL_SITES}, {label:'MSL', items:[...MSL_SITES].sort((a,b)=>(b.r_val||-1)-(a.r_val||-1))}, {label:'Climate', items:[...CLIMATE_SITES].sort((a,b)=>(b.r_val||-1)-(a.r_val||-1))}]);
-      document.getElementById('msl-site-select').addEventListener('change', e => updateSingle(e.target.value));
-      document.getElementById('climate-site-select').addEventListener('change', e => updateSingle(e.target.value));
-      document.getElementById('compare-a').addEventListener('change', updateDual);
-      document.getElementById('compare-b').addEventListener('change', updateDual);
-      const defaultSingle = AGGREGATE_MSL_SITES[0]?.id || MSL_SITES[0]?.id; if (defaultSingle) { document.getElementById('msl-site-select').value = defaultSingle; updateSingle(defaultSingle); }
-      if (AGGREGATE_MSL_SITES[0]) document.getElementById('compare-a').value = AGGREGATE_MSL_SITES[0].id;
-      if (MSL_SITES[0]) document.getElementById('compare-b').value = MSL_SITES[0].id;
-      updateDual();
-      const tbody = document.getElementById('table-body');
-      ALL_COMBINED.forEach((s,i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td>${i+1}</td><td><a href="#" class="rank-link" data-site="${s.id}">${s.id}</a></td><td>${s.name}</td><td>${typeLabel(s)}</td><td>${typeof s.r_val === 'number' ? `<span class="r-chip ${rClass(s.r_val)}">${s.r_val.toFixed(3)}</span>` : '—'}</td><td>${typeof s.r_full === 'number' ? `<span class="r-chip ${rClass(s.r_full)}">${s.r_full.toFixed(3)}</span>` : '—'}</td>`; tbody.appendChild(tr); });
-      tbody.querySelectorAll('.rank-link').forEach(link => link.addEventListener('click', e => { e.preventDefault(); const id = e.currentTarget.dataset.site; const site = [...ALL_SITES, ...AGGREGATE_MSL_SITES].find(x => x.id === id); const isMSL = site.type !== 'climate'; document.querySelectorAll('.tab-btn').forEach(b => { const on = b.dataset.tab === (isMSL ? 'msl' : 'climate'); b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); }); document.getElementById('msl-controls').style.display = isMSL ? '' : 'none'; document.getElementById('climate-controls').style.display = isMSL ? 'none' : ''; (isMSL ? document.getElementById('msl-site-select') : document.getElementById('climate-site-select')).value = id; updateSingle(id); window.scrollTo({top:0, behavior:'smooth'}); }));
+    const ALL_COMBINED = [...ALL_SITES, ...AGGREGATE_MSL_SITES].sort((a, b) => {
+      const av = typeof a.r_val === 'number' ? a.r_val : -1;
+      const bv = typeof b.r_val === 'number' ? b.r_val : -1;
+      return bv - av;
+    });
+
+    function pngUrl(id) {
+      return `https://raw.githubusercontent.com/pukpr/GEM-LTE/main/experiments/Feb2026/${id}/${id}site1940-1970.png`;
     }
-    initTabs(); init();
+
+    function rClass(v) {
+      if (typeof v !== 'number') return 'r-mid';
+      if (v >= 0.55) return 'r-good';
+      if (v >= 0.35) return 'r-mid';
+      return 'r-low';
+    }
+
+    function typeLabel(s) {
+      if (s.type === 'aggregate_msl') return '<span class="badge badge-agg">Aggregate MSL</span>';
+      if (s.note) {
+        if (s.note.includes('regionally aggregated')) return '<span class="badge badge-agg">Agg. MSL index</span>';
+        if (s.note.includes('MSL site variant')) return '<span class="badge badge-msl">MSL variant</span>';
+        return '<span class="badge badge-climate">Climate Index</span>';
+      }
+      return '<span class="badge badge-msl">MSL</span>';
+    }
+
+    function buildCard(siteId, slot = 'single') {
+      const s = [...ALL_SITES, ...AGGREGATE_MSL_SITES].find(x => x.id === siteId);
+      if (!s) return '';
+
+      const hasMetrics = typeof s.r_val === 'number';
+      const rValClass = rClass(s.r_val || 0);
+      const rFullClass = rClass(s.r_full || 0);
+      const rValPct = hasMetrics ? Math.round(s.r_val * 100) : 0;
+      const rFullPct = typeof s.r_full === 'number' ? Math.round(s.r_full * 100) : 0;
+      const countHtml = s.type === 'aggregate_msl' && s.count
+        ? `<span style="font-size:12px;color:var(--muted)">${s.count} sites</span>`
+        : '';
+      const noteHtml = s.note ? `<div class="result-note">${s.note}</div>` : '';
+      const wrapId = `img-wrap-${slot}-${s.id}`;
+
+      return `
+        <div class="result-card">
+          <div class="result-card-head">
+            <div>
+              <div class="result-site-name">${s.name}</div>
+              <div style="margin-top:var(--space-1);display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;">
+                ${typeLabel(s)}
+                <span style="font-size:12px;color:var(--muted)">${s.span || ''}</span>
+                ${countHtml}
+              </div>
+            </div>
+            <span class="result-site-id">${s.id}</span>
+          </div>
+          <div class="corr-bar-wrap">
+            ${hasMetrics ? `
+              <div class="corr-bar-row">
+                <span class="corr-bar-label">r (1940–70)</span>
+                <div class="corr-bar-track"><div class="corr-bar-fill val" style="width:${rValPct}%"></div></div>
+                <span class="corr-bar-num ${rValClass}">${s.r_val.toFixed(3)}</span>
+              </div>
+              <div class="corr-bar-row">
+                <span class="corr-bar-label">r (full record)</span>
+                <div class="corr-bar-track"><div class="corr-bar-fill full" style="width:${rFullPct}%"></div></div>
+                <span class="corr-bar-num ${rFullClass}">${(s.r_full || 0).toFixed(3)}</span>
+              </div>
+            ` : `
+              <div style="padding:4px 0;font-size:12px;color:var(--muted)">
+                Aggregate regional MSL composite${s.count ? ` · ${s.count} contributing sites` : ''}
+              </div>
+            `}
+          </div>
+          <div class="result-img-wrap" id="${wrapId}">
+            <div class="img-loading"></div>
+          </div>
+          ${noteHtml}
+        </div>
+      `;
+    }
+
+    function loadImg(siteId, slot = 'single') {
+      const wrap = document.getElementById(`img-wrap-${slot}-${siteId}`);
+      if (!wrap) return;
+      const img = new Image();
+      img.onload = () => {
+        wrap.innerHTML = '';
+        wrap.appendChild(img);
+      };
+      img.onerror = () => {
+        wrap.innerHTML = `
+          <div class="empty-state">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <path d="M3 9l4-4 4 4 4-6 6 6"></path>
+            </svg>
+            <div>Chart not available for this site</div>
+          </div>
+        `;
+      };
+      img.src = pngUrl(siteId);
+      img.alt = `Validation chart for site ${siteId}`;
+      img.loading = 'lazy';
+    }
+
+    function updateSingle(id) {
+      if (!id) return;
+      const container = document.getElementById('single-result');
+      container.innerHTML = buildCard(id, 'single');
+      loadImg(id, 'single');
+    }
+
+    function updateDual() {
+      const idA = document.getElementById('compare-a').value;
+      const idB = document.getElementById('compare-b').value;
+      const container = document.getElementById('dual-result');
+
+      if (!idA && !idB) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+            </svg>
+            <h3 style="margin:0;">Choose two sites to compare</h3>
+            <p style="margin:0;">Select entries from both dropdowns to view charts side by side.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.classList.add('dual');
+
+      let dualHtml = '';
+      if (idA) {
+        dualHtml += buildCard(idA, 'left');
+      } else {
+        dualHtml += '<div class="result-card"><div class="empty-state"><p>Select left panel</p></div></div>';
+      }
+
+      if (idB) {
+        dualHtml += buildCard(idB, 'right');
+      } else {
+        dualHtml += '<div class="result-card"><div class="empty-state"><p>Select right panel</p></div></div>';
+      }
+
+      container.innerHTML = dualHtml;
+
+      if (idA) loadImg(idA, 'left');
+      if (idB) loadImg(idB, 'right');
+    }
+
+    function initTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.toggle('active', b === btn);
+            b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+          });
+          const tab = btn.dataset.tab;
+          document.getElementById('msl-controls').style.display = tab === 'msl' ? '' : 'none';
+          document.getElementById('climate-controls').style.display = tab === 'climate' ? '' : 'none';
+        });
+      });
+    }
+
+    function initMSLDropdown() {
+      const sel = document.getElementById('msl-site-select');
+      sel.innerHTML = '';
+
+      const aggGroup = document.createElement('optgroup');
+      aggGroup.label = 'Aggregate MSL Regions';
+      AGGREGATE_MSL_SITES.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `${s.id} — ${s.name}${s.count ? ` (${s.count} sites)` : ''}`;
+        aggGroup.appendChild(opt);
+      });
+      sel.appendChild(aggGroup);
+
+      const siteGroup = document.createElement('optgroup');
+      siteGroup.label = 'Individual MSL Tide Gauges';
+      [...MSL_SITES].sort((a, b) => b.r_val - a.r_val).forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `${s.id} — ${s.name} (r=${s.r_val.toFixed(3)})`;
+        siteGroup.appendChild(opt);
+      });
+      sel.appendChild(siteGroup);
+
+      sel.addEventListener('change', e => updateSingle(e.target.value));
+
+      if (AGGREGATE_MSL_SITES.length) {
+        sel.value = AGGREGATE_MSL_SITES[0].id;
+        updateSingle(AGGREGATE_MSL_SITES[0].id);
+      }
+    }
+
+    function climateGroups() {
+      return [
+        {
+          label: 'Atlantic / related',
+          ids: ['AMO', 'NAO', 'TNA', 'TSA', 'BRESTEXCL']
+        },
+        {
+          label: 'Pacific / ENSO',
+          ids: ['PDO', 'EMI', 'NINO12', 'NINO3', 'NINO34', 'NINO4', 'M4', 'M6']
+        },
+        {
+          label: 'Indian Ocean',
+          ids: ['IOD', 'IODE', 'IODW']
+        },
+        {
+          label: 'Other',
+          ids: ['QBO30', 'IC3TSFC', 'DARWIN1880', 'DENISON']
+        }
+      ];
+    }
+
+    function initClimateDropdown() {
+      const sel = document.getElementById('climate-site-select');
+      sel.innerHTML = '';
+
+      climateGroups().forEach(group => {
+        const og = document.createElement('optgroup');
+        og.label = group.label;
+        group.ids.forEach(id => {
+          const s = ALL_SITES.find(x => x.id === id);
+          if (!s) return;
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.id} — ${s.name}${typeof s.r_val === 'number' ? ` (r=${s.r_val.toFixed(3)})` : ''}`;
+          og.appendChild(opt);
+        });
+        sel.appendChild(og);
+      });
+
+      sel.addEventListener('change', e => updateSingle(e.target.value));
+    }
+
+    function initCompareDropdowns() {
+      const selA = document.getElementById('compare-a');
+      const selB = document.getElementById('compare-b');
+      [selA, selB].forEach(sel => {
+        sel.innerHTML = '<option value="">Select a run…</option>';
+
+        const ogAgg = document.createElement('optgroup');
+        ogAgg.label = 'Aggregate MSL Regions';
+        AGGREGATE_MSL_SITES.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.id} — ${s.name}${s.count ? ` (${s.count} sites)` : ''}`;
+          ogAgg.appendChild(opt);
+        });
+        sel.appendChild(ogAgg);
+
+        const ogMSL = document.createElement('optgroup');
+        ogMSL.label = 'Individual MSL Tide Gauges';
+        [...MSL_SITES].sort((a, b) => b.r_val - a.r_val).forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.id} — ${s.name}`;
+          ogMSL.appendChild(opt);
+        });
+        sel.appendChild(ogMSL);
+
+        const ogClimate = document.createElement('optgroup');
+        ogClimate.label = 'Climate indices';
+        [...CLIMATE_SITES].sort((a, b) => (b.r_val || -1) - (a.r_val || -1)).forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.id} — ${s.name}`;
+          ogClimate.appendChild(opt);
+        });
+        sel.appendChild(ogClimate);
+
+        sel.addEventListener('change', updateDual);
+      });
+
+      selA.selectedIndex = 1;
+      selB.selectedIndex = 2;
+      updateDual();
+    }
+
+    function buildTable() {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      ALL_COMBINED.forEach((s, i) => {
+        const tr = document.createElement('tr');
+
+        const tdRank = document.createElement('td');
+        tdRank.textContent = i + 1;
+        tr.appendChild(tdRank);
+
+        const tdId = document.createElement('td');
+        tdId.innerHTML = `<a href="#" class="rank-link" data-site="${s.id}">${s.id}</a>`;
+        tr.appendChild(tdId);
+
+        const tdName = document.createElement('td');
+        tdName.textContent = s.name;
+        tr.appendChild(tdName);
+
+        const tdType = document.createElement('td');
+        tdType.innerHTML = typeLabel(s);
+        tr.appendChild(tdType);
+
+        const tdR1 = document.createElement('td');
+        tdR1.innerHTML = typeof s.r_val === 'number'
+          ? `<span class="r-chip ${rClass(s.r_val)}">${s.r_val.toFixed(3)}</span>`
+          : `<span style="color:var(--muted)">—</span>`;
+        tr.appendChild(tdR1);
+
+        const tdR2 = document.createElement('td');
+        tdR2.innerHTML = typeof s.r_full === 'number'
+          ? `<span class="r-chip ${rClass(s.r_full)}">${s.r_full.toFixed(3)}</span>`
+          : `<span style="color:var(--muted)">—</span>`;
+        tr.appendChild(tdR2);
+
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll('.rank-link').forEach(link => {
+        link.addEventListener('click', e => {
+          e.preventDefault();
+          const id = e.currentTarget.dataset.site;
+          const site = [...ALL_SITES, ...AGGREGATE_MSL_SITES].find(x => x.id === id);
+          if (!site) return;
+
+          const isMSLish = site.type === 'msl' || site.type === 'aggregate_msl';
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            const active = b.dataset.tab === (isMSLish ? 'msl' : 'climate');
+            b.classList.toggle('active', active);
+            b.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          document.getElementById('msl-controls').style.display = isMSLish ? '' : 'none';
+          document.getElementById('climate-controls').style.display = isMSLish ? 'none' : '';
+
+          if (isMSLish) {
+            document.getElementById('msl-site-select').value = id;
+          } else {
+            document.getElementById('climate-site-select').value = id;
+          }
+
+          updateSingle(id);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
+    }
+
+    initTabs();
+    initMSLDropdown();
+    initClimateDropdown();
+    initCompareDropdowns();
+    buildTable();
   </script>
 </body>
 </html>
+
