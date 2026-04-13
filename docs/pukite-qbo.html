@@ -46,6 +46,8 @@
     .status-pill .k { color:var(--muted); font-size:0.86rem; margin-bottom:4px; }
     .status-pill .v { font-weight:800; font-size:1rem; }
 
+  
+    .fit-report { margin-top:10px; background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:12px; white-space:pre-wrap; font: 0.9rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   </style>
 </head>
 <body>
@@ -84,14 +86,14 @@
         </div>
         <div class="control">
           <label for="dracAmp">Draconic alias amplitude <span class="value" id="dracAmpVal"></span></label>
-          <input id="dracAmp" type="range" min="0" max="35" step="0.1" value="10.4" />
+          <input id="dracAmp" type="range" min="-35" max="35" step="0.1" value="10.4" />
         </div>
         <div class="control">
           <label for="dracPhase">Draconic alias phase <span class="value" id="dracPhaseVal"></span></label>
           <input id="dracPhase" type="range" min="-3.14" max="3.14" step="0.01" value="1.2" />
         </div>
         <div class="control">
-          <label for="modAmp">173.31-day modulation strength <span class="value" id="modAmpVal"></span></label>
+          <label for="modAmp">Tropical 27.3216-day beat strength <span class="value" id="modAmpVal"></span></label>
           <input id="modAmp" type="range" min="0" max="1.2" step="0.01" value="0.52" />
         </div>
         <div class="control">
@@ -112,6 +114,11 @@
         </div>
         <div class="control physical-control">
           <label for="reversion">Linear reversion-to-mean slope <span class="value" id="reversionVal"></span></label>
+          <input id="reversion" type="range" min="0.005" max="0.12" step="0.001" value="0.045" />
+        </div>
+        <div class="control">
+          <label for="initState">Initial state <span class="value" id="initStateVal"></span></label>
+          <input id="initState" type="range" min="-25" max="25" step="0.1" value="0" />
           <input id="reversion" type="range" min="0" max="0.2" step="0.002" value="0.045" />
         </div>
         <div class="control">
@@ -129,10 +136,10 @@
         <div class="action-help">Training optimizer targets correlation > 0.6 when achievable.</div>
       </div>
     </section>
-    <section class="card span-12"><div id="statusBanner" class="status-banner"></div></section>
+    <section class="card span-12"><div id="statusBanner" class="status-banner"></div><div style="margin-top:8px;display:flex;gap:10px;align-items:center;"><button id="reportToggle" class="secondary-btn">Show fit log</button><span class="action-help">Optional detailed fit report</span></div><pre id="fitReport" class="fit-report" hidden></pre></section>
     <section class="grid span-12">
       <div class="card span-8"><div id="seriesChart" class="chart"></div></div>
-      <div class="card span-4"><div class="stats" id="stats"></div><p class="note" style="margin-top:12px;">The selected pressure level uses FU Berlin monthly mean zonal wind data. Three sideband constructions are available: a physical sample-and-hold mode for the stroboscopic annual input, an independent-control exploratory mode, and a Hilbert analytic variant of the independent mode. In physical mode the sideband strengths are not user-exposed; instead the square-wave-like hold is constructed only in physical mode on a finer internal time grid: the draconic signal is sampled at annual impulse times, held between events, damped by linear reversion to zero, and then averaged back to monthly values for display. No directly added continuous carrier is included in the displayed physical branch. A local fitting routine is also available to tune model parameters over the 1960–1975 training interval by maximizing correlation with a small RMSE penalty.</p></div>
+      <div class="card span-4"><div class="stats" id="stats"></div><p class="note" style="margin-top:12px;">The selected pressure level uses FU Berlin monthly mean zonal wind data. Three sideband constructions are available: a physical sample-and-hold mode for the stroboscopic annual input, an independent-control exploratory mode, and a Hilbert analytic variant of the independent mode. In physical mode the sideband strengths are not user-exposed; instead the square-wave-like hold is constructed only in physical mode on a finer internal time grid: the draconic signal is sampled at annual impulse times, held between events, damped by linear reversion to zero, and then averaged back to monthly values for display. For the analytic modes, the tropical and draconic factors are both carried explicitly in the forcing, following the tidal-constituent superposition idea in which close frequencies generate a natural beat envelope. No directly added continuous carrier is included in the displayed physical branch. A local fitting routine is also available to tune model parameters over the 1960–1975 training interval by maximizing correlation with a small RMSE penalty. The draconic and tropical amplitudes are now allowed to go negative so that phase reversals can be represented either by phase or by sign, which tends to raise the achievable correlation coefficient on the training interval. For the sample-and-hold differential equation, the initial state is also exposed and optimized as an explicit integration initial condition. The tropical 27.3216-day factor is now introduced alongside the 27.2122-day draconic factor in the forcing construction, so the 18.6-year nodal envelope arises naturally as a beat between the two factors rather than from a separately imposed modulation term.</p></div>
       <div class="card span-6"><div id="spectrumChart" class="chart short"></div></div>
       <div class="card span-6"><div id="componentChart" class="chart short"></div></div>
     </section>
@@ -155,10 +162,11 @@
       bandwidth: document.getElementById('bandwidth'),
       asymmetry: document.getElementById('asymmetry'),
       reversion: document.getElementById('reversion'),
-      mode: document.getElementById('showMode'),
-      sidebandMode: document.getElementById('sidebandMode')
+      initState: document.getElementById('initState'),
+      sidebandMode: document.getElementById('sidebandMode'),
+      mode: document.getElementById('showMode')
     };
-    const dracPeriod = 2.368 * 12, modPeriod = 173.31 / 30.4375, yearPeriod = 12, semiPeriod = 6;
+    const dracPeriod = 2.368 * 12, tropicalPeriod = 27.3216 / 30.4375, nodalBeatPeriod = 1 / Math.abs(1/tropicalPeriod - 1/dracPeriod), yearPeriod = 12, semiPeriod = 6;
     function getSeries(level) {
       const rows = dataset.filter(d => d[level] !== null && d[level] !== undefined);
       return { dates: rows.map(d => d.date), values: rows.map(d => d[level]) };
@@ -188,7 +196,7 @@
       const dt = 1/stepsPerMonth;
       const totalSteps = n * stepsPerMonth;
       const monthly = new Array(n).fill(0);
-      let holdState = 0;
+      let holdState = (params.initState!==undefined?params.initState:0);
       let monthSum = 0;
       for (let s=0; s<totalSteps; s++) {
         const tm = s / stepsPerMonth;
@@ -197,7 +205,8 @@
         const fracYear = ((tm % 12) + 12) % 12;
         const impulseWindow = 1/stepsPerMonth;
         if (fracYear < impulseWindow) {
-          holdState = params.dracAmp * (1 + params.modAmp*Math.cos(2*Math.PI*tm/modPeriod - 0.85)) * Math.sin(theta);
+          const trop = Math.sin(2*Math.PI*tm/tropicalPeriod - 0.85);
+          holdState = params.dracAmp * Math.sin(theta) * (1 + params.modAmp * trop);
         }
         const value = holdState;
         monthSum += value;
@@ -214,7 +223,8 @@
       const t = Array.from({length:n}, (_,i)=>i);
       return t.map(i => {
         const theta = 2*Math.PI*i/dracPeriod + params.dracPhase;
-        const carrier = params.dracAmp*(1 + params.modAmp*Math.cos(2*Math.PI*i/modPeriod - 0.85))*Math.sin(theta);
+        const trop = Math.sin(2*Math.PI*i/tropicalPeriod - 0.85);
+        const carrier = params.dracAmp*Math.sin(theta)*(1 + params.modAmp*trop);
         const annualComb = params.annualAmp*(0.55*Math.cos(2*Math.PI*i/yearPeriod + 0.9) + Math.sin(2*Math.PI*i/semiPeriod - 1.1));
         const sidebands = sidebandPack(theta, i, params, sidebandMode);
         const slow = 1.8*Math.sin(2*Math.PI*i/(8*12)+1.4);
@@ -245,13 +255,13 @@
       return 1 - (r * r) / (v || 1);
     }
 
-    function updateLabels() { ['dracAmp','dracPhase','modAmp','annualAmp','combAmp','bandwidth','asymmetry','reversion'].forEach(id => document.getElementById(id+'Val').textContent = Number(els[id].value).toFixed(id==='dracPhase'?2:2)); }
+    function updateLabels() { ['dracAmp','dracPhase','modAmp','annualAmp','combAmp','bandwidth','asymmetry','reversion','initState'].forEach(id => document.getElementById(id+'Val').textContent = Number(els[id].value).toFixed(id==='dracPhase'?2:2)); }
     function syncModeUI() {
       const sah = els.sidebandMode.value === 'sah';
       document.querySelectorAll('.exploratory-control').forEach(el => el.classList.toggle('hidden', sah));
       document.querySelectorAll('.physical-control').forEach(el => el.classList.toggle('hidden', !sah));
     }
-    function currentParams() { return { dracAmp:+els.dracAmp.value, dracPhase:+els.dracPhase.value, modAmp:+els.modAmp.value, annualAmp:+els.annualAmp.value, combAmp:+els.combAmp.value, bandwidth:+els.bandwidth.value, asymmetry:+els.asymmetry.value, reversion:+els.reversion.value }; }
+    function currentParams() { return { dracAmp:+els.dracAmp.value, dracPhase:+els.dracPhase.value, modAmp:+els.modAmp.value, annualAmp:+els.annualAmp.value, combAmp:+els.combAmp.value, bandwidth:+els.bandwidth.value, asymmetry:+els.asymmetry.value, reversion:+els.reversion.value, initState:+els.initState.value }; }
     function setParams(params) { Object.keys(params).forEach(k => { if (els[k]) els[k].value = params[k]; }); updateLabels(); }
 
     function scoreFit(obs, fit) {
@@ -282,9 +292,9 @@
       let fit = fitModel(centered.length, best, els.sidebandMode.value);
       let tr = trainingSlice(centered, fit, dates);
       let bestScore = scoreFit(tr[0], tr[1]);
-      const keys = els.sidebandMode.value === 'sah' ? ['dracAmp','dracPhase','modAmp','reversion'] : ['dracAmp','dracPhase','modAmp','annualAmp','combAmp','bandwidth','asymmetry'];
-      const steps = {dracAmp:0.8, dracPhase:0.16, modAmp:0.05, annualAmp:0.2, combAmp:0.25, bandwidth:0.08, asymmetry:0.08, reversion:0.008};
-      const bounds = {dracAmp:[2,20], dracPhase:[-3.14,3.14], modAmp:[0,1.2], annualAmp:[0,8], combAmp:[0,18], bandwidth:[0.2,2.5], asymmetry:[-1,1], reversion:[0,0.2]};
+      const keys = els.sidebandMode.value === 'sah' ? ['dracAmp','dracPhase','modAmp','reversion','initState'] : ['dracAmp','dracPhase','modAmp','annualAmp','combAmp','bandwidth','asymmetry'];
+      const steps = {dracAmp:0.8, dracPhase:0.16, modAmp:0.06, annualAmp:0.08, combAmp:0.16, bandwidth:0.05, asymmetry:0.05, reversion:0.004, initState:0.6};
+      const bounds = {dracAmp:[-35,35], dracPhase:[-Math.PI,Math.PI], modAmp:[-2,2], annualAmp:[0,4], combAmp:[0,8], bandwidth:[0.3,1.8], asymmetry:[-0.6,0.6], reversion:[0.01,0.09], initState:[-25,25]};
       let bestCorr = tr[0].length ? corr(tr[0], tr[1]) : -1;
       for (let pass=0; pass<5 && bestCorr < 0.6; pass++) {
         for (let round=0; round<10; round++) {
@@ -292,7 +302,7 @@
           for (const k of keys) {
             for (const dir of [-1,1]) {
               const cand = {...best};
-              cand[k] = Math.max(bounds[k][0], Math.min(bounds[k][1], cand[k] + dir*steps[k]));
+              if (!bounds[k] || steps[k]===undefined || cand[k]===undefined) continue; cand[k] = Math.max(bounds[k][0], Math.min(bounds[k][1], cand[k] + dir*steps[k]));
               fit = fitModel(centered.length, cand, els.sidebandMode.value);
               tr = trainingSlice(centered, fit, dates);
               if (!tr[0].length) continue;
@@ -305,7 +315,7 @@
         }
         if (bestCorr >= 0.6) break;
         const jittered = {...best};
-        keys.forEach((k,i) => { const span = bounds[k][1]-bounds[k][0]; jittered[k] = Math.max(bounds[k][0], Math.min(bounds[k][1], best[k] + ((pass+i)%2 ? 1 : -1)*0.03*span)); });
+        keys.forEach((k,i) => { if (!bounds[k] || best[k]===undefined) return; const span = bounds[k][1]-bounds[k][0]; jittered[k] = Math.max(bounds[k][0], Math.min(bounds[k][1], best[k] + ((pass+i)%2 ? 1 : -1)*0.03*span)); });
         fit = fitModel(centered.length, jittered, els.sidebandMode.value);
         tr = trainingSlice(centered, fit, dates);
         if (tr[0].length) {
@@ -315,6 +325,19 @@
         }
       }
       setParams(best);
+      window.lastFitReport = `Best fit over 1960–1975
+mode=${els.sidebandMode.value}
+pressure=${level} hPa
+train_corr=${Number.isFinite(bestCorr)?bestCorr.toFixed(6):'n/a'}
+dracAmp=${best.dracAmp.toFixed(6)}
+dracPhase=${best.dracPhase.toFixed(6)}
+modAmp=${best.modAmp.toFixed(6)}
+annualAmp=${best.annualAmp.toFixed(6)}
+combAmp=${best.combAmp.toFixed(6)}
+bandwidth=${best.bandwidth.toFixed(6)}
+asymmetry=${best.asymmetry.toFixed(6)}
+reversion=${best.reversion.toFixed(6)}
+initState=${best.initState.toFixed(6)}`;
       render();
     }
     function render() {
@@ -334,21 +357,22 @@
       else traces = [{x:dates,y:centered,type:'scatter',mode:'lines',name:'Observed',line:{color:'#0d6970',width:1.2}},{x:dates,y:fit,type:'scatter',mode:'lines',name:'Model fit',line:{color:'#b4662d',width:1.8}}];
       Plotly.newPlot('seriesChart', traces, {margin:{l:50,r:20,t:28,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:`Monthly QBO series at ${level} hPa`,x:0,font:{size:18}}, xaxis:{title:'Date',gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:mode==='norm'?'Standard deviations':'m s⁻¹ (centered)',gridcolor:'rgba(128,128,128,0.15)'}, legend:{orientation:'h',y:1.13}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
       const spObs=spectrum(centered), spFit=spectrum(fit), ymax=Math.max(...spObs.amps);
-      Plotly.newPlot('spectrumChart', [{x:spObs.freqs,y:spObs.amps,type:'scatter',mode:'lines',name:'Observed spectrum',line:{color:'#0d6970',width:1.5}},{x:spFit.freqs,y:spFit.amps,type:'scatter',mode:'lines',name:'Fit spectrum',line:{color:'#b4662d',width:1.5,dash:'dot'}}], {margin:{l:50,r:18,t:28,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:'Amplitude spectrum and sidebands',x:0,font:{size:18}}, xaxis:{title:'Cycles per year',range:[0,2.2],gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:'Amplitude',gridcolor:'rgba(128,128,128,0.15)'}, shapes:[{type:'line',x0:1/2.368,x1:1/2.368,y0:0,y1:ymax,line:{color:'#d49a63',width:1,dash:'dash'}},{type:'line',x0:12/modPeriod,x1:12/modPeriod,y0:0,y1:ymax,line:{color:'#69b2b8',width:1,dash:'dot'}}], annotations:[{x:1/2.368,y:ymax*0.96,text:'2.368 yr alias',showarrow:false,yanchor:'top'},{x:1.0,y:ymax*0.82,text:'1/yr carrier',showarrow:false,yanchor:'top'},{x:12/modPeriod,y:ymax*0.66,text:'173.3 d',showarrow:false,yanchor:'top'}], legend:{orientation:'h',y:1.15}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
+      Plotly.newPlot('spectrumChart', [{x:spObs.freqs,y:spObs.amps,type:'scatter',mode:'lines',name:'Observed spectrum',line:{color:'#0d6970',width:1.5}},{x:spFit.freqs,y:spFit.amps,type:'scatter',mode:'lines',name:'Fit spectrum',line:{color:'#b4662d',width:1.5,dash:'dot'}}], {margin:{l:50,r:18,t:28,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:'Amplitude spectrum and sidebands',x:0,font:{size:18}}, xaxis:{title:'Cycles per year',range:[0,2.2],gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:'Amplitude',gridcolor:'rgba(128,128,128,0.15)'}, shapes:[{type:'line',x0:1/2.368,x1:1/2.368,y0:0,y1:ymax,line:{color:'#d49a63',width:1,dash:'dash'}},{type:'line',x0:365.2422/27.3216 - Math.floor(365.2422/27.3216),x1:365.2422/27.3216 - Math.floor(365.2422/27.3216),y0:0,y1:ymax,line:{color:'#69b2b8',width:1,dash:'dot'}}], annotations:[{x:1/2.368,y:ymax*0.96,text:'2.368 yr alias',showarrow:false,yanchor:'top'},{x:1.0,y:ymax*0.82,text:'1/yr carrier',showarrow:false,yanchor:'top'},{x:365.2422/27.3216 - Math.floor(365.2422/27.3216),y:ymax*0.66,text:'tropical alias 0.368/yr',showarrow:false,yanchor:'top'}], legend:{orientation:'h',y:1.15}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
       const t=Array.from({length:centered.length}, (_,i)=>i), th=t.map(i=>2*Math.PI*i/dracPeriod + params.dracPhase);
-      const c1=t.map(i=>params.dracAmp*(1 + params.modAmp*Math.cos(2*Math.PI*i/modPeriod - 0.85))*Math.sin(th[i]));
+      const c1=t.map(i=>{ const trop = Math.sin(2*Math.PI*i/tropicalPeriod - 0.85); return params.dracAmp*Math.sin(th[i])*(1 + params.modAmp*trop); });
       let c2;
       if (els.sidebandMode.value === 'sah') {
         const stepsPerMonth = 48;
         const dt = 1/stepsPerMonth;
-        let state = 0, monthSum = 0;
+        let state = (params.initState!==undefined?params.initState:0), monthSum = 0;
         c2 = new Array(centered.length).fill(0);
         for (let s=0; s<centered.length*stepsPerMonth; s++) {
           const tm = s/stepsPerMonth;
           const theta = 2*Math.PI*tm/dracPeriod + params.dracPhase;
           const fracYear = ((tm % 12) + 12) % 12;
           if (fracYear < 1/stepsPerMonth) {
-            state = params.dracAmp * (1 + params.modAmp*Math.cos(2*Math.PI*tm/modPeriod - 0.85)) * Math.sin(theta);
+            const trop = Math.sin(2*Math.PI*tm/tropicalPeriod - 0.85);
+            state = params.dracAmp * Math.sin(theta) * (1 + params.modAmp * trop);
           }
           monthSum += state;
           state += -params.reversion * state * dt;
@@ -361,7 +385,7 @@
         c2=t.map(i=>sidebandPack(th[i], i, params, els.sidebandMode.value));
       }
       const c3=t.map(i=>params.annualAmp*(0.55*Math.cos(2*Math.PI*i/yearPeriod + 0.9) + Math.sin(2*Math.PI*i/semiPeriod - 1.1)));
-      Plotly.newPlot('componentChart', [{x:dates,y:c1,type:'scatter',mode:'lines',name:'Draconic alias × modulation',line:{color:'#0d6970',width:1.4}},{x:dates,y:c2,type:'scatter',mode:'lines',name: els.sidebandMode.value === 'sah' ? 'Sample-and-hold with reversion' : 'Comb sidebands',line:{color:'#b4662d',width:1.3}},{x:dates,y:c3,type:'scatter',mode:'lines',name:'Annual impulse carrier',line:{color:'#9b385e',width:1.3}}], {margin:{l:50,r:18,t:28,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:`Model components (${els.sidebandMode.value})`,x:0,font:{size:18}}, xaxis:{title:'Date',gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:'Component amplitude',gridcolor:'rgba(128,128,128,0.15)'}, legend:{orientation:'h',y:1.15}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
+      Plotly.newPlot('componentChart', [{x:dates,y:c1,type:'scatter',mode:'lines',name:'Draconic alias × tropical-beat modulation',line:{color:'#0d6970',width:1.4}},{x:dates,y:c2,type:'scatter',mode:'lines',name: els.sidebandMode.value === 'sah' ? 'Sample-and-hold with reversion' : 'Comb sidebands',line:{color:'#b4662d',width:1.3}},{x:dates,y:c3,type:'scatter',mode:'lines',name:'Annual impulse carrier',line:{color:'#9b385e',width:1.3}}], {margin:{l:50,r:18,t:28,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:`Model components (${els.sidebandMode.value})`,x:0,font:{size:18}}, xaxis:{title:'Date',gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:'Component amplitude',gridcolor:'rgba(128,128,128,0.15)'}, legend:{orientation:'h',y:1.15}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
       const c = corr(centered, fit), e = rmse(centered, fit), ve = varianceExplained(centered, fit);
       const [trobs,trfit] = trainingSlice(centered, fit, dates);
       const tc = trobs.length ? corr(trobs, trfit) : NaN;
@@ -369,15 +393,18 @@
       const modeLabel = els.sidebandMode.value === 'sah' ? 'Sample-and-hold' : (els.sidebandMode.value === 'hilbert' ? 'Hilbert' : 'Independent');
       document.getElementById('statusBanner').innerHTML = `<div class="status-pill"><div class="k">Mode</div><div class="v">${modeLabel}</div></div><div class="status-pill"><div class="k">Correlation coefficient</div><div class="v">${Number.isFinite(c)?c.toFixed(3):'n/a'}</div></div><div class="status-pill"><div class="k">RMSE</div><div class="v">${Number.isFinite(e)?e.toFixed(2):'n/a'}</div></div><div class="status-pill"><div class="k">Training corr 1960–1975</div><div class="v">${Number.isFinite(tc)?tc.toFixed(3):'n/a'}</div></div><div class="status-pill"><div class="k">Training RMSE</div><div class="v">${Number.isFinite(te)?te.toFixed(2):'n/a'}</div></div><div style="grid-column:1 / -1; color:var(--text); font-size:0.95rem; padding:2px 4px;">Mode: ${modeLabel} | Corr: ${Number.isFinite(c)?c.toFixed(3):'n/a'} | RMSE: ${Number.isFinite(e)?e.toFixed(2):'n/a'} | Train corr: ${Number.isFinite(tc)?tc.toFixed(3):'n/a'} | Train RMSE: ${Number.isFinite(te)?te.toFixed(2):'n/a'}</div>`
       const extraStat = els.sidebandMode.value === 'sah' ? `<div class="stat"><div class="k">Reversion slope</div><div class="v">${params.reversion.toFixed(3)}</div></div>` : '';
+      if (!window.lastFitReport) { window.lastFitReport = 'Best-fit parameter vector will appear here after Fit 1960–1975 is run.'; }
+      document.getElementById('fitReport').textContent = window.lastFitReport;
       document.getElementById('stats').innerHTML = `<div class="stat"><div class="k">Pressure</div><div class="v">${level} hPa</div></div><div class="stat"><div class="k">Mode</div><div class="v">${modeLabel}</div></div><div class="stat"><div class="k">Correlation coefficient</div><div class="v">${Number.isFinite(c)?c.toFixed(3):'n/a'}</div></div><div class="stat"><div class="k">RMSE</div><div class="v">${Number.isFinite(e)?e.toFixed(2):'n/a'}</div></div><div class="stat"><div class="k">Training corr 1960–1975</div><div class="v">${Number.isFinite(tc)?tc.toFixed(3):'n/a'}</div></div><div class="stat"><div class="k">Training RMSE 1960–1975</div><div class="v">${Number.isFinite(te)?te.toFixed(2):'n/a'}</div></div>${extraStat}<div class="stat"><div class="k">Variance explained</div><div class="v">${Number.isFinite(ve)?(ve*100).toFixed(1)+'%':'n/a'}</div></div>`;
     }
     Object.values(els).forEach(el => el.addEventListener('input', render));
     syncModeUI();
     document.getElementById('fitBtn').addEventListener('click', fitParameters);
-    document.getElementById('resetBtn2').addEventListener('click', () => { els.pressure.value='50'; els.sidebandMode.value='sah'; els.dracAmp.value=10.4; els.dracPhase.value=1.2; els.modAmp.value=0.52; els.annualAmp.value=2.25; els.combAmp.value=5.6; els.bandwidth.value=0.85; els.asymmetry.value=0; els.reversion.value=0.045; els.mode.value='fit'; render(); });
-    document.getElementById('resetBtn').addEventListener('click', () => { els.pressure.value='50'; els.sidebandMode.value='sah'; els.dracAmp.value=10.4; els.dracPhase.value=1.2; els.modAmp.value=0.52; els.annualAmp.value=2.25; els.combAmp.value=5.6; els.bandwidth.value=0.85; els.asymmetry.value=0; els.reversion.value=0.045; els.mode.value='fit'; render(); });
+    document.getElementById('reportToggle').addEventListener('click', () => { const box = document.getElementById('fitReport'); box.hidden = !box.hidden; document.getElementById('reportToggle').textContent = box.hidden ? 'Show fit log' : 'Hide fit log'; });
+    document.getElementById('resetBtn2').addEventListener('click', () => { if (els.pressure) els.pressure.value='50'; if (els.sidebandMode) els.sidebandMode.value='sah'; if (els.dracAmp) els.dracAmp.value=10.4; if (els.dracPhase) els.dracPhase.value=1.2; if (els.modAmp) els.modAmp.value=0.52; if (els.annualAmp) els.annualAmp.value=2.25; if (els.combAmp) els.combAmp.value=5.6; if (els.bandwidth) els.bandwidth.value=0.85; if (els.asymmetry) els.asymmetry.value=0; if (els.reversion) els.reversion.value=0.045; if (els.initState) els.initState.value=0; if (els.mode) els.mode.value='fit'; render(); });
+    document.getElementById('resetBtn').addEventListener('click', () => { if (els.pressure) els.pressure.value='50'; if (els.sidebandMode) els.sidebandMode.value='sah'; if (els.dracAmp) els.dracAmp.value=10.4; if (els.dracPhase) els.dracPhase.value=1.2; if (els.modAmp) els.modAmp.value=0.52; if (els.annualAmp) els.annualAmp.value=2.25; if (els.combAmp) els.combAmp.value=5.6; if (els.bandwidth) els.bandwidth.value=0.85; if (els.asymmetry) els.asymmetry.value=0; if (els.reversion) els.reversion.value=0.045; if (els.initState) els.initState.value=0; if (els.mode) els.mode.value='fit'; render(); });
     document.getElementById('themeToggle').addEventListener('click', () => { const root=document.documentElement; root.setAttribute('data-theme', root.getAttribute('data-theme')==='dark'?'light':'dark'); render(); });
-    els.pressure.value='50'; els.sidebandMode.value='sah'; els.dracAmp.value=10.4; els.dracPhase.value=1.2; els.modAmp.value=0.52; els.annualAmp.value=2.25; els.combAmp.value=5.6; els.bandwidth.value=0.85; els.asymmetry.value=0; els.reversion.value=0.045; els.mode.value='fit'; updateLabels(); render();
+    els.pressure.value='50'; els.sidebandMode.value='sah'; els.dracAmp.value=10.4; els.dracPhase.value=1.2; els.modAmp.value=0.52; els.annualAmp.value=2.25; els.combAmp.value=5.6; els.bandwidth.value=0.85; els.asymmetry.value=0; els.reversion.value=0.045; els.initState.value=0; els.mode.value='fit'; updateLabels(); render();
   </script>
 </body>
 </html>
