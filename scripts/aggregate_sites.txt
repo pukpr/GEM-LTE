@@ -1,0 +1,1 @@
+python3 spike.py --region southeast-asia --average-output --start-date 1880 --detrend --save-map
