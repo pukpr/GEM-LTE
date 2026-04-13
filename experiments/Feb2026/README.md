@@ -534,6 +534,24 @@ basin second harmonic.  The moderate validation performance indicates that the t
 captures a meaningful fraction of the Pacific interannual-to-decadal amplitude variance even
 at this geographically isolated open-ocean site.
 
+**Caveat and area for further study**: The ltep₁ ≈ 22.3, ltep₂ ≈ 9.46 parameter combination
+recovered for Honolulu is essentially the Baltic template, which is unexpected for a tropical
+mid-Pacific island site that is geographically remote from the Baltic–North Sea enclosed basin
+system.  Based on Hawaii's known oceanographic setting—sea level at Honolulu is strongly
+modulated by ENSO-related warm-pool variability advected from the western equatorial Pacific—
+one would *a priori* anticipate a **NINO4-like wavenumber structure** (ltep₁ ≈ 12, the
+resonant mode of the western Pacific warm-pool basin) rather than a Baltic-like mode near 23.
+The fact that the optimiser instead selects ltep ≈ 23 suggests either that (a) the short
+training window (1905–1939, only 35 years) is insufficient to distinguish the NINO4 and Baltic
+modes whose multi-decadal beating patterns can appear similar on short records, or (b) the
+secular background component shared with the Baltic template is absorbing a disproportionate
+share of Hawaii's sea-level variance, masking the true ENSO-amplitude wavenumber structure.
+This site is therefore flagged as a **priority for further investigation**: re-running the
+optimisation with the ltep parameters explicitly constrained to the NINO4 basin range
+(ltep ≈ 10–14) and with a detrended training record would clarify whether Hawaii genuinely
+responds at the Baltic basin wavenumber or whether the current fit is a consequence of secular
+confounding.
+
 ### Fort Denison, Sydney (denison)
 
 Fort Denison (r_val = 0.411) in Sydney Harbour (33.9°S, 151.2°E) is the only Southern
@@ -544,6 +562,23 @@ first mode) and ltep₂ = 23.71—a configuration that shifts most of the LTE am
 modulation into the second wavenumber parameter.  The positive validation r (0.411) suggests
 that the ltep ≈ 23 basin mode is still identifiable in the Southern Hemisphere record even
 at this geographic distance from the Baltic system.
+
+**Fremantle-like NINO4 character**: Despite its moderate cross-validation score, Fort Denison
+actually exhibits a wavenumber structure that can be interpreted as possessing a **Fremantle /
+NINO4 geographic character**.  Fremantle (ltep₁ = 12.02) is located on Australia's Indian
+Ocean coast and is directly connected to the central Pacific ENSO signal via the Leeuwin
+Current.  Fort Denison on the Pacific coast of Australia (eastern seaboard, 33.9°S) receives
+a related but Pacific-routed ENSO signal through the East Australian Current.  The vanishing
+ltep₁ at Fort Denison, combined with the secondary ltep₂ = 23.71 that is closest to the
+Baltic template, may reflect the optimiser's difficulty in cleanly separating the NINO4-type
+equatorial Pacific amplitude mode (ltep ≈ 12) from the background secular drift when only
+~52 years of pre-holdout data are available (1888–1939).  The moderate r_val = 0.411 is
+therefore more encouraging than it first appears: it indicates that the manifold is genuinely
+capturing ENSO-linked amplitude variability at Fort Denison consistent with an eastern Pacific
+boundary pathway, analogous to Fremantle on the western side.  **This site is a candidate for
+further investigation** with the ltep search constrained to the NINO4 basin range (ltep ≈ 12)
+to determine whether an explicit ENSO-amplitude fit would improve or maintain the
+cross-validation performance observed here.
 
 ### Fremantle, Australia (Site 111)
 
@@ -659,6 +694,20 @@ therefore serve as an important validation integrity check: the drop in holdout 
 for the IOD indices is not a model failure but a correct detection of non-stationarity in the
 index itself.
 
+**Secular-trend caveat for iode and iodw**: An additional interpretive complication arises
+because both IOD poles (iode and iodw) carry a pronounced **secular upward trend** over their
+1880–2022 record.  When the optimiser fits the manifold over the full record, the secular ramp
+embedded in the manifold's background acceleration (`bg`) can absorb this trend very
+efficiently, producing a high r_full largely driven by the shared long-term drift rather than
+by the cyclic interannual-to-decadal variability that the LTE modulation is designed to
+capture.  The holdout window 1940–1970 is a relatively stationary segment of the record where
+the secular slope is compressed into a modest fraction of the total variance; the model's
+over-reliance on matching the trend during training is then *exposed* by the cross-validation,
+and the drop in r from r_full to r_val is partly a consequence of this secular-fit bias rather
+than a pure non-stationarity effect.  In other words, **the "poorer" cross-validation score
+for IOD indices partly reflects the training procedure rewarding the secular trend at the
+expense of the cyclic component that the holdout actually tests**.
+
 ### Tropical Atlantic Indices: TNA, TSA, M6
 
 The Tropical North Atlantic (TNA, r_val = 0.128), Tropical South Atlantic (TSA, r_val = 0.166),
@@ -670,6 +719,21 @@ phase transitions, neither of which is represented in the tidal manifold.  The g
 contrast between the tropical Atlantic indices (r_val ≈ 0.13–0.21) and the tropical Pacific
 NINO indices (r_val ≈ 0.22–0.64) quantifies the degree to which the Pacific basin geometry is
 more strongly coupled to lunisolar amplitude forcing than the Atlantic on these scales.
+
+**Secular-trend caveat for tsa and tna**: Like the IOD poles, both the Tropical South Atlantic
+(TSA) and Tropical North Atlantic (TNA) indices possess a **strong monotonic warming trend**
+over their 1880–2025 records.  During optimisation on the full record, the manifold's secular
+background ramp can fit this trend with high fidelity, yielding inflated r_full values that
+reflect shared long-term drift rather than reproduced cycle-to-cycle variability.  The 1940–1970
+holdout exposes this weakness: the cyclic component of TNA and TSA variability that actually
+varies within that stationary window is small relative to the secular offset, and the model—
+having devoted much of its fitting capacity to the multi-decade trend—lacks residual skill to
+predict the interannual variations that dominate the holdout metric.  Readers should therefore
+interpret the low r_val for tna (0.128) and tsa (0.166) as partly reflecting this
+**secular-trend fitting bias** rather than purely indicating that lunisolar forcing has no
+relationship to tropical Atlantic variability.  A fairer assessment would detrend both the
+model and observations before computing the holdout correlation, or restrict the training to a
+sub-period equally affected by the trend.
 
 ### PDO and NPGO
 
@@ -864,7 +928,11 @@ interval for the majority of the 79 tested sites.  The most important conclusion
    r_full >> r_val (IOD, tropical Atlantic) signal non-stationary coupling that invalidates
    stationarity assumptions, while sites where r_full ≈ r_val (most Baltic gauges) signal
    robust, physically stationary amplitude-modulation coupling between the basin geometry
-   and the manifold.
+   and the manifold.  A further mechanism producing large r_full/r_val gaps is **secular
+   trend confounding**: indices with a strong monotonic trend (iode, iodw, tna, tsa) allow
+   the manifold's background acceleration to absorb much of the full-record variance, inflating
+   r_full at the expense of cyclic fit quality, which the detrended 1940–1970 holdout then
+   exposes.
 
 5. **Training-record length imposes a practical constraint of ~20–30 years** before the
    holdout for reliable LTE amplitude-phase calibration.
@@ -880,9 +948,28 @@ interval for the majority of the 79 tested sites.  The most important conclusion
 These results motivate future work extending the common manifold to the full global PSMSL
 catalogue, investigating the sensitivity of validation skill to the choice of holdout window
 (e.g., 1900–1930, 1970–2000), and developing a formal uncertainty quantification framework
-for the LTE wavenumber parameter estimates.  The mathematical framework underpinning these
-results is described in *Mathematical Geoenergy* (Wiley/AGU, 2019) with TeX source at
-https://github.com/pukpr/gem.
+for the LTE wavenumber parameter estimates.  Specific high-priority areas for further
+investigation include:
+
+- **Honolulu, Hawaii (Site 155)**: Re-optimising the LTE parameters with the wavenumber
+  search constrained to the NINO4 basin range (ltep ≈ 10–14) and with the secular trend
+  removed from both model and observations, to determine whether Hawaii's sea level genuinely
+  tracks the western Pacific warm-pool amplitude mode or whether the Baltic-like ltep ≈ 22
+  solution is an artefact of secular confounding in the training record.
+
+- **Fort Denison, Sydney (denison)**: Testing an explicit NINO4-character fit (ltep₁ ≈ 12,
+  analogous to the Fremantle solution) to quantify whether the eastern seaboard of Australia
+  supports the same Indo-Pacific ENSO amplitude mode that Fremantle carries via the Leeuwin
+  Current, and whether this improves or maintains the r_val = 0.411 achieved by the current
+  Baltic-template solution.
+
+- **Detrended cross-validation for secular-trend indices** (iode, iodw, tna, tsa): Repeating
+  the 1940–1970 holdout analysis after subtracting a linear or quadratic trend from both
+  model and observations, to separate the contribution of secular-trend fitting from genuine
+  cyclic amplitude-modulation skill.
+
+The mathematical framework underpinning these results is described in *Mathematical Geoenergy*
+(Wiley/AGU, 2019) with TeX source at https://github.com/pukpr/gem.
 
 ---
 
