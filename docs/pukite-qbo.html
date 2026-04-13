@@ -97,7 +97,7 @@
           <input id="modAmp" type="range" min="0" max="1.2" step="0.01" value="0.52" />
         </div>
         <div class="control">
-          <label for="annualAmp">Seasonal amplitude <span class="value" id="annualAmpVal"></span></label>
+          <label for="annualAmp">Annual amplitude <span class="value" id="annualAmpVal"></span></label>
           <input id="annualAmp" type="range" min="0" max="14" step="0.05" value="2.25" />
         </div>
         <div class="control exploratory-control">
@@ -139,7 +139,7 @@
     <section class="card span-12"><div id="statusBanner" class="status-banner"></div><div style="margin-top:8px;display:flex;gap:10px;align-items:center;"><button id="reportToggle" class="secondary-btn">Show fit log</button><span class="action-help">Optional detailed fit report</span></div><pre id="fitReport" class="fit-report" hidden></pre></section>
     <section class="grid span-12">
       <div class="card span-8"><div id="seriesChart" class="chart"></div></div>
-      <div class="card span-4"><div class="stats" id="stats"></div><p class="note" style="margin-top:12px;">The selected pressure level uses FU Berlin monthly mean zonal wind data. Three sideband constructions are available: a physical sample-and-hold mode for the stroboscopic annual input, an independent-control exploratory mode, and a Hilbert analytic variant of the independent mode. In physical mode the sideband strengths are not user-exposed; instead the square-wave-like hold is constructed only in physical mode on a finer internal time grid: the draconic signal is sampled at annual impulse times, held between events, damped by linear reversion to zero, and then averaged back to monthly values for display. For the analytic modes, the tropical and draconic factors are both carried explicitly in the forcing, following the tidal-constituent superposition idea in which close frequencies generate a natural beat envelope. No directly added continuous carrier is included in the displayed physical branch. A local fitting routine is also available to tune model parameters over the 1960–1975 training interval by maximizing correlation with a small RMSE penalty. The draconic and tropical amplitudes are now allowed to go negative so that phase reversals can be represented either by phase or by sign, which tends to raise the achievable correlation coefficient on the training interval. For the sample-and-hold differential equation, the initial state is also exposed and optimized as an explicit integration initial condition. The tropical 27.3216-day factor is now introduced alongside the 27.2122-day draconic factor in the forcing construction, so the 18.6-year nodal envelope arises naturally as a beat between the two factors rather than from a separately imposed modulation term.</p></div>
+      <div class="card span-4"><div class="stats" id="stats"></div><p class="note" style="margin-top:12px;">The selected pressure level uses FU Berlin monthly mean zonal wind data. Three sideband constructions are available: a physical sample-and-hold mode for the stroboscopic annual input, an independent-control exploratory mode, and a Hilbert analytic variant of the independent mode. In physical mode the sideband strengths are not user-exposed; instead the square-wave-like hold is constructed only in physical mode on a finer internal time grid: the draconic signal is sampled at annual impulse times, held between events, damped by linear reversion to zero, and then averaged back to monthly values for display. For the analytic modes, the tropical and draconic factors are both carried explicitly in the forcing, following the tidal-constituent superposition idea in which close frequencies generate a natural beat envelope. No directly added continuous carrier is included in the displayed physical branch. A local fitting routine is also available to tune model parameters over the 1960–1975 training interval by maximizing correlation with a small RMSE penalty. The draconic and tropical amplitudes are now allowed to go negative so that phase reversals can be represented either by phase or by sign, which tends to raise the achievable correlation coefficient on the training interval. For the sample-and-hold differential equation, the initial state is also exposed and optimized as an explicit integration initial condition. The annual term is now a pure annual sinusoid with fitted amplitude and phase, in the same spirit as Chandler-plus-annual harmonic fits. The tropical 27.3216-day factor is now introduced alongside the 27.2122-day draconic factor in the forcing construction, so the 18.6-year nodal envelope arises naturally as a beat between the two factors rather than from a separately imposed modulation term.</p></div>
       <div class="card span-6"><div id="spectrumChart" class="chart short"></div></div>
       <div class="card span-6"><div id="componentChart" class="chart short"></div></div>
     </section>
@@ -158,6 +158,7 @@
       dracPhase: document.getElementById('dracPhase'),
       modAmp: document.getElementById('modAmp'),
       annualAmp: document.getElementById('annualAmp'),
+      annualPhase: document.getElementById('annualPhase'),
       combAmp: document.getElementById('combAmp'),
       bandwidth: document.getElementById('bandwidth'),
       asymmetry: document.getElementById('asymmetry'),
@@ -219,7 +220,10 @@
       return monthly;
     }
     function fitModel(n, params, sidebandMode) {
-      if (sidebandMode === 'sah') return buildPhysicalHold(n, params);
+      if (sidebandMode === 'sah') {
+        const base = buildPhysicalHold(n, params);
+        return base.map((v,i)=>v + params.annualAmp*Math.cos(2*Math.PI*i/yearPeriod + params.annualPhase));
+      }
       const t = Array.from({length:n}, (_,i)=>i);
       return t.map(i => {
         const theta = 2*Math.PI*i/dracPeriod + params.dracPhase;
@@ -255,13 +259,13 @@
       return 1 - (r * r) / (v || 1);
     }
 
-    function updateLabels() { ['dracAmp','dracPhase','modAmp','annualAmp','combAmp','bandwidth','asymmetry','reversion','initState'].forEach(id => document.getElementById(id+'Val').textContent = Number(els[id].value).toFixed(id==='dracPhase'?2:2)); }
+    function updateLabels() { ['dracAmp','dracPhase','modAmp','annualAmp','annualPhase','combAmp','bandwidth','asymmetry','reversion','initState'].forEach(id => { const ctrl = els[id]; const label = document.getElementById(id+'Val'); if (!ctrl || !label) return; label.textContent = Number(ctrl.value).toFixed(id==='dracPhase'?2:2); }); }
     function syncModeUI() {
       const sah = els.sidebandMode.value === 'sah';
       document.querySelectorAll('.exploratory-control').forEach(el => el.classList.toggle('hidden', sah));
       document.querySelectorAll('.physical-control').forEach(el => el.classList.toggle('hidden', !sah));
     }
-    function currentParams() { return { dracAmp:+els.dracAmp.value, dracPhase:+els.dracPhase.value, modAmp:+els.modAmp.value, annualAmp:+els.annualAmp.value, combAmp:+els.combAmp.value, bandwidth:+els.bandwidth.value, asymmetry:+els.asymmetry.value, reversion:+els.reversion.value, initState:+els.initState.value }; }
+    function currentParams() { return { dracAmp:+els.dracAmp.value, dracPhase:+els.dracPhase.value, modAmp:+els.modAmp.value, annualAmp:+els.annualAmp.value, annualPhase:+(els.annualPhase?els.annualPhase.value:0.9), combAmp:+els.combAmp.value, bandwidth:+els.bandwidth.value, asymmetry:+els.asymmetry.value, reversion:+els.reversion.value, initState:+(els.initState?els.initState.value:0) }; }
     function setParams(params) { Object.keys(params).forEach(k => { if (els[k]) els[k].value = params[k]; }); updateLabels(); }
 
     function scoreFit(obs, fit) {
@@ -292,9 +296,9 @@
       let fit = fitModel(centered.length, best, els.sidebandMode.value);
       let tr = trainingSlice(centered, fit, dates);
       let bestScore = scoreFit(tr[0], tr[1]);
-      const keys = els.sidebandMode.value === 'sah' ? ['dracAmp','dracPhase','modAmp','reversion','initState'] : ['dracAmp','dracPhase','modAmp','annualAmp','combAmp','bandwidth','asymmetry'];
-      const steps = {dracAmp:0.8, dracPhase:0.16, modAmp:0.06, annualAmp:0.08, combAmp:0.16, bandwidth:0.05, asymmetry:0.05, reversion:0.004, initState:0.6};
-      const bounds = {dracAmp:[-35,35], dracPhase:[-Math.PI,Math.PI], modAmp:[-2,2], annualAmp:[0,4], combAmp:[0,8], bandwidth:[0.3,1.8], asymmetry:[-0.6,0.6], reversion:[0.01,0.09], initState:[-25,25]};
+      const keys = els.sidebandMode.value === 'sah' ? ['dracAmp','dracPhase','modAmp','annualAmp','annualPhase','reversion','initState'] : ['dracAmp','dracPhase','modAmp','annualAmp','annualPhase','combAmp','bandwidth','asymmetry'];
+      const steps = {dracAmp:0.8, dracPhase:0.16, modAmp:0.06, annualAmp:0.08, annualPhase:0.08, combAmp:0.16, bandwidth:0.05, asymmetry:0.05, reversion:0.004, initState:0.6};
+      const bounds = {dracAmp:[-35,35], dracPhase:[-Math.PI,Math.PI], modAmp:[-2,2], annualAmp:[-8,8], annualPhase:[-Math.PI,Math.PI], combAmp:[0,8], bandwidth:[0.3,1.8], asymmetry:[-0.6,0.6], reversion:[0.01,0.09], initState:[-25,25]};
       let bestCorr = tr[0].length ? corr(tr[0], tr[1]) : -1;
       for (let pass=0; pass<5 && bestCorr < 0.6; pass++) {
         for (let round=0; round<10; round++) {
@@ -333,6 +337,7 @@ dracAmp=${best.dracAmp.toFixed(6)}
 dracPhase=${best.dracPhase.toFixed(6)}
 modAmp=${best.modAmp.toFixed(6)}
 annualAmp=${best.annualAmp.toFixed(6)}
+annualPhase=${best.annualPhase.toFixed(6)}
 combAmp=${best.combAmp.toFixed(6)}
 bandwidth=${best.bandwidth.toFixed(6)}
 asymmetry=${best.asymmetry.toFixed(6)}
@@ -355,9 +360,9 @@ initState=${best.initState.toFixed(6)}`;
       if (mode === 'resid') traces = [{x:dates,y:resid,type:'scatter',mode:'lines',name:'Residual',line:{color:'#9b385e',width:1.7}}];
       else if (mode === 'norm') { const sy=std(centered), sf=std(fit); traces=[{x:dates,y:centered.map(v=>v/sy),type:'scatter',mode:'lines',name:'Observed (norm)',line:{color:'#0d6970',width:1.2}},{x:dates,y:fit.map(v=>v/sf),type:'scatter',mode:'lines',name:'Fit (norm)',line:{color:'#b4662d',width:1.6}}]; }
       else traces = [{x:dates,y:centered,type:'scatter',mode:'lines',name:'Observed',line:{color:'#0d6970',width:1.2}},{x:dates,y:fit,type:'scatter',mode:'lines',name:'Model fit',line:{color:'#b4662d',width:1.8}}];
-      Plotly.newPlot('seriesChart', traces, {margin:{l:50,r:20,t:28,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:`Monthly QBO series at ${level} hPa`,x:0,font:{size:18}}, xaxis:{title:'Date',gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:mode==='norm'?'Standard deviations':'m s⁻¹ (centered)',gridcolor:'rgba(128,128,128,0.15)'}, legend:{orientation:'h',y:1.13}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
+      Plotly.newPlot('seriesChart', traces, {margin:{l:50,r:20,t:52,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:`Monthly QBO series at ${level} hPa`,x:0,y:0.985,yanchor:'top',pad:{t:0,b:8},font:{size:18}}, xaxis:{title:'Date',gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:mode==='norm'?'Standard deviations':'m s⁻¹ (centered)',gridcolor:'rgba(128,128,128,0.15)'}, legend:{orientation:'h',y:1.13}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
       const spObs=spectrum(centered), spFit=spectrum(fit), ymax=Math.max(...spObs.amps);
-      Plotly.newPlot('spectrumChart', [{x:spObs.freqs,y:spObs.amps,type:'scatter',mode:'lines',name:'Observed spectrum',line:{color:'#0d6970',width:1.5}},{x:spFit.freqs,y:spFit.amps,type:'scatter',mode:'lines',name:'Fit spectrum',line:{color:'#b4662d',width:1.5,dash:'dot'}}], {margin:{l:50,r:18,t:28,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:'Amplitude spectrum and sidebands',x:0,font:{size:18}}, xaxis:{title:'Cycles per year',range:[0,2.2],gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:'Amplitude',gridcolor:'rgba(128,128,128,0.15)'}, shapes:[{type:'line',x0:1/2.368,x1:1/2.368,y0:0,y1:ymax,line:{color:'#d49a63',width:1,dash:'dash'}},{type:'line',x0:365.2422/27.3216 - Math.floor(365.2422/27.3216),x1:365.2422/27.3216 - Math.floor(365.2422/27.3216),y0:0,y1:ymax,line:{color:'#69b2b8',width:1,dash:'dot'}}], annotations:[{x:1/2.368,y:ymax*0.96,text:'2.368 yr alias',showarrow:false,yanchor:'top'},{x:1.0,y:ymax*0.82,text:'1/yr carrier',showarrow:false,yanchor:'top'},{x:365.2422/27.3216 - Math.floor(365.2422/27.3216),y:ymax*0.66,text:'tropical alias 0.368/yr',showarrow:false,yanchor:'top'}], legend:{orientation:'h',y:1.15}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
+      Plotly.newPlot('spectrumChart', [{x:spObs.freqs,y:spObs.amps,type:'scatter',mode:'lines',name:'Observed spectrum',line:{color:'#0d6970',width:1.5}},{x:spFit.freqs,y:spFit.amps,type:'scatter',mode:'lines',name:'Fit spectrum',line:{color:'#b4662d',width:1.5,dash:'dot'}}], {margin:{l:50,r:18,t:52,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:'Amplitude spectrum and sidebands',x:0,y:0.985,yanchor:'top',pad:{t:0,b:8},font:{size:18}}, xaxis:{title:'Cycles per year',range:[0,2.2],gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:'Amplitude',gridcolor:'rgba(128,128,128,0.15)'}, shapes:[{type:'line',x0:1/2.368,x1:1/2.368,y0:0,y1:ymax,line:{color:'#d49a63',width:1,dash:'dash'}},{type:'line',x0:365.2422/27.3216 - Math.floor(365.2422/27.3216),x1:365.2422/27.3216 - Math.floor(365.2422/27.3216),y0:0,y1:ymax,line:{color:'#69b2b8',width:1,dash:'dot'}}], annotations:[{x:1/2.368,y:ymax*0.96,text:'2.368 yr alias',showarrow:false,yanchor:'top'},{x:1.0,y:ymax*0.82,text:'1/yr carrier',showarrow:false,yanchor:'top'},{x:365.2422/27.3216 - Math.floor(365.2422/27.3216),y:ymax*0.66,text:'tropical alias 0.368/yr',showarrow:false,yanchor:'top'}], legend:{orientation:'h',y:1.15}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
       const t=Array.from({length:centered.length}, (_,i)=>i), th=t.map(i=>2*Math.PI*i/dracPeriod + params.dracPhase);
       const c1=t.map(i=>{ const trop = Math.sin(2*Math.PI*i/tropicalPeriod - 0.85); return params.dracAmp*Math.sin(th[i])*(1 + params.modAmp*trop); });
       let c2;
@@ -385,7 +390,7 @@ initState=${best.initState.toFixed(6)}`;
         c2=t.map(i=>sidebandPack(th[i], i, params, els.sidebandMode.value));
       }
       const c3=t.map(i=>params.annualAmp*(0.55*Math.cos(2*Math.PI*i/yearPeriod + 0.9) + Math.sin(2*Math.PI*i/semiPeriod - 1.1)));
-      Plotly.newPlot('componentChart', [{x:dates,y:c1,type:'scatter',mode:'lines',name:'Draconic alias × tropical-beat modulation',line:{color:'#0d6970',width:1.4}},{x:dates,y:c2,type:'scatter',mode:'lines',name: els.sidebandMode.value === 'sah' ? 'Sample-and-hold with reversion' : 'Comb sidebands',line:{color:'#b4662d',width:1.3}},{x:dates,y:c3,type:'scatter',mode:'lines',name:'Annual impulse carrier',line:{color:'#9b385e',width:1.3}}], {margin:{l:50,r:18,t:28,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:`Model components (${els.sidebandMode.value})`,x:0,font:{size:18}}, xaxis:{title:'Date',gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:'Component amplitude',gridcolor:'rgba(128,128,128,0.15)'}, legend:{orientation:'h',y:1.15}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
+      Plotly.newPlot('componentChart', [{x:dates,y:c1,type:'scatter',mode:'lines',name:'Draconic alias × tropical-beat modulation',line:{color:'#0d6970',width:1.4}},{x:dates,y:c2,type:'scatter',mode:'lines',name: els.sidebandMode.value === 'sah' ? 'Sample-and-hold with reversion' : 'Comb sidebands',line:{color:'#b4662d',width:1.3}},{x:dates,y:c3,type:'scatter',mode:'lines',name:'Annual impulse carrier',line:{color:'#9b385e',width:1.3}}], {margin:{l:50,r:18,t:52,b:45}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', title:{text:`Model components (${els.sidebandMode.value})`,x:0,y:0.985,yanchor:'top',pad:{t:0,b:8},font:{size:18}}, xaxis:{title:'Date',gridcolor:'rgba(128,128,128,0.15)'}, yaxis:{title:'Component amplitude',gridcolor:'rgba(128,128,128,0.15)'}, legend:{orientation:'h',y:1.15}, font:{family:'IBM Plex Sans, sans-serif', color:getComputedStyle(document.body).getPropertyValue('--text')} }, {responsive:true, displaylogo:false});
       const c = corr(centered, fit), e = rmse(centered, fit), ve = varianceExplained(centered, fit);
       const [trobs,trfit] = trainingSlice(centered, fit, dates);
       const tc = trobs.length ? corr(trobs, trfit) : NaN;
@@ -397,12 +402,12 @@ initState=${best.initState.toFixed(6)}`;
       document.getElementById('fitReport').textContent = window.lastFitReport;
       document.getElementById('stats').innerHTML = `<div class="stat"><div class="k">Pressure</div><div class="v">${level} hPa</div></div><div class="stat"><div class="k">Mode</div><div class="v">${modeLabel}</div></div><div class="stat"><div class="k">Correlation coefficient</div><div class="v">${Number.isFinite(c)?c.toFixed(3):'n/a'}</div></div><div class="stat"><div class="k">RMSE</div><div class="v">${Number.isFinite(e)?e.toFixed(2):'n/a'}</div></div><div class="stat"><div class="k">Training corr 1960–1975</div><div class="v">${Number.isFinite(tc)?tc.toFixed(3):'n/a'}</div></div><div class="stat"><div class="k">Training RMSE 1960–1975</div><div class="v">${Number.isFinite(te)?te.toFixed(2):'n/a'}</div></div>${extraStat}<div class="stat"><div class="k">Variance explained</div><div class="v">${Number.isFinite(ve)?(ve*100).toFixed(1)+'%':'n/a'}</div></div>`;
     }
-    Object.values(els).forEach(el => el.addEventListener('input', render));
+    Object.values(els).filter(Boolean).forEach(el => el.addEventListener('input', render));
     syncModeUI();
     document.getElementById('fitBtn').addEventListener('click', fitParameters);
     document.getElementById('reportToggle').addEventListener('click', () => { const box = document.getElementById('fitReport'); box.hidden = !box.hidden; document.getElementById('reportToggle').textContent = box.hidden ? 'Show fit log' : 'Hide fit log'; });
-    document.getElementById('resetBtn2').addEventListener('click', () => { if (els.pressure) els.pressure.value='50'; if (els.sidebandMode) els.sidebandMode.value='sah'; if (els.dracAmp) els.dracAmp.value=10.4; if (els.dracPhase) els.dracPhase.value=1.2; if (els.modAmp) els.modAmp.value=0.52; if (els.annualAmp) els.annualAmp.value=2.25; if (els.combAmp) els.combAmp.value=5.6; if (els.bandwidth) els.bandwidth.value=0.85; if (els.asymmetry) els.asymmetry.value=0; if (els.reversion) els.reversion.value=0.045; if (els.initState) els.initState.value=0; if (els.mode) els.mode.value='fit'; render(); });
-    document.getElementById('resetBtn').addEventListener('click', () => { if (els.pressure) els.pressure.value='50'; if (els.sidebandMode) els.sidebandMode.value='sah'; if (els.dracAmp) els.dracAmp.value=10.4; if (els.dracPhase) els.dracPhase.value=1.2; if (els.modAmp) els.modAmp.value=0.52; if (els.annualAmp) els.annualAmp.value=2.25; if (els.combAmp) els.combAmp.value=5.6; if (els.bandwidth) els.bandwidth.value=0.85; if (els.asymmetry) els.asymmetry.value=0; if (els.reversion) els.reversion.value=0.045; if (els.initState) els.initState.value=0; if (els.mode) els.mode.value='fit'; render(); });
+    document.getElementById('resetBtn2').addEventListener('click', () => { if (els.pressure) els.pressure.value='50'; if (els.sidebandMode) els.sidebandMode.value='sah'; if (els.dracAmp) els.dracAmp.value=10.4; if (els.dracPhase) els.dracPhase.value=1.2; if (els.modAmp) els.modAmp.value=0.52; if (els.annualAmp) els.annualAmp.value=2.25; if (els.annualPhase) els.annualPhase.value=0.9; if (els.combAmp) els.combAmp.value=5.6; if (els.bandwidth) els.bandwidth.value=0.85; if (els.asymmetry) els.asymmetry.value=0; if (els.reversion) els.reversion.value=0.045; if (els.initState) els.initState.value=0; if (els.mode) els.mode.value='fit'; render(); });
+    document.getElementById('resetBtn').addEventListener('click', () => { if (els.pressure) els.pressure.value='50'; if (els.sidebandMode) els.sidebandMode.value='sah'; if (els.dracAmp) els.dracAmp.value=10.4; if (els.dracPhase) els.dracPhase.value=1.2; if (els.modAmp) els.modAmp.value=0.52; if (els.annualAmp) els.annualAmp.value=2.25; if (els.annualPhase) els.annualPhase.value=0.9; if (els.combAmp) els.combAmp.value=5.6; if (els.bandwidth) els.bandwidth.value=0.85; if (els.asymmetry) els.asymmetry.value=0; if (els.reversion) els.reversion.value=0.045; if (els.initState) els.initState.value=0; if (els.mode) els.mode.value='fit'; render(); });
     document.getElementById('themeToggle').addEventListener('click', () => { const root=document.documentElement; root.setAttribute('data-theme', root.getAttribute('data-theme')==='dark'?'light':'dark'); render(); });
     els.pressure.value='50'; els.sidebandMode.value='sah'; els.dracAmp.value=10.4; els.dracPhase.value=1.2; els.modAmp.value=0.52; els.annualAmp.value=2.25; els.combAmp.value=5.6; els.bandwidth.value=0.85; els.asymmetry.value=0; els.reversion.value=0.045; els.initState.value=0; els.mode.value='fit'; updateLabels(); render();
   </script>
