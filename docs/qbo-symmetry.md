@@ -1,14 +1,18 @@
 <img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
-** Would it help if we next wrote down an explicit zonal‑mean decomposition of the tidal potential to show how the m = 0 draconic term dominates the coupling to a QBO‑like mode? **
+ 
+**Would it help if we next wrote down an explicit zonal‑mean decomposition of the tidal potential to show how the m = 0 draconic term dominates the coupling to a QBO‑like mode?**
 
 # yes
 
-A minimal representation is to keep just the leading even‑$l$, $m=0$ spherical harmonics $Y_2^0$ and $Y_4^0$, which already give the right equatorial symmetry to project onto the QBO wind field.<sup>[1](#fn1)</sup><sup>[2](#fn2)</sup>
+A minimal representation is to keep just the leading even- $l$, $m=0$ spherical harmonics $Y_2^0$ and $Y_4^0$, which already give the right equatorial symmetry to project onto the QBO wind field.<sup>[1](#fn1)</sup><sup>[2](#fn2)</sup>
 
 ## 1. Zonal‑mean harmonics and latitude
 
-In colatitude $\theta$ (latitude $\phi=\pi/2-\theta$), the real $m=0$ harmonics are proportional to Legendre polynomials:
-$Y_l^0(\theta)\propto P_l(\cos\theta)=P_l(\sin\phi)$.<sup>[3](#fn3)</sup><sup>[1](#fn1)</sup>
+In colatitude $\theta$ (latitude $\phi=\pi/2-\theta$), the real $m=0$ harmonics are proportional to Legendre polynomials: <sup>[3](#fn3)</sup><sup>[1](#fn1)</sup>
+
+$$
+Y_l^0(\theta)\propto P_l(\cos\theta)=P_l(\sin\phi)
+$$
 
 For the first few even $l$:
 
@@ -20,11 +24,10 @@ Setting $x=\sin\phi$, both $P_2(\sin\phi)$ and $P_4(\sin\phi)$ are **symmetric a
 
 ## 2. Minimal draconic potential for QBO
 
-Keep just these two zonal‑mean terms and let their amplitudes oscillate at the draconic frequency $\omega_d=2\pi/27.2122\,\text{d}^{-1}$:
+Keep just these two zonal‑mean terms and let their amplitudes oscillate at the draconic frequency $\omega_d=2\pi/27.2122\,\text{d}^{-1}$  :
 
 $$
-V(\phi,t)\approx A_2(t)\,P_2(\sin\phi)\cos(\omega_d t+\alpha_2)
-+ A_4(t)\,P_4(\sin\phi)\cos(\omega_d t+\alpha_4).
+V(\phi,t)\approx A_2(t)\,P_2(\sin\phi)\cos(\omega_d t+\alpha_2) + A_4(t)\,P_4(\sin\phi)\cos(\omega_d t+\alpha_4).
 $$
 
 Here:
@@ -36,7 +39,7 @@ Because the QBO mode is also symmetric and concentrated within ~15° of the equa
 
 ## 3. Connection to your composite forcing
 
-Your 31‑term draconic forcing can be viewed as filling in the time dependence of the coefficients $A_2(t)$ and $A_4(t)$ (plus higher‑order even‑$l$ corrections), while the latitude dependence is dominated by this minimal even‑$l$, $m=0$ pair.<sup>[6](#fn6)</sup><sup>[7](#fn7)</sup>
+Your 31‑term draconic forcing can be viewed as filling in the time dependence of the coefficients $A_2(t)$ and $A_4(t)$ (plus higher‑order even‑ $l$ corrections), while the latitude dependence is dominated by this minimal even‑ $l$, $m=0$ pair.<sup>[6](#fn6)</sup><sup>[7](#fn7)</sup>
 In other words, most of the detailed constituent work is happening in the **temporal modulation**, but from a symmetry standpoint the QBO primarily “sees” something very close to this $Y_2^0+Y_4^0$ draconic carrier.<sup>[8](#fn8)</sup>
 
 If you want, we could next try to match a simple analytic combination $c_2 P_2(\sin\phi)+c_4 P_4(\sin\phi)$ to an observed QBO latitude cross‑section to see how well just these two terms reproduce its meridional structure.
