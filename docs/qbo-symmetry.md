@@ -24,10 +24,10 @@ Setting $x=\sin\phi$, both $P_2(\sin\phi)$ and $P_4(\sin\phi)$ are **symmetric a
 
 ## 2. Minimal draconic potential for QBO
 
-Keep just these two zonal‑mean terms and let their amplitudes oscillate at the draconic frequency $\omega_d=2\pi/27.2122\,\text{d}^{-1}$  :
+Keep just these two zonal‑mean terms and let their amplitudes oscillate at the draconic frequency $\omega_d=2\pi/27.2122\\,\text{d}^{-1}$  :
 
 $$
-V(\phi,t)\approx A_2(t)\,P_2(\sin\phi)\cos(\omega_d t+\alpha_2) + A_4(t)\,P_4(\sin\phi)\cos(\omega_d t+\alpha_4).
+V(\phi,t)\approx A_2(t)\\,P_2(\sin\phi)\cos(\omega_d t+\alpha_2) + A_4(t)\\,P_4(\sin\phi)\cos(\omega_d t+\alpha_4).
 $$
 
 Here:
