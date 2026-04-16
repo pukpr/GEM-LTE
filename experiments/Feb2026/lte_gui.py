@@ -499,6 +499,7 @@ class App(tk.Tk):
         self.filter_var = tk.BooleanVar(value=True)  # Default to true
         self.trend_var = tk.BooleanVar(value=True)  # Default to true
         self.test_only_var = tk.BooleanVar(value=False)  # Default to false
+        self.sim_var = tk.BooleanVar(value=False)  # Use lte_results.csv col 2 as calibration target
 
         self._build_ui()
         self._set_root(self.root_dir)
@@ -873,6 +874,7 @@ class App(tk.Tk):
         ttk.Checkbutton(right_fields, text="filter", variable=self.filter_var).pack(side="left")
         ttk.Checkbutton(right_fields, text="trend", variable=self.trend_var).pack(side="left")
         ttk.Checkbutton(right_fields, text="test", variable=self.test_only_var).pack(side="left")
+        ttk.Checkbutton(right_fields, text="sim", variable=self.sim_var).pack(side="left")
 
 
         img_frame = ttk.LabelFrame(right, text="PNG preview (from selected dir)", padding=8)
@@ -1034,6 +1036,29 @@ class App(tk.Tk):
         env["TRAIN_START"] = b
         env["TRAIN_END"] = e
         env["CLIMATE_INDEX"] = f"{index}.dat"
+        if self.sim_var.get():
+            csv_path = run_dir / "lte_results.csv"
+            if not csv_path.exists():
+                messagebox.showerror(
+                    "sim mode",
+                    f"lte_results.csv not found in:\n  {run_dir}\n\n"
+                    "Run the model once first to generate it."
+                )
+                return
+            sim_dat = run_dir / "lte_results_model.dat"
+            try:
+                with csv_path.open() as fh, sim_dat.open("w") as out:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        parts = [p.strip() for p in line.split(",")]
+                        if len(parts) >= 2:
+                            out.write(f"{parts[0]}  {parts[1]}\n")
+            except Exception as exc:
+                messagebox.showerror("sim mode", f"Failed to create sim data file:\n{exc}")
+                return
+            env["CLIMATE_INDEX"] = sim_dat.name
         env["IDATE"] = "1920.9"
         env["EXCLUDE"] = "true" if self.exclude_var.get() else "false"
         env["TREND"] = "true" if self.trend_var.get() else "false"
