@@ -94,7 +94,7 @@
     </section>
     <section class="card span-12">
       <strong>Data notes</strong>
-      <p class="note">LOD anomaly data from <code>experiments/dLOD3.dat</code>: 20,830 daily values spanning 1962.01–2019.03, in units of milliseconds (ms). Tidal periods from GEM-LTE parameter file <code>experiments/Feb2026/11/lt.exe.p</code> (lpap array). Reference epoch: 1962.0 (days counted from 1 Jan 1962).</p>
+      <p class="note">LOD anomaly data from <code>experiments/dLOD3.dat</code>: 20,830 daily values spanning 1962.01–2019.03, in units of milliseconds (ms). Tidal periods from GEM-LTE parameter file <code>experiments/Feb2026/11/lt.exe.p</code> (lpap array). Reference epoch: 1962.0 (days counted from 1 Jan 1962). Two entries in the lpap array have negative period values (−3232.6&nbsp;d and −2120.9&nbsp;d); a negative period T is mathematically equivalent to the positive period |T| with the sign of the sine coefficient reversed, so both signs are handled correctly by the regression. Their |T| values correspond to long-period tidal cycles (~8.9&nbsp;yr and ~5.8&nbsp;yr).</p>
     </section>
   </main>
   <script>
@@ -136,7 +136,7 @@
           [A[i], A[maxRow]] = [A[maxRow], A[i]];
           [b[i], b[maxRow]] = [b[maxRow], b[i]];
         }
-        if (Math.abs(A[i][i]) < 1e-14) continue;
+        if (Math.abs(A[i][i]) < 1e-14) { console.warn('gaussianSolve: near-zero pivot at row', i, '– matrix may be singular'); continue; }
         for (let k = i + 1; k < n; k++) {
           const c = A[k][i] / A[i][i];
           for (let j = i; j < n; j++) A[k][j] -= c * A[i][j];
@@ -176,8 +176,8 @@
         // Build row
         row[0] = 1.0;
         for (let j = 0; j < P; j++) {
-          row[1 + 2*j]     = Math.cos(omega[j] * t);
-          row[2 + 2*j] = Math.sin(omega[j] * t);
+          row[1 + 2*j]     = Math.cos(omega[j] * t);  // cos basis at index 2j+1
+          row[1 + 2*j + 1] = Math.sin(omega[j] * t);  // sin basis at index 2j+2
         }
         // Accumulate XtX += row' * row, Xty += row * y
         for (let a = 0; a < p; a++) {
@@ -275,6 +275,7 @@
       $('trainEndVal').textContent   = $('trainEnd').value;
       const lam = Math.pow(10, parseFloat($('ridgeLambda').value));
       $('ridgeLambdaVal').textContent = lam < 0.01 ? lam.toExponential(1) : lam.toFixed(lam < 1 ? 3 : lam < 10 ? 2 : 1);
+      $('fitBtn').textContent = `Fit ${$('trainStart').value}\u2013${$('trainEnd').value}`;
     }
 
     function currentLambda() { return Math.pow(10, parseFloat($('ridgeLambda').value)); }
