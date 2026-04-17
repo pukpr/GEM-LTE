@@ -5,7 +5,7 @@ using Printf
 # Ranked wrapper for lte.jl
 #
 # Usage:
-#   julia lte_super.jl <experiments_root> [lambda] [evaluation_root] [max_runs]
+#   julia lte_super.jl <experiments_root> [lambda] [evaluation_root] [max_runs] [--seed-mean <mean_dir>]
 #
 # Purpose:
 #   1. Parse the ranked cross-validation ordering from docs/gem-lte-results.html
@@ -18,6 +18,41 @@ using Printf
 
 const DEFAULT_RESULTS_HTML = normpath(joinpath(@__DIR__, "..", "gem-lte-results.html"))
 const DEFAULT_LTE_SCRIPT = joinpath(@__DIR__, "lte.jl")
+
+function parse_command_line(args)
+    if isempty(args)
+        return nothing
+    end
+
+    positional = String[]
+    seed_mean_dir = nothing
+    i = 1
+    while i <= length(args)
+        arg = args[i]
+        if arg == "--seed-mean"
+            i == length(args) && error("--seed-mean requires a directory path")
+            seed_mean_dir = abspath(args[i + 1])
+            i += 2
+        else
+            push!(positional, arg)
+            i += 1
+        end
+    end
+
+    isempty(positional) && return nothing
+
+    experiments_root = abspath(positional[1])
+    lambda = length(positional) >= 2 ? parse(Float64, positional[2]) : 0.0
+    evaluation_root = length(positional) >= 3 ? abspath(positional[3]) : joinpath(experiments_root, "super-evaluations")
+    max_runs = length(positional) >= 4 ? parse(Int, positional[4]) : typemax(Int)
+    return (
+        experiments_root = experiments_root,
+        lambda = lambda,
+        evaluation_root = evaluation_root,
+        max_runs = max_runs,
+        seed_mean_dir = seed_mean_dir,
+    )
+end
 
 function parse_ranked_sites(results_html)
     html = read(results_html, String)
@@ -99,10 +134,11 @@ function run_lte(experiments_root, eval_runs_root, site, lambda)
     return JSON.parsefile(summary_file), output_dir
 end
 
-function summarize_history(history, best_entry, best_mean_dir, ranked_sites, experiments_root, eval_root)
+function summarize_history(history, best_entry, best_mean_dir, ranked_sites, experiments_root, eval_root; seed_mean_dir = nothing)
     return Dict(
         "experiments_root" => abspath(experiments_root),
         "evaluation_root" => abspath(eval_root),
+        "seed_mean_dir" => isnothing(seed_mean_dir) ? nothing : abspath(seed_mean_dir),
         "results_html" => abspath(DEFAULT_RESULTS_HTML),
         "lte_script" => abspath(DEFAULT_LTE_SCRIPT),
         "processed_run_count" => length(history),
@@ -117,15 +153,17 @@ function summarize_history(history, best_entry, best_mean_dir, ranked_sites, exp
 end
 
 function main()
-    if length(ARGS) < 1
-        println("Usage: julia lte_super.jl <experiments_root> [lambda] [evaluation_root] [max_runs]")
+    parsed = parse_command_line(ARGS)
+    if isnothing(parsed)
+        println("Usage: julia lte_super.jl <experiments_root> [lambda] [evaluation_root] [max_runs] [--seed-mean <mean_dir>]")
         return
     end
 
-    experiments_root = abspath(ARGS[1])
-    lambda = length(ARGS) >= 2 ? parse(Float64, ARGS[2]) : 0.0
-    evaluation_root = length(ARGS) >= 3 ? abspath(ARGS[3]) : joinpath(experiments_root, "super-evaluations")
-    max_runs = length(ARGS) >= 4 ? parse(Int, ARGS[4]) : typemax(Int)
+    experiments_root = parsed.experiments_root
+    lambda = parsed.lambda
+    evaluation_root = parsed.evaluation_root
+    max_runs = parsed.max_runs
+    seed_mean_dir = parsed.seed_mean_dir
 
     ranked_sites = available_ranked_sites(experiments_root, DEFAULT_RESULTS_HTML)
     ranked_sites = ranked_sites[1:min(length(ranked_sites), max_runs)]
@@ -138,11 +176,22 @@ function main()
     summary_file = joinpath(evaluation_root, "super_summary.json")
     current_mean_dir = joinpath(eval_runs_root, "mean")
 
+    if !isnothing(seed_mean_dir) && !isdir(seed_mean_dir)
+        error("Seed mean directory not found: $seed_mean_dir")
+    end
+    if !isnothing(seed_mean_dir) &&
+       (seed_mean_dir == evaluation_root || startswith(seed_mean_dir, evaluation_root * string(Base.Filesystem.path_separator)))
+        error("Seed mean directory must be outside the new evaluation root: $seed_mean_dir")
+    end
+
     rm(eval_runs_root; recursive = true, force = true)
     rm(snapshots_root; recursive = true, force = true)
     rm(best_mean_dir; recursive = true, force = true)
     mkpath(eval_runs_root)
     mkpath(snapshots_root)
+    if !isnothing(seed_mean_dir)
+        copy_dir(seed_mean_dir, current_mean_dir)
+    end
 
     history = Vector{Dict{String, Any}}()
     best_score = -Inf
@@ -150,6 +199,9 @@ function main()
 
     println("Running ranked LTE curriculum over $(length(ranked_sites)) sites")
     println("Shared mean manifold directory: $current_mean_dir")
+    if !isnothing(seed_mean_dir)
+        println("Seeded initial mean manifold from: $seed_mean_dir")
+    end
     flush(stdout)
 
     for (idx, site) in enumerate(ranked_sites)
@@ -196,7 +248,7 @@ function main()
         end
 
         save_json(history_file, history)
-        save_json(summary_file, summarize_history(history, best_entry, best_mean_dir, ranked_sites, experiments_root, evaluation_root))
+        save_json(summary_file, summarize_history(history, best_entry, best_mean_dir, ranked_sites, experiments_root, evaluation_root; seed_mean_dir = seed_mean_dir))
     end
 
     println("\nBest mean manifold:")
