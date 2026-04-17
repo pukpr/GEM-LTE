@@ -18,6 +18,7 @@ using Statistics
 # - validation: 1940-1970
 # - test: (1970, 2000]
 # - output: written to an evaluation directory so the source directory remains "gold"
+# - shared mean manifold: ../evaluations/mean accumulates the averaged lpap/config manifold across runs
 
 const DEFAULT_IDATE = 1920.9
 const VALIDATION_START = 1940.0
@@ -25,6 +26,7 @@ const VALIDATION_END = 1970.0
 const TEST_START = 1970.0
 const TEST_END = 2000.0
 const ZERO_TOL = 1.0e-9
+const GAP_TOL = 1.0e-4
 const DEFAULT_COORDINATE_PASSES = 2
 const DEFAULT_PRUNE_PASSES = 4
 
@@ -51,6 +53,8 @@ struct Dataset
     t::Vector{Float64}
     observed::Vector{Float64}
     manifold_target::Vector{Float64}
+    observed_mask::BitVector
+    target_mask::BitVector
     train_mask::BitVector
     validation_mask::BitVector
     test_mask::BitVector
@@ -67,6 +71,10 @@ struct EvalResult
     train_cc::Float64
     validation_cc::Float64
     test_cc::Float64
+    mean_manifold_cc::Float64
+    mean_penalty_weight::Float64
+    mean_deviation::Float64
+    mean_penalty::Float64
     complexity::Int
 end
 
@@ -174,25 +182,27 @@ Multiple Linear Regression using normal equations with Ridge regularization.
 function solve_mlr(manifold, y_resid, ks, lambda)
     N = length(manifold)
     P = 2 + length(ks) * 2
-    XtX = zeros(Float64, P, P)
-    Xty = zeros(Float64, P)
+    X = zeros(Float64, N, P)
 
     for i in 1:N
         row = build_design_row(manifold[i], ks)
-        yi = y_resid[i]
         for j in 1:P
-            Xty[j] += row[j] * yi
-            for k in 1:P
-                XtX[j, k] += row[j] * row[k]
-            end
+            X[i, j] = row[j]
         end
     end
 
-    for j in 2:P
-        XtX[j, j] += lambda
+    if lambda > 0.0
+        X_aug = zeros(Float64, N + P, P)
+        y_aug = zeros(Float64, N + P)
+        X_aug[1:N, :] .= X
+        y_aug[1:N] .= y_resid
+        for j in 2:P
+            X_aug[N + j, j] = sqrt(lambda)
+        end
+        return X_aug \ y_aug
     end
 
-    return XtX \ Xty
+    return X \ y_resid
 end
 
 function apply_beta(manifold, beta, ks)
@@ -241,6 +251,59 @@ function safe_corrcoef(x_vals, y_vals)
     return cor(x_vals, y_vals)
 end
 
+function safe_corrcoef_masked(x_vals, y_vals, mask)
+    idx = findall(mask .& (abs.(x_vals) .> ZERO_TOL) .& (abs.(y_vals) .> ZERO_TOL))
+    if length(idx) < 2
+        return NaN
+    end
+    return safe_corrcoef(x_vals[idx], y_vals[idx])
+end
+
+function infer_month_step(t)
+    diffs = [t[i + 1] - t[i] for i in 1:(length(t) - 1) if t[i + 1] > t[i]]
+    if isempty(diffs)
+        return 1.0 / 12.0
+    end
+    return median(diffs)
+end
+
+function expand_monthly_grid(t, observed, manifold_target)
+    if length(t) <= 1
+        observed_mask = BitVector(observed .!= 0.0)
+        target_mask = trues(length(t))
+        return t, observed, manifold_target, observed_mask, target_mask
+    end
+
+    step = infer_month_step(t)
+    expanded_t = Float64[t[1]]
+    expanded_observed = Float64[observed[1]]
+    expanded_target = Float64[manifold_target[1]]
+    observed_mask = BitVector([observed[1] != 0.0])
+    target_mask = BitVector([true])
+
+    for i in 2:length(t)
+        prev_t = t[i - 1]
+        dt = t[i] - prev_t
+        if dt > step + GAP_TOL
+            missing_n = max(round(Int, dt / step) - 1, 0)
+            for j in 1:missing_n
+                push!(expanded_t, prev_t + step * j)
+                push!(expanded_observed, 0.0)
+                push!(expanded_target, 0.0)
+                push!(observed_mask, false)
+                push!(target_mask, false)
+            end
+        end
+        push!(expanded_t, t[i])
+        push!(expanded_observed, observed[i])
+        push!(expanded_target, manifold_target[i])
+        push!(observed_mask, observed[i] != 0.0)
+        push!(target_mask, true)
+    end
+
+    return expanded_t, expanded_observed, expanded_target, observed_mask, target_mask
+end
+
 function parse_resp_year(resp_file)
     year_adj = 0.005
     if isfile(resp_file)
@@ -255,6 +318,16 @@ function parse_resp_year(resp_file)
         end
     end
     return year_adj
+end
+
+function resolve_gold_source_dir(source_dir, params)
+    if haskey(params, "sparse") && params["sparse"] isa AbstractDict && haskey(params["sparse"], "source_dir")
+        sparse_source = String(params["sparse"]["source_dir"])
+        if isdir(sparse_source)
+            return abspath(sparse_source)
+        end
+    end
+    return abspath(source_dir)
 end
 
 function derive_ks(params)
@@ -319,6 +392,33 @@ function initial_state(params, year_adj)
     )
 end
 
+function load_state_from_dir(source_dir)
+    p_file = joinpath(source_dir, "lt.exe.p")
+    resp_file = joinpath(source_dir, "lt.exe.resp")
+    params = JSON.parsefile(p_file)
+    year_adj = parse_resp_year(resp_file)
+    return params, initial_state(params, year_adj)
+end
+
+function state_with_mean_manifold(run_state, mean_state)
+    merged = copy_state(run_state)
+    merged.lpap = copy(mean_state.lpap)
+    merged.active_lpap = copy(mean_state.active_lpap)
+    merged.year_len = mean_state.year_len
+    merged.bg = mean_state.bg
+    merged.del_a = mean_state.del_a
+    merged.del_b = mean_state.del_b
+    merged.asym = mean_state.asym
+    merged.year_drift = mean_state.year_drift
+    merged.mp = mean_state.mp
+    merged.init_val = mean_state.init_val
+    merged.ann1 = mean_state.ann1
+    merged.ann2 = mean_state.ann2
+    merged.sem1 = mean_state.sem1
+    merged.sem2 = mean_state.sem2
+    return merged
+end
+
 function copy_state(state)
     return ModelState(
         copy(state.lpap),
@@ -363,11 +463,13 @@ end
 
 function load_dataset(csv_file)
     data = readdlm(csv_file, ',')
-    t = Float64.(data[:, 1])
-    observed = Float64.(data[:, 3])
-    manifold_target = Float64.(data[:, 4])
+    t_raw = Float64.(data[:, 1])
+    observed_raw = Float64.(data[:, 3])
+    manifold_target_raw = Float64.(data[:, 4])
+    t, observed, manifold_target, observed_mask, target_mask =
+        expand_monthly_grid(t_raw, observed_raw, manifold_target_raw)
     train_mask, validation_mask, test_mask = make_masks(t)
-    return Dataset(t, observed, manifold_target, train_mask, validation_mask, test_mask)
+    return Dataset(t, observed, manifold_target, observed_mask, target_mask, train_mask, validation_mask, test_mask)
 end
 
 function count_complexity(state)
@@ -383,21 +485,83 @@ function count_complexity(state)
     return complexity
 end
 
-function evaluate_state(dataset, state, lambda)
+function manifold_raw_for_state(t, state)
     lpap = active_lpap_matrix(state)
+    tide = build_tide(t, lpap, state.year_len)
+    forcing = build_forcing(t, tide, state.year_drift, state.bg, state.del_a, state.del_b, state.asym)
+    return build_manifold(t, forcing, DEFAULT_IDATE, state.init_val, state.mp)
+end
+
+function training_mask(dataset)
+    return dataset.train_mask .& dataset.observed_mask
+end
+
+function validation_mask(dataset)
+    return dataset.validation_mask .& dataset.observed_mask
+end
+
+function test_mask(dataset)
+    return dataset.test_mask .& dataset.observed_mask
+end
+
+phase_distance(a, b) = abs(atan(sin(a - b), cos(a - b)))
+
+function mean_penalty_weight(mean_run_count)
+    return mean_run_count <= 1 ? 0.0 : min(0.20, 0.02 * (mean_run_count - 1))
+end
+
+function manifold_deviation_from_mean(state, mean_state)
+    terms = Float64[]
+    current_lpap = active_lpap_matrix(state)
+    mean_lpap = active_lpap_matrix(mean_state)
+    n_lpap = min(size(current_lpap, 1), size(mean_lpap, 1))
+    for i in 1:n_lpap
+        amp_scale = max(abs(mean_lpap[i, 2]), 1.0e-3)
+        push!(terms, abs(current_lpap[i, 2] - mean_lpap[i, 2]) / amp_scale)
+        push!(terms, phase_distance(current_lpap[i, 3], mean_lpap[i, 3]) / π)
+    end
+    for field in (:year_len, :bg, :del_a, :del_b, :asym, :year_drift, :mp, :init_val, :ann1, :ann2, :sem1, :sem2)
+        mean_val = getfield(mean_state, field)
+        cur_val = getfield(state, field)
+        scale = field in (:ann2, :sem2) ? π : max(abs(mean_val), 1.0e-3)
+        push!(terms, abs(cur_val - mean_val) / scale)
+    end
+    return isempty(terms) ? 0.0 : mean(terms)
+end
+
+function effective_validation_score(result)
+    return score_value(result.validation_cc) - result.mean_penalty
+end
+
+function effective_training_score(result)
+    return score_value(result.train_cc) - 0.5 * result.mean_penalty
+end
+
+function evaluate_state(dataset, state, lambda; mean_state = nothing, mean_run_count = 0)
     ks = active_ks(state)
-    tide = build_tide(dataset.t, lpap, state.year_len)
-    forcing = build_forcing(dataset.t, tide, state.year_drift, state.bg, state.del_a, state.del_b, state.asym)
-    manifold_raw = build_manifold(dataset.t, forcing, DEFAULT_IDATE, state.init_val, state.mp)
+    manifold_raw = manifold_raw_for_state(dataset.t, state)
     annual = build_annual(dataset.t, state.ann1, state.ann2, state.sem1, state.sem2)
 
-    cal = solve_linear_map(manifold_raw, dataset.manifold_target)
+    cal_idx = findall(dataset.target_mask)
+    cal = solve_linear_map(manifold_raw[cal_idx], dataset.manifold_target[cal_idx])
     manifold_fit = apply_linear_map(manifold_raw, cal)
 
     y_resid = dataset.observed .- annual
-    beta = solve_mlr(manifold_fit[dataset.train_mask], y_resid[dataset.train_mask], ks, lambda)
+    train_idx = findall(training_mask(dataset))
+    beta = solve_mlr(manifold_fit[train_idx], y_resid[train_idx], ks, lambda)
     fit_resid = apply_beta(manifold_fit, beta, ks)
     final_fit = fit_resid .+ annual
+
+    mean_manifold_cc = NaN
+    deviation = 0.0
+    penalty_weight = 0.0
+    if !isnothing(mean_state)
+        mean_manifold = manifold_raw_for_state(dataset.t, mean_state)
+        mean_manifold_cc = safe_corrcoef(manifold_raw, mean_manifold)
+        deviation = manifold_deviation_from_mean(state, mean_state)
+        penalty_weight = mean_penalty_weight(mean_run_count)
+    end
+    penalty = penalty_weight * deviation
 
     return EvalResult(
         manifold_raw,
@@ -407,9 +571,13 @@ function evaluate_state(dataset, state, lambda)
         beta,
         cal.intercept,
         cal.slope,
-        safe_corrcoef(dataset.observed[dataset.train_mask], final_fit[dataset.train_mask]),
-        safe_corrcoef(dataset.observed[dataset.validation_mask], final_fit[dataset.validation_mask]),
-        safe_corrcoef(dataset.observed[dataset.test_mask], final_fit[dataset.test_mask]),
+        safe_corrcoef_masked(dataset.observed, final_fit, training_mask(dataset)),
+        safe_corrcoef_masked(dataset.observed, final_fit, validation_mask(dataset)),
+        safe_corrcoef_masked(dataset.observed, final_fit, test_mask(dataset)),
+        mean_manifold_cc,
+        penalty_weight,
+        deviation,
+        penalty,
         count_complexity(state),
     )
 end
@@ -417,15 +585,21 @@ end
 score_value(x) = isfinite(x) ? x : -1.0
 
 function better_result(candidate, incumbent; tol = 1.0e-6)
-    if score_value(candidate.validation_cc) > score_value(incumbent.validation_cc) + tol
+    if effective_validation_score(candidate) > effective_validation_score(incumbent) + tol
         return true
-    elseif score_value(candidate.validation_cc) + tol < score_value(incumbent.validation_cc)
+    elseif effective_validation_score(candidate) + tol < effective_validation_score(incumbent)
         return false
     end
 
-    if score_value(candidate.train_cc) > score_value(incumbent.train_cc) + tol
+    if effective_training_score(candidate) > effective_training_score(incumbent) + tol
         return true
-    elseif score_value(candidate.train_cc) + tol < score_value(incumbent.train_cc)
+    elseif effective_training_score(candidate) + tol < effective_training_score(incumbent)
+        return false
+    end
+
+    if score_value(candidate.mean_manifold_cc) > score_value(incumbent.mean_manifold_cc) + tol
+        return true
+    elseif score_value(candidate.mean_manifold_cc) + tol < score_value(incumbent.mean_manifold_cc)
         return false
     end
 
@@ -501,7 +675,7 @@ function set_value!(state, spec, value)
     end
 end
 
-function coordinate_refine(dataset, state, result, lambda; passes = DEFAULT_COORDINATE_PASSES)
+function coordinate_refine(dataset, state, result, lambda; passes = DEFAULT_COORDINATE_PASSES, mean_state = nothing, mean_run_count = 0)
     best_state = copy_state(state)
     best_result = result
     for _ in 1:passes
@@ -516,7 +690,7 @@ function coordinate_refine(dataset, state, result, lambda; passes = DEFAULT_COOR
                 end
                 candidate_state = copy_state(best_state)
                 set_value!(candidate_state, spec, new_value)
-                candidate_result = evaluate_state(dataset, candidate_state, lambda)
+                candidate_result = evaluate_state(dataset, candidate_state, lambda; mean_state = mean_state, mean_run_count = mean_run_count)
                 if better_result(candidate_result, best_result)
                     best_state = candidate_state
                     best_result = candidate_result
@@ -568,10 +742,10 @@ function apply_prune!(state, target)
     end
 end
 
-function sparse_optimize(dataset, state, lambda)
+function sparse_optimize(dataset, state, lambda; mean_state = nothing, mean_run_count = 0)
     best_state = copy_state(state)
-    best_result = evaluate_state(dataset, best_state, lambda)
-    best_state, best_result = coordinate_refine(dataset, best_state, best_result, lambda)
+    best_result = evaluate_state(dataset, best_state, lambda; mean_state = mean_state, mean_run_count = mean_run_count)
+    best_state, best_result = coordinate_refine(dataset, best_state, best_result, lambda; mean_state = mean_state, mean_run_count = mean_run_count)
 
     for _ in 1:DEFAULT_PRUNE_PASSES
         trial_state = nothing
@@ -579,8 +753,8 @@ function sparse_optimize(dataset, state, lambda)
         for target in prune_targets(best_state)
             candidate_state = copy_state(best_state)
             apply_prune!(candidate_state, target)
-            candidate_result = evaluate_state(dataset, candidate_state, lambda)
-            candidate_state, candidate_result = coordinate_refine(dataset, candidate_state, candidate_result, lambda; passes = 1)
+            candidate_result = evaluate_state(dataset, candidate_state, lambda; mean_state = mean_state, mean_run_count = mean_run_count)
+            candidate_state, candidate_result = coordinate_refine(dataset, candidate_state, candidate_result, lambda; passes = 1, mean_state = mean_state, mean_run_count = mean_run_count)
             if isnothing(trial_result) || better_result(candidate_result, trial_result)
                 trial_state = candidate_state
                 trial_result = candidate_result
@@ -604,6 +778,58 @@ function default_evaluation_dir(source_dir)
         return abs_source
     end
     return joinpath(dirname(abs_source), "evaluations", basename(abs_source))
+end
+
+function mean_evaluation_dir(output_dir)
+    return joinpath(dirname(abspath(output_dir)), "mean")
+end
+
+function mean_run_count(mean_dir)
+    summary_file = joinpath(mean_dir, "optimization_summary.json")
+    if isfile(summary_file)
+        summary = JSON.parsefile(summary_file)
+        if haskey(summary, "mean_run_count")
+            return Int(summary["mean_run_count"])
+        end
+    end
+    return 0
+end
+
+function mean_state_from_dir(mean_dir)
+    p_file = joinpath(mean_dir, "lt.exe.p")
+    if !isfile(p_file)
+        return nothing, 0
+    end
+    _, state = load_state_from_dir(mean_dir)
+    return state, mean_run_count(mean_dir)
+end
+
+function averaged_mean_state(old_mean_state, old_count, current_state)
+    if old_count <= 0 || isnothing(old_mean_state)
+        return copy_state(current_state), 1
+    end
+
+    total = old_count + 1
+    mean_state = copy_state(old_mean_state)
+    current_lpap = active_lpap_matrix(current_state)
+    old_lpap = active_lpap_matrix(old_mean_state)
+
+    for i in 1:size(mean_state.lpap, 1)
+        mean_state.lpap[i, 1] = old_mean_state.lpap[i, 1]
+        mean_state.lpap[i, 2] = (old_lpap[i, 2] * old_count + current_lpap[i, 2]) / total
+        mean_state.lpap[i, 3] = (old_lpap[i, 3] * old_count + current_lpap[i, 3]) / total
+        mean_state.active_lpap[i] = abs(mean_state.lpap[i, 2]) > ZERO_TOL
+    end
+
+    for field in (:year_len, :bg, :del_a, :del_b, :asym, :year_drift, :mp, :init_val, :ann1, :ann2, :sem1, :sem2)
+        old_val = getfield(old_mean_state, field)
+        cur_val = getfield(current_state, field)
+        setfield!(mean_state, field, (old_val * old_count + cur_val) / total)
+    end
+
+    mean_state.ks = copy(current_state.ks)
+    mean_state.active_ks = copy(current_state.active_ks)
+    return mean_state, total
 end
 
 function state_to_params(params, state, source_dir, result)
@@ -640,7 +866,7 @@ function state_to_params(params, state, source_dir, result)
     return out
 end
 
-function save_outputs(source_dir, output_dir, params, state, result, dataset)
+function save_outputs(source_dir, output_dir, params, state, result, dataset; mean_dir = nothing, mean_run_count = 0)
     mkpath(output_dir)
 
     src_csv = joinpath(source_dir, "lte_results.csv")
@@ -666,12 +892,20 @@ function save_outputs(source_dir, output_dir, params, state, result, dataset)
     summary = Dict(
         "source_dir" => abspath(source_dir),
         "evaluation_dir" => abspath(output_dir),
+        "mean_dir" => isnothing(mean_dir) ? nothing : abspath(mean_dir),
+        "mean_run_count" => mean_run_count,
         "validation_interval" => [VALIDATION_START, VALIDATION_END],
         "test_interval" => [TEST_START, TEST_END],
         "train_cc" => result.train_cc,
         "validation_cc" => result.validation_cc,
         "test_cc" => result.test_cc,
+        "mean_manifold_cc" => result.mean_manifold_cc,
+        "mean_penalty_weight" => result.mean_penalty_weight,
+        "mean_deviation" => result.mean_deviation,
+        "mean_penalty" => result.mean_penalty,
         "complexity" => result.complexity,
+        "observed_count" => count(identity, dataset.observed_mask),
+        "missing_observation_count" => length(dataset.observed_mask) - count(identity, dataset.observed_mask),
         "active_lpap_count" => count(identity, state.active_lpap),
         "active_ks" => active_ks(state),
         "beta" => result.beta,
@@ -683,6 +917,106 @@ function save_outputs(source_dir, output_dir, params, state, result, dataset)
     open(joinpath(output_dir, "optimization_summary.json"), "w") do io
         JSON.print(io, summary, 2)
     end
+end
+
+function save_mean_outputs(mean_dir, template_params, source_dir, state, run_count)
+    mkpath(mean_dir)
+    params = deepcopy(template_params)
+    masked_lpap = active_lpap_matrix(state)
+    params["lpap"] = [[masked_lpap[i, 1], masked_lpap[i, 2], masked_lpap[i, 3]] for i in 1:size(masked_lpap, 1)]
+    params["bg"] = state.bg
+    params["delA"] = state.del_a
+    params["delB"] = state.del_b
+    params["asym"] = state.asym
+    params["year"] = state.year_drift
+    params["mp"] = state.mp
+    params["init"] = state.init_val
+    params["ann1"] = state.ann1
+    params["ann2"] = state.ann2
+    params["sem1"] = state.sem1
+    params["sem2"] = state.sem2
+    params["sparse"] = Dict(
+        "source_dir" => abspath(source_dir),
+        "mean_run_count" => run_count,
+        "mean_role" => "shared-manifold",
+        "ks" => active_ks(state),
+        "active_lpap" => collect(state.active_lpap),
+        "active_ks" => collect(state.active_ks),
+    )
+
+    open(joinpath(mean_dir, "lt.exe.p"), "w") do io
+        JSON.print(io, params, 2)
+    end
+    open(joinpath(mean_dir, "lt.exe.resp"), "w") do io
+        year_adj = state.year_len - 365.2422484
+        write(io, "YEAR $(year_adj)\n")
+    end
+    summary = Dict(
+        "mean_dir" => abspath(mean_dir),
+        "source_dir" => abspath(source_dir),
+        "mean_run_count" => run_count,
+        "active_lpap_count" => count(identity, state.active_lpap),
+        "active_ks" => active_ks(state),
+    )
+    open(joinpath(mean_dir, "optimization_summary.json"), "w") do io
+        JSON.print(io, summary, 2)
+    end
+end
+
+function fmt_num(x; digits = 6)
+    return string(round(x, digits = digits))
+end
+
+function pruned_summary(gold_state, best_state)
+    pruned_lpap = String[]
+    for i in eachindex(gold_state.active_lpap)
+        if gold_state.active_lpap[i] && (i > length(best_state.active_lpap) || !best_state.active_lpap[i])
+            push!(pruned_lpap, "period=$(fmt_num(gold_state.lpap[i, 1]))d")
+        end
+    end
+
+    pruned_ks = String[]
+    for i in eachindex(gold_state.active_ks)
+        if gold_state.active_ks[i] && (i > length(best_state.active_ks) || !best_state.active_ks[i])
+            push!(pruned_ks, fmt_num(gold_state.ks[i]))
+        end
+    end
+
+    param_specs = [
+        (:bg, "bg"),
+        (:del_a, "delA"),
+        (:asym, "asym"),
+        (:year_drift, "year"),
+        (:mp, "mp"),
+        (:init_val, "init"),
+        (:ann1, "ann1"),
+        (:sem1, "sem1"),
+    ]
+    pruned_params = String[]
+    for (field, label) in param_specs
+        if abs(getfield(gold_state, field)) > ZERO_TOL && abs(getfield(best_state, field)) <= ZERO_TOL
+            push!(pruned_params, label)
+        end
+    end
+
+    lpap_text = isempty(pruned_lpap) ? "none" : join(pruned_lpap, ", ")
+    ks_text = isempty(pruned_ks) ? "none" : join(pruned_ks, ", ")
+    params_text = isempty(pruned_params) ? "none" : join(pruned_params, ", ")
+    return lpap_text, ks_text, params_text
+end
+
+function beta_summary(result, state)
+    ks = active_ks(state)
+    parts = ["β0(intercept)=$(fmt_num(result.beta[1]))", "βm(manifold)=$(fmt_num(result.beta[2]))"]
+    for (j, k) in enumerate(ks)
+        sin_idx = 2 + 2 * j - 1
+        cos_idx = sin_idx + 1
+        push!(
+            parts,
+            "k=$(fmt_num(k)) => βsin=$(fmt_num(result.beta[sin_idx])) βcos=$(fmt_num(result.beta[cos_idx]))"
+        )
+    end
+    return join(parts, "; ")
 end
 
 function main()
@@ -708,8 +1042,37 @@ function main()
     year_adj = parse_resp_year(resp_file)
     dataset = load_dataset(csv_file)
     state = initial_state(params, year_adj)
-    best_state, best_result = sparse_optimize(dataset, state, lambda)
-    save_outputs(source_dir, output_dir, params, best_state, best_result, dataset)
+    gold_dir = resolve_gold_source_dir(source_dir, params)
+    _, gold_state = load_state_from_dir(gold_dir)
+    mean_dir = mean_evaluation_dir(output_dir)
+    mean_state, mean_count = mean_state_from_dir(mean_dir)
+    if !isnothing(mean_state)
+        state = state_with_mean_manifold(state, mean_state)
+    end
+
+    best_state, best_result = sparse_optimize(dataset, state, lambda; mean_state = mean_state, mean_run_count = mean_count)
+    updated_mean_state, updated_mean_count = averaged_mean_state(mean_state, mean_count, best_state)
+    updated_mean_cc = safe_corrcoef(best_result.manifold_raw, manifold_raw_for_state(dataset.t, updated_mean_state))
+    best_result = EvalResult(
+        best_result.manifold_raw,
+        best_result.manifold_fit,
+        best_result.annual,
+        best_result.final_fit,
+        best_result.beta,
+        best_result.cal_intercept,
+        best_result.cal_slope,
+        best_result.train_cc,
+        best_result.validation_cc,
+        best_result.test_cc,
+        updated_mean_cc,
+        best_result.mean_penalty_weight,
+        best_result.mean_deviation,
+        best_result.mean_penalty,
+        best_result.complexity,
+    )
+    save_outputs(source_dir, output_dir, params, best_state, best_result, dataset; mean_dir = mean_dir, mean_run_count = updated_mean_count)
+    save_mean_outputs(mean_dir, params, gold_dir, updated_mean_state, updated_mean_count)
+    pruned_lpap, pruned_ks, pruned_params = pruned_summary(gold_state, best_state)
 
     println(
         "CC train=$(round(best_result.train_cc, digits=6)) " *
@@ -717,6 +1080,12 @@ function main()
         "test=$(round(best_result.test_cc, digits=6)) " *
         "complexity=$(best_result.complexity)"
     )
+    println("Observed months used=$(count(identity, dataset.observed_mask)) skipped_missing=$(length(dataset.observed_mask) - count(identity, dataset.observed_mask))")
+    println("Mean manifold CC=$(round(best_result.mean_manifold_cc, digits=6)) against $mean_dir (runs=$(updated_mean_count))")
+    println("Mean-manifold penalty: weight=$(round(best_result.mean_penalty_weight, digits=6)) deviation=$(round(best_result.mean_deviation, digits=6)) penalty=$(round(best_result.mean_penalty, digits=6))")
+    println("Pruned vs gold ($gold_dir): lpap=[$pruned_lpap] active_ks=[$pruned_ks] params=[$pruned_params]")
+    println("active_ks = retained modulation periods from the gold ltep/harm basis: [" * join(fmt_num.(active_ks(best_state)), ", ") * "]")
+    println("beta = [intercept, manifold term, then sin/cos coefficients for active_ks in order]: " * beta_summary(best_result, best_state))
     println("Sparse evaluation saved to $output_dir")
 end
 
