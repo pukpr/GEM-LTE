@@ -179,6 +179,23 @@ def plot_lpap_amplitudes(lpap: list, index: str):
     plt.show()
 
 
+def load_lte_results_time_forcing(target_dir: str) -> tuple[np.ndarray, np.ndarray]:
+    """Load time (column 1) and forcing manifold (column 4) from lte_results.csv."""
+    path = os.path.join(target_dir, "lte_results.csv")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"'lte_results.csv' not found in:\n  {target_dir}")
+
+    try:
+        data = np.loadtxt(path, delimiter=",", usecols=(0, 3), ndmin=2)
+    except Exception as exc:
+        raise ValueError(f"Failed to load lte_results.csv in:\n  {target_dir}\n\n{exc}") from exc
+
+    if data.size == 0:
+        raise ValueError(f"'lte_results.csv' is empty in:\n  {target_dir}")
+
+    return data[:, 0], data[:, 1]
+
+
 def plot_lpap_scatter_all(
     subdirs_info: list,
     start_year: int = 1950,
@@ -229,6 +246,66 @@ def plot_lpap_scatter_all(
     ax.xaxis.set_major_locator(mdates.YearLocator(5))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
     plt.xticks(rotation=45, ha="right")
+    ax.grid(True, ls=":", lw=0.4, alpha=0.6)
+    fig.tight_layout()
+    plt.show()
+
+
+def plot_lte_results_forcing_all(subdirs_info: list) -> None:
+    """
+    Plot lte_results.csv column 1 (time) vs column 4 (forcing manifold)
+    for all datasets, using very thin dash markers without connecting lines.
+    """
+    fig, ax = plt.subplots(figsize=(14, 5))
+    ax.axhline(0, color="k", lw=0.4)
+
+    n_total = max(len(subdirs_info), 1)
+    colors = plt.cm.tab20(np.linspace(0, 1, n_total))
+
+    loaded = 0
+    loaded_series: list[tuple[np.ndarray, np.ndarray]] = []
+    for i, (subdir, _label) in enumerate(subdirs_info):
+        try:
+            times, forcing = load_lte_results_time_forcing(subdir)
+            ax.plot(
+                times, forcing,
+                marker="_", markersize=2.0, markeredgewidth=0.25,
+                linestyle="none",
+                color=colors[i % n_total], alpha=0.7,
+            )
+            loaded_series.append((times, forcing))
+            loaded += 1
+        except Exception:
+            pass
+
+    if loaded == 0:
+        raise ValueError("No valid lte_results.csv datasets found in any subdirectory.")
+
+    avg_times = loaded_series[0][0]
+    forcing_stack = np.full((loaded, len(avg_times)), np.nan)
+    for i, (times, forcing) in enumerate(loaded_series):
+        if len(times) == len(avg_times) and np.allclose(times, avg_times, rtol=0.0, atol=1e-9):
+            forcing_stack[i] = forcing
+        else:
+            forcing_stack[i] = np.interp(avg_times, times, forcing, left=np.nan, right=np.nan)
+
+    mean_forcing = np.nanmean(forcing_stack, axis=0)
+    valid = ~np.isnan(mean_forcing)
+    mean_path = Path(__file__).resolve().parent / "mean_forcing.dat"
+    try:
+        np.savetxt(mean_path, np.column_stack((avg_times[valid], mean_forcing[valid])), fmt="%.15e")
+    except Exception as exc:
+        raise RuntimeError(f"Failed to write mean forcing file:\n  {mean_path}\n\n{exc}") from exc
+
+    ax.plot(avg_times[valid], mean_forcing[valid], "-", color="black", linewidth=0.6, zorder=10)
+
+    ax.set_title(
+        f"All datasets — forcing manifold from lte_results.csv "
+        f"({loaded} of {len(subdirs_info)} loaded)",
+        fontsize=11,
+    )
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Forcing manifold")
     ax.grid(True, ls=":", lw=0.4, alpha=0.6)
     fig.tight_layout()
     plt.show()
@@ -564,6 +641,10 @@ class App(tk.Tk):
             label="Plot Tidal Amplitude Spectrum — all subdirs…",
             command=self._cmd_plot_lpap_amplitudes_all,
         )
+        analyze_menu.add_command(
+            label="Plot Forcing Manifold — all subdirs…",
+            command=self._cmd_plot_lte_results_forcing_all,
+        )
         menubar.add_cascade(label="Analyze", menu=analyze_menu)
 
         self.config(menu=menubar)
@@ -697,10 +778,10 @@ class App(tk.Tk):
     # All-subdirs helpers
     # ------------------------------------------------------------------
 
-    def _get_all_subdirs_info(self) -> list:
+    def _get_all_subdirs_info(self, required_file: str = "lt.exe.p") -> list:
         """
         Return [(subdir_path, label), …] for every subdirectory under
-        ``self.root_dir`` that contains a ``lt.exe.p`` file.
+        ``self.root_dir`` that contains *required_file*.
 
         Skips the standard non-data directories (locs, scripts, rlr_data).
         """
@@ -708,8 +789,8 @@ class App(tk.Tk):
         result = []
         try:
             for p in sorted(self.root_dir.iterdir()):
-                if p.is_dir() and p.name not in SKIP:
-                    if (p / "lt.exe.p").exists():
+                if p.is_dir() and p.name not in SKIP and not p.name.startswith("qbo"):
+                    if (p / required_file).exists():
                         result.append((str(p), p.name))
         except Exception as exc:
             raise RuntimeError(str(exc)) from exc
@@ -752,6 +833,26 @@ class App(tk.Tk):
 
         try:
             plot_lpap_amplitudes_all(subdirs_info)
+        except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
+            messagebox.showerror("Plot error", str(exc))
+
+    def _cmd_plot_lte_results_forcing_all(self):
+        """Menu command: Analyze → Plot Forcing Manifold — all subdirs."""
+        try:
+            subdirs_info = self._get_all_subdirs_info(required_file="lte_results.csv")
+        except RuntimeError as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+
+        if not subdirs_info:
+            messagebox.showinfo(
+                "No data",
+                "No subdirectories with lte_results.csv were found under the current root."
+            )
+            return
+
+        try:
+            plot_lte_results_forcing_all(subdirs_info)
         except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
             messagebox.showerror("Plot error", str(exc))
 
