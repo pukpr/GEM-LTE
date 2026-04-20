@@ -33,6 +33,16 @@ freq = df.iloc[:, 4]
 model_psd = df.iloc[:, 5]
 data_psd = df.iloc[:, 6]
 
+mean_forcing_path = os.path.join(BASE_DIR, 'mean_forcing.dat')
+mean_forcing = None
+if os.path.isfile(mean_forcing_path):
+    try:
+        mean_data = np.loadtxt(mean_forcing_path, ndmin=2)
+        if mean_data.shape[1] >= 2:
+            mean_forcing = mean_data[:, :2]
+    except Exception:
+        mean_forcing = None
+
 label_text = identifier
 
 #with open('metrics.txt', 'r') as f:
@@ -58,7 +68,18 @@ axs[0,0].plot([start_time, stop_time], [0.0, 0.0], 'k--', linewidth=3, label='Tr
 
 
 # Middle chart: Forcing
-axs[1,0].plot(time, forcing, linewidth=1, color='red', label='Model')
+axs[1,0].plot(time, forcing, linewidth=1, color='red')
+if mean_forcing is not None:
+    mean_mask = (mean_forcing[:, 0] >= time.min()) & (mean_forcing[:, 0] <= time.max())
+    if np.any(mean_mask):
+        axs[1,0].plot(
+            mean_forcing[mean_mask, 0],
+            mean_forcing[mean_mask, 1],
+            'k--',
+            linewidth=0.6,
+            label='Mean forcing',
+        )
+        axs[1,0].legend(loc='upper left')
 axs[1,0].set_title('Latent/hidden forcing layer')
 axs[1,0].set_xlabel('Year')
 axs[1,0].set_ylabel('Value')
@@ -156,4 +177,3 @@ if display == '1':
     plt.show()
 else:
     plt.savefig(identifier+'site'+start+'-'+stop+'.png', bbox_inches='tight')  # Save as PNG with tight bounding box
-
