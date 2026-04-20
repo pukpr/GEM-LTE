@@ -384,12 +384,17 @@ def align_hint_series(
     if std < 1e-8:
         std = 1.0
     normalized = (aligned - mean) / std
+    harmonic_factors = get_mean_forcing_harmonic_factors(hint_cfg)
     return aligned, normalized, {
         "enabled": True,
         "mode": str(hint_cfg.get("mode", "hint")),
         "path": str(hint_path),
         "mean": mean,
         "std": std,
+        "max_harmonic_factor": int(hint_cfg.get("max_harmonic_factor", hint_cfg.get("max_harmonic", 1))),
+        "lasso_alpha": float(hint_cfg.get("lasso_alpha", 0.0)),
+        "extra_harmonic_factors": harmonic_factors,
+        "basis_names": get_mean_forcing_basis_names(harmonic_factors),
     }
 
 
@@ -398,19 +403,118 @@ def build_window_end_indices(n_times: int, window: int, stride: int, require_nex
     return np.arange(window - 1, max_end + 1, stride, dtype=int)
 
 
-def build_mean_forcing_basis(signal: np.ndarray) -> np.ndarray:
-    return np.column_stack(
-        [
-            np.ones_like(signal),
-            signal,
-            signal ** 2,
-            signal ** 3,
-            np.sin(signal),
-            np.cos(signal),
-            signal * np.sin(signal),
-            signal * np.cos(signal),
-        ]
-    )
+def get_mean_forcing_harmonic_factors(hint_cfg: dict[str, Any]) -> list[float]:
+    values: list[float] = []
+
+    raw = hint_cfg.get("extra_harmonic_factors", [])
+    if raw is not None:
+        values.extend(float(value) for value in raw)
+
+    max_harmonic = hint_cfg.get("max_harmonic_factor")
+    if max_harmonic is None:
+        max_harmonic = hint_cfg.get("max_harmonic")
+    if max_harmonic is not None:
+        max_harmonic_int = int(max_harmonic)
+        if max_harmonic_int >= 2:
+            values.extend(float(value) for value in range(2, max_harmonic_int + 1))
+
+    deduped = sorted({value for value in values if value >= 2.0 and abs(value - 1.0) > 1.0e-8})
+    return deduped
+
+
+def get_mean_forcing_basis_names(harmonic_factors: list[float] | None = None) -> list[str]:
+    names = ["1", "M", "M^2", "M^3", "sin(M)", "cos(M)", "M sin(M)", "M cos(M)"]
+    for factor in harmonic_factors or []:
+        factor_str = f"{factor:g}"
+        names.extend([f"sin({factor_str} M)", f"cos({factor_str} M)"])
+    return names
+
+
+def build_mean_forcing_basis(signal: np.ndarray, harmonic_factors: list[float] | None = None) -> np.ndarray:
+    cols = [
+        np.ones_like(signal),
+        signal,
+        signal ** 2,
+        signal ** 3,
+        np.sin(signal),
+        np.cos(signal),
+        signal * np.sin(signal),
+        signal * np.cos(signal),
+    ]
+    for factor in harmonic_factors or []:
+        cols.extend([np.sin(factor * signal), np.cos(factor * signal)])
+    return np.column_stack(cols)
+
+
+def soft_threshold(value: float, penalty: float) -> float:
+    if value > penalty:
+        return value - penalty
+    if value < -penalty:
+        return value + penalty
+    return 0.0
+
+
+def fit_sparse_basis_matrix(
+    basis_all: np.ndarray,
+    target_matrix: np.ndarray,
+    ridge: float,
+    l1_alpha: float,
+    max_iter: int = 500,
+    tol: float = 1.0e-6,
+) -> tuple[np.ndarray, np.ndarray]:
+    if basis_all.ndim != 2 or target_matrix.ndim != 2:
+        raise ValueError("Expected 2D basis and target matrices.")
+    if basis_all.shape[0] != target_matrix.shape[0]:
+        raise ValueError("Basis and target matrices must share the same sample dimension.")
+
+    if basis_all.shape[1] == 0:
+        return np.zeros_like(target_matrix), np.zeros((0, target_matrix.shape[1]), dtype=float)
+
+    intercept_col = basis_all[:, [0]]
+    feature_cols = basis_all[:, 1:]
+    n_samples = basis_all.shape[0]
+    n_targets = target_matrix.shape[1]
+
+    if feature_cols.shape[1] == 0:
+        intercept = np.mean(target_matrix, axis=0, keepdims=True)
+        coeffs = np.vstack([intercept, np.zeros((0, n_targets), dtype=float)])
+        pred = intercept_col @ coeffs[:1]
+        return pred, coeffs
+
+    x_mean = np.mean(feature_cols, axis=0)
+    x_std = np.std(feature_cols, axis=0)
+    x_std = np.where(x_std < 1.0e-8, 1.0, x_std)
+    x_scaled = (feature_cols - x_mean[None, :]) / x_std[None, :]
+
+    y_mean = np.mean(target_matrix, axis=0)
+    y_centered = target_matrix - y_mean[None, :]
+    x_norm = np.sum(x_scaled ** 2, axis=0) / float(n_samples)
+
+    beta_scaled = np.zeros((x_scaled.shape[1], n_targets), dtype=float)
+    for target_idx in range(n_targets):
+        y = y_centered[:, target_idx]
+        beta = np.zeros(x_scaled.shape[1], dtype=float)
+        residual = y.copy()
+        for _ in range(max_iter):
+            max_change = 0.0
+            for feat_idx in range(x_scaled.shape[1]):
+                x_col = x_scaled[:, feat_idx]
+                old = beta[feat_idx]
+                residual = residual + x_col * old
+                rho = float(np.dot(x_col, residual) / n_samples)
+                new = soft_threshold(rho, l1_alpha) / (x_norm[feat_idx] + ridge)
+                residual = residual - x_col * new
+                beta[feat_idx] = new
+                max_change = max(max_change, abs(new - old))
+            if max_change < tol:
+                break
+        beta_scaled[:, target_idx] = beta
+
+    coeffs_rest = beta_scaled / x_std[:, None]
+    intercept = y_mean - np.sum((x_mean[:, None] * coeffs_rest), axis=0)
+    coeffs = np.vstack([intercept[None, :], coeffs_rest])
+    pred = basis_all @ coeffs
+    return pred, coeffs
 
 
 def fit_mean_forcing_baseline(
@@ -419,13 +523,18 @@ def fit_mean_forcing_baseline(
     target_matrix: np.ndarray,
     fit_indices: np.ndarray,
     ridge: float,
+    l1_alpha: float = 0.0,
+    harmonic_factors: list[float] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    basis_all = build_mean_forcing_basis(signal_norm)
+    basis_all = build_mean_forcing_basis(signal_norm, harmonic_factors=harmonic_factors)
     x_fit = basis_all[fit_indices]
     y_fit = target_matrix[fit_indices]
-    gram = x_fit.T @ x_fit + ridge * np.eye(x_fit.shape[1])
-    rhs = x_fit.T @ y_fit
-    coeffs = np.linalg.solve(gram, rhs)
+    if l1_alpha > 0.0:
+        _pred_fit, coeffs = fit_sparse_basis_matrix(x_fit, y_fit, ridge=ridge, l1_alpha=l1_alpha)
+    else:
+        gram = x_fit.T @ x_fit + ridge * np.eye(x_fit.shape[1])
+        rhs = x_fit.T @ y_fit
+        coeffs = np.linalg.solve(gram, rhs)
     baseline = basis_all @ coeffs
     return baseline, coeffs
 
@@ -1039,6 +1148,7 @@ def main() -> None:
     times, raw_matrix = build_aligned_matrix(records)
     mean_cfg = cfg["data"].get("mean_forcing_hint", {})
     mean_signal_raw, mean_signal_norm, hint_info = align_hint_series(times, mean_cfg, repo_root)
+    mean_harmonic_factors = get_mean_forcing_harmonic_factors(mean_cfg)
     geo_features, basin_labels = build_geo_features(records)
     proximity = build_proximity_matrix(records, float(cfg["data"]["sigma_km"]), bool(cfg["data"].get("basin_block", True)))
     site_weights = build_site_weights(records, float(cfg["training"].get("record_length_weight_power", 0.0)))
@@ -1056,12 +1166,15 @@ def main() -> None:
     model_target_matrix = raw_matrix
     if hint_info.get("enabled") and mean_forcing_mode == "composite_residual":
         ridge = float(mean_cfg.get("composite_ridge", 1.0e-4))
+        l1_alpha = float(mean_cfg.get("lasso_alpha", 0.0))
         mean_baseline_full, baseline_coeffs = fit_mean_forcing_baseline(
             mean_signal_raw,
             mean_signal_norm,
             raw_matrix,
             train_end_indices,
             ridge=ridge,
+            l1_alpha=l1_alpha,
+            harmonic_factors=mean_harmonic_factors,
         )
         model_target_matrix = raw_matrix - mean_baseline_full
 

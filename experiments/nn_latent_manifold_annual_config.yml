@@ -1,0 +1,39 @@
+data:
+  base_dir: experiments/Feb2026
+  id_file: experiments/Feb2026/ID.yml
+  mean_forcing_hint:
+    enabled: true
+    mode: composite_residual
+    path: experiments/Feb2026/mean_forcing.dat
+    composite_ridge: 1.0e-4
+    lasso_alpha: 0.01
+    max_harmonic_factor: 30
+  exclude_prefixes:
+    - qbo
+  exclude_sites:
+    - hawaii
+    - "202"
+    - "234"
+  require_lte_results: true
+  basin_block: true
+  sigma_km: 2000.0
+
+annual_model:
+  latent_dim: 4
+
+training:
+  record_length_weight_power: 0.0
+
+report:
+  top_spectral_peaks: 5
+  example_sites_per_class: 1
+  period_library_years:
+    annual: 1.0
+    semiannual: 0.5
+    draconic_half_month_beat_alias: 1.14
+    triennial_alias: 3.0
+    quadrennial_alias: 4.43
+    six_year_modulation: 6.0
+    saros_alias: 8.85
+    nodal_half_alias: 9.3
+    nodal_18_6_year: 18.6
