@@ -34,13 +34,14 @@ The default configuration lives in `nn_latent_manifold_config.yml`, and sweep
 support is available through `nn_latent_manifold_sweep.py` with
 `nn_latent_manifold_sweep.yml`.
 
-## Annualized offshoot
+## Annual forcing-feature model
 
-`nn_latent_manifold_annual_experiment.py` is a companion procedure that keeps
-the same inputs and most of the same report artifacts, but replaces the monthly
-latent NN with a low-rank **annual increment** latent model. It is meant for
-cases where year-to-year level shifts appear sharper than the smooth residual NN
-can easily represent.
+`annual_forcing_feature_model.py` is the companion procedure that keeps the same
+inputs and most of the same report artifacts, but replaces the monthly latent NN
+with a fixed low-rank **annual increment** forcing-feature model. It is meant
+for cases where year-to-year level shifts appear sharper than the smooth
+residual NN can easily represent, and where `mean_forcing.dat` should act as the
+primary annualized comparison feature.
 
 This is now the main transition path for experiments that treat
 `mean_forcing.dat` as the primary annualized forcing and use the year-scale
@@ -51,6 +52,8 @@ variant writes basis-determination reports for the `mean_forcing.dat` branch:
 
 - `mean_forcing_basis_determination.csv`
 - `mean_forcing_basis_determination_summary.csv`
+- `mean_forcing_basis_coefficients.csv`
+- `annual_site_loadings.csv`
 
 These report per-basis single-term `R^2` and drop-one `delta R^2` for the basis
 library `{1, M, M^2, M^3, sin(M), cos(M), M sin(M), M cos(M)}` plus any
@@ -68,7 +71,41 @@ Typical usage:
 
 ```bash
 cd experiments
-python3 nn_latent_manifold_annual_experiment.py \
-  --config nn_latent_manifold_annual_config.yml \
-  --output-dir nn_latent_manifold_annual_outputs
+python3 annual_forcing_feature_model.py \
+  --config annual_forcing_feature_config.yml \
+  --output-dir annual_forcing_feature_outputs
+```
+
+## Deterministic predictor
+
+`lte_predict.py` is the companion predictor to `annual_forcing_feature_model.py`.
+It uses the saved forcing-basis coefficients, annual correction parameters, and
+`mean_forcing.dat` to generate a deterministic monthly time series for a target
+index subdirectory. If the target site was part of the training fit, it uses the
+exact saved parameters; otherwise it transfers them by geo-weighted proximity.
+It saves a full-range comparison plot by default and can optionally display it.
+
+Typical usage:
+
+```bash
+cd experiments
+python3 lte_predict.py 11 \
+  --model-dir annual_forcing_feature_outputs
+```
+
+Optional display:
+
+```bash
+python3 lte_predict.py 11 \
+  --model-dir annual_forcing_feature_outputs \
+  --show-plot
+```
+
+To compare against the actual observed series from column 3 of
+`lte_results.csv` instead of the model series in column 2:
+
+```bash
+python3 lte_predict.py 234 \
+  --model-dir annual_forcing_feature_outputs \
+  --target-series actual
 ```

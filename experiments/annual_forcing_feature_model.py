@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """
-Annualized latent-manifold offshoot for GEM-LTE Feb2026 runs.
+Annual forcing-feature model for GEM-LTE Feb2026 runs.
 
 This variant keeps the same data sources and most of the same report artifacts as
-`nn_latent_manifold_experiment.py`, but replaces the monthly latent NN with an
-explicit annual increment factor model:
+`nn_latent_manifold_experiment.py`, but replaces the monthly latent NN with a
+fixed annual forcing-feature mapping:
 
 1. fit the optional nonlinear `mean_forcing.dat` baseline,
 2. aggregate the remaining residual to annual means,
 3. factor yearly increments in those annual levels with a low-rank latent model,
 4. expand the reconstructed annual levels back to monthly resolution.
 
-The goal is to capture sharper year-to-year level changes in an explainable and
-regularized way while preserving the experiment outputs used for comparison.
+The goal is to use `mean_forcing.dat` as the primary annualized feature, compare
+it against indexed GEM-LTE outputs with shared metadata, and capture sharper
+year-to-year corrections in an explainable and regularized way without training
+an additional monthly NN.
 """
 
 from __future__ import annotations
@@ -33,16 +35,16 @@ import nn_latent_manifold_experiment as shared
 def parse_args() -> argparse.Namespace:
     script_dir = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(
-        description="Run the annualized latent-manifold offshoot on Feb2026 GEM-LTE outputs."
+        description="Run the annual forcing-feature model on Feb2026 GEM-LTE outputs."
     )
     parser.add_argument(
         "--config",
-        default=str(script_dir / "nn_latent_manifold_annual_config.yml"),
+        default=str(script_dir / "annual_forcing_feature_config.yml"),
         help="Path to YAML configuration file.",
     )
     parser.add_argument(
         "--output-dir",
-        default=str(script_dir / "nn_latent_manifold_annual_outputs"),
+        default=str(script_dir / "annual_forcing_feature_outputs"),
         help="Directory where run artifacts will be written.",
     )
     parser.add_argument(
@@ -147,7 +149,37 @@ def write_annual_latent_states(path: Path, annual_years: np.ndarray, latent_leve
     df.to_csv(path, index=False)
 
 
-def write_site_loadings(path: Path, records: list[shared.SiteRecord], site_loadings: np.ndarray) -> None:
+def write_site_loadings(
+    path: Path,
+    records: list[shared.SiteRecord],
+    site_loadings: np.ndarray,
+    annual_initial_levels: np.ndarray,
+    annual_increment_mean: np.ndarray,
+    annual_increment_std: np.ndarray,
+) -> None:
+    rows: list[dict[str, Any]] = []
+    for site_idx, record in enumerate(records):
+        row: dict[str, Any] = {
+            "site_id": record.site_id,
+            "name": record.name,
+            "site_class": record.site_class,
+            "basin": record.basin,
+            "annual_initial_level": float(annual_initial_levels[site_idx]),
+            "annual_increment_mean": float(annual_increment_mean[site_idx]),
+            "annual_increment_std": float(annual_increment_std[site_idx]),
+        }
+        for dim in range(site_loadings.shape[1]):
+            row[f"loading_z{dim + 1}"] = float(site_loadings[site_idx, dim])
+        rows.append(row)
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def write_mean_forcing_basis_coefficients(
+    path: Path,
+    records: list[shared.SiteRecord],
+    basis_names: list[str],
+    basis_coeffs: np.ndarray,
+) -> None:
     rows: list[dict[str, Any]] = []
     for site_idx, record in enumerate(records):
         row: dict[str, Any] = {
@@ -156,8 +188,8 @@ def write_site_loadings(path: Path, records: list[shared.SiteRecord], site_loadi
             "site_class": record.site_class,
             "basin": record.basin,
         }
-        for dim in range(site_loadings.shape[1]):
-            row[f"loading_z{dim + 1}"] = float(site_loadings[site_idx, dim])
+        for basis_idx, basis_name in enumerate(basis_names):
+            row[basis_name] = float(basis_coeffs[basis_idx, site_idx])
         rows.append(row)
     pd.DataFrame(rows).to_csv(path, index=False)
 
@@ -356,6 +388,12 @@ def main() -> None:
         )
         basis_detail_df.to_csv(output_dir / "mean_forcing_basis_determination.csv", index=False)
         basis_summary_df.to_csv(output_dir / "mean_forcing_basis_determination_summary.csv", index=False)
+        write_mean_forcing_basis_coefficients(
+            output_dir / "mean_forcing_basis_coefficients.csv",
+            records,
+            mean_basis_names,
+            baseline_coeffs,
+        )
 
     latent_df = pd.DataFrame({"time": times})
     for dim in range(monthly_latent_levels.shape[1]):
@@ -398,7 +436,14 @@ def main() -> None:
         annual_increment_df[record.site_id] = annual_fit["annual_increment_recon"][:, idx]
     annual_increment_df.to_csv(output_dir / "annual_increment_matrix.csv", index=False)
 
-    write_site_loadings(output_dir / "annual_site_loadings.csv", records, annual_fit["site_loadings"])
+    write_site_loadings(
+        output_dir / "annual_site_loadings.csv",
+        records,
+        annual_fit["site_loadings"],
+        annual_levels[0],
+        annual_fit["increment_mean"],
+        annual_fit["increment_std"],
+    )
 
     history_df = pd.DataFrame(
         {
