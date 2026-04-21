@@ -1,1 +1,389 @@
-../experiments/lte-signature-map-feb2026.html
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LTE Signature Map Feb2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root, [data-theme="light"] {
+      --color-bg:#f7f6f2; --color-surface:#f9f8f5; --color-surface-2:#fbfbf9; --color-surface-offset:#f3f0ec;
+      --color-border:#d4d1ca; --color-divider:#dcd9d5; --color-text:#28251d; --color-text-muted:#7a7974;
+      --color-primary:#01696f; --color-primary-hover:#0c4e54; --color-blue:#006494; --color-success:#437a22;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.06); --shadow-md:0 8px 24px rgba(0,0,0,.10);
+      --radius-sm:.375rem; --radius-md:.75rem; --radius-lg:1rem; --radius-xl:1.25rem;
+      --space-1:.25rem; --space-2:.5rem; --space-3:.75rem; --space-4:1rem; --space-5:1.25rem; --space-6:1.5rem; --space-8:2rem; --space-10:2.5rem; --space-12:3rem;
+      --text-xs:clamp(.75rem,.7rem + .25vw,.875rem); --text-sm:clamp(.875rem,.8rem + .35vw,1rem); --text-base:clamp(1rem,.95rem + .25vw,1.0625rem); --text-lg:clamp(1.125rem,1rem + .75vw,1.4rem); --text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem);
+      --font-body:'Inter',sans-serif; --font-display:'Source Serif 4',serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:#171614; --color-surface:#1c1b19; --color-surface-2:#201f1d; --color-surface-offset:#22211f;
+      --color-border:#393836; --color-divider:#2b2a28; --color-text:#cdccca; --color-text-muted:#979592;
+      --color-primary:#4f98a3; --color-primary-hover:#227f8b; --color-blue:#6ea8d6; --color-success:#7fb160;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.25); --shadow-md:0 10px 32px rgba(0,0,0,.35);
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body {
+      margin:0; min-height:100vh; background:var(--color-bg); color:var(--color-text); font-family:var(--font-body);
+      font-size:var(--text-base); line-height:1.5;
+    }
+    .app {
+      display:grid; grid-template-columns: 320px 1fr; min-height:100vh;
+    }
+    .sidebar {
+      background:var(--color-surface); border-right:1px solid var(--color-divider); padding:var(--space-6); position:sticky; top:0; height:100vh; overflow:auto;
+    }
+    .brand { display:flex; align-items:center; gap:.75rem; margin-bottom:var(--space-6); }
+    .logo { width:36px; height:36px; border-radius:12px; background:linear-gradient(135deg,var(--color-primary),var(--color-blue)); display:grid; place-items:center; color:white; box-shadow:var(--shadow-sm); }
+    .logo svg { width:22px; height:22px; }
+    .brand h1 { margin:0; font:600 var(--text-lg)/1.1 var(--font-display); }
+    .muted { color:var(--color-text-muted); }
+    .small { font-size:var(--text-sm); }
+    .panel { background:var(--color-surface-2); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:var(--space-4); box-shadow:var(--shadow-sm); }
+    .stack { display:grid; gap:var(--space-4); }
+    label { display:block; font-size:var(--text-sm); font-weight:600; margin-bottom:.45rem; }
+    input[type="text"], select {
+      width:100%; border:1px solid var(--color-border); background:var(--color-bg); color:var(--color-text); border-radius:12px; padding:.8rem .9rem; font:inherit;
+    }
+    button {
+      border:0; background:var(--color-primary); color:white; padding:.8rem 1rem; border-radius:12px; font:600 var(--text-sm)/1 var(--font-body); cursor:pointer;
+      transition:background .18s ease, transform .18s ease;
+    }
+    button:hover { background:var(--color-primary-hover); }
+    button:active { transform:translateY(1px); }
+    .button-row { display:flex; gap:.75rem; flex-wrap:wrap; }
+    .ghost { background:transparent; color:var(--color-text); border:1px solid var(--color-border); }
+    .ghost:hover { background:var(--color-surface-offset); }
+    .site-list {
+      max-height:34vh; overflow:auto; border:1px solid var(--color-border); border-radius:14px; background:var(--color-bg);
+    }
+    .site-item {
+      display:flex; justify-content:space-between; gap:.75rem; width:100%; padding:.7rem .9rem; border:0; border-bottom:1px solid var(--color-divider); background:transparent; color:inherit; text-align:left;
+    }
+    .site-item:last-child { border-bottom:0; }
+    .site-item:hover, .site-item.active { background:color-mix(in srgb, var(--color-primary) 12%, var(--color-bg)); }
+    .site-name { font-size:var(--text-sm); font-weight:600; }
+    .site-meta { font-size:var(--text-xs); color:var(--color-text-muted); }
+    .main {
+      padding:var(--space-6); display:grid; gap:var(--space-4);
+    }
+    .topbar {
+      display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-4); flex-wrap:wrap;
+    }
+    .headline h2 { margin:0; font:600 var(--text-xl)/1.05 var(--font-display); }
+    .headline p { margin:.45rem 0 0; color:var(--color-text-muted); max-width:72ch; }
+    .theme-toggle {
+      width:44px; height:44px; padding:0; border-radius:999px; display:grid; place-items:center;
+    }
+    .meta-grid {
+      display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--space-4);
+    }
+    .stat .label { font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.08em; color:var(--color-text-muted); }
+    .stat .value { margin-top:.3rem; font-weight:700; font-size:var(--text-lg); }
+    .chart-wrap { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-xl); padding:var(--space-3); box-shadow:var(--shadow-md); }
+    #chart { width:100%; height:72vh; min-height:560px; }
+    .notes { display:grid; grid-template-columns:1.2fr .8fr; gap:var(--space-4); }
+    ul { margin:0; padding-left:1.1rem; }
+    code { background:var(--color-bg); border:1px solid var(--color-border); border-radius:8px; padding:.1rem .35rem; }
+    .loading, .error { padding:1rem; border-radius:12px; }
+    .loading { background:color-mix(in srgb, var(--color-blue) 12%, var(--color-surface)); }
+    .error { background:color-mix(in srgb, #b44 15%, var(--color-surface)); color:var(--color-text); }
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position:relative; height:auto; border-right:0; border-bottom:1px solid var(--color-divider); }
+      .meta-grid, .notes { grid-template-columns:1fr 1fr; }
+      #chart { height:64vh; min-height:480px; }
+    }
+    @media (max-width: 760px) {
+      .main, .sidebar { padding:var(--space-4); }
+      .meta-grid, .notes { grid-template-columns:1fr; }
+      #chart { height:58vh; min-height:400px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M4 17c2.5-6 5.5-9 9-9 2.8 0 5 1.4 7 4" />
+            <circle cx="6" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="12.5" cy="9" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
+        <div>
+          <h1>LTE Signatures</h1>
+          <div class="muted small">Feb2026 Lissajous variation</div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <label for="siteSearch">Search site or index</label>
+          <input id="siteSearch" type="text" placeholder="e.g. Brest, nino34, 154" />
+          <div style="height:.8rem"></div>
+          <label for="siteSelect">Select dataset</label>
+          <select id="siteSelect"></select>
+          <div style="height:.9rem"></div>
+          <div class="button-row">
+            <button id="loadBtn">Load signature</button>
+            <button id="nextBtn" class="ghost" type="button">Next</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="small muted" style="margin-bottom:.6rem;">Quick browse</div>
+          <div id="siteList" class="site-list" aria-label="Available sites"></div>
+        </div>
+
+        <div class="panel small muted">
+          This variation plots <code>Column 4</code> on X against <code>Column 2</code> on Y, using the full available repeat-cycle traversal in each <code>lte_results.csv</code> under <code>experiments/Feb2026/*</code>.
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="headline">
+          <h2 id="title">Loading...</h2>
+          <p id="subtitle">Reading LTE signature data from Feb2026 subdirectories.</p>
+        </div>
+        <button class="theme-toggle ghost" id="themeToggle" aria-label="Toggle theme">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+
+      <div class="meta-grid">
+        <div class="panel stat"><div class="label">Dataset</div><div class="value" id="statKey">—</div></div>
+        <div class="panel stat"><div class="label">Points</div><div class="value" id="statRows">—</div></div>
+        <div class="panel stat"><div class="label">Cycle span</div><div class="value" id="statCycle">—</div></div>
+        <div class="panel stat"><div class="label">Years</div><div class="value" id="statYears">—</div></div>
+      </div>
+
+      <div id="status" class="loading">Loading site catalog…</div>
+
+      <section class="chart-wrap">
+        <div id="chart"></div>
+      </section>
+
+      <section class="notes">
+        <div class="panel">
+          <h3 style="margin:0 0 .6rem; font-size:var(--text-lg)">Interpretation</h3>
+          <ul class="muted">
+            <li>The scatter shows one full available fundamental cycle using the cycle coordinate from Column 5 as ordering.</li>
+            <li>X-axis is Column 4, giving the transformed forcing/frequency-like coordinate used for the signature.</li>
+            <li>Y-axis is Column 2, the modeled response amplitude for each step in that cycle.</li>
+            <li>Color follows cycle progression from start to end, while each point is rendered as a vertical bar glyph rather than a connected line.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3 style="margin:0 0 .6rem; font-size:var(--text-lg)">Data source</h3>
+          <div class="muted small" id="dataSourceText">GitHub raw files under experiments/Feb2026/&lt;subdir&gt;/lte_results.csv</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+<script>
+const OWNER = 'pukpr';
+const REPO = 'GEM-LTE';
+const BRANCH = 'main';
+const BASE = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/experiments/Feb2026`;
+
+const SITES = [
+  '1','11','111','113','127','14','154','155','161','172','179','183','2','20','202','203','22','225','229','23','234','236','239','24','240','245','246','249','25','256','285','302','32','330','41','42','47','5','57','58','62','68','69','7','70','71','72','73','76','78','79','8','80','81','82','88','89','91','95','98','amo','australia','baltic','brestexcl','britain','darwin1880','denison','ecoast','emi','gom','ic3tsfc','iod','iode','iodw','japan','m4','m6','maritimes','mediterranean','nao','nino12','nino3','nino34','nino4','nz','pdo','sea','spacific','tna','tsa'
+];
+
+const SITE_META = {
+  '1': {name:'BREST', country:'FRANCE'}, '11': {name:'WARNEMUNDE 2', country:'GERMANY'}, '111': {name:'FREMANTLE', country:'AUSTRALIA'}, '127': {name:'SEATTLE', country:'UNITED STATES'},
+  '14': {name:'HELSINKI', country:'FINLAND'}, '154': {name:'TRIESTE', country:'ITALY'}, '155': {name:'HONOLULU', country:'UNITED STATES'}, '161': {name:'GALVESTON II, PIER 21, TX', country:'UNITED STATES'},
+  '183': {name:'PORTLAND (MAINE)', country:'UNITED STATES'}, '2': {name:'SWINOUJSCIE', country:'POLAND'}, '20': {name:'VLISSINGEN', country:'NETHERLANDS'}, '202': {name:'NEWLYN', country:'UNITED KINGDOM'},
+  '22': {name:'HOEK VAN HOLLAND', country:'NETHERLANDS'}, '23': {name:'DEN HELDER', country:'NETHERLANDS'}, '24': {name:'DELFZIJL', country:'NETHERLANDS'}, '25': {name:'HARLINGEN', country:'NETHERLANDS'},
+  '245': {name:'LOS ANGELES', country:'UNITED STATES'}, '246': {name:'PENSACOLA', country:'UNITED STATES'}, '256': {name:'LA JOLLA (SCRIPPS PIER)', country:'UNITED STATES'}, '32': {name:'IJMUIDEN', country:'NETHERLANDS'},
+  '41': {name:'POTI', country:'GEORGIA'}, '42': {name:'SEVASTOPOL', country:'UKRAINE'}, '47': {name:'STAVANGER', country:'NORWAY'}, '5': {name:'HOLYHEAD', country:'UNITED KINGDOM'},
+  '57': {name:'VAASA / VASA', country:'FINLAND'}, '58': {name:'BERGEN', country:'NORWAY'}, '62': {name:'OSLO', country:'NORWAY'}, '7': {name:'CUXHAVEN 2', country:'GERMANY'},
+  '76': {name:'AARHUS', country:'DENMARK'}, '78': {name:'STOCKHOLM', country:'SWEDEN'}, '8': {name:'WISMAR 2', country:'GERMANY'},
+  'amo': {name:'AMO', country:'ATLANTIC'}, 'australia': {name:'AUSTRALIA', country:'PACIFIC'}, 'baltic': {name:'BALTIC', country:'EUROPE'}, 'brestexcl': {name:'BREST from 1880', country:'FRANCE'},
+  'britain': {name:'BRITAIN', country:'UNITED KINGDOM'}, 'darwin1880': {name:'Darwin SOI', country:'PACIFIC'}, 'denison': {name:'Ft Denison', country:'PACIFIC'}, 'ecoast': {name:'East Coast', country:'UNITED STATES'},
+  'emi': {name:'EMI ENSO Modoki Index', country:'PACIFIC'}, 'gom': {name:'Gulf of Mexico', country:'UNITED STATES'}, 'ic3tsfc': {name:'ic3tsfc (Reconstruction)', country:'PACIFIC'}, 'iod': {name:'IOD', country:'INDIAN'},
+  'iode': {name:'IOD East', country:'INDIAN'}, 'iodw': {name:'IOD West', country:'INDIAN'}, 'japan': {name:'JAPAN', country:'PACIFIC'}, 'm4': {name:'M4, N. Pacific Gyre Oscillation', country:'PACIFIC'},
+  'm6': {name:'M6, Atlantic Nino', country:'ATLANTIC'}, 'maritimes': {name:'MARITIMES', country:'CANADA'}, 'mediterranean': {name:'MEDITERRANEAN', country:'EUROPE'}, 'nao': {name:'NAO', country:'ATLANTIC'},
+  'nino12': {name:'NINO12', country:'PACIFIC'}, 'nino3': {name:'NINO3', country:'PACIFIC'}, 'nino34': {name:'NINO34', country:'PACIFIC'}, 'nino4': {name:'NINO4', country:'PACIFIC'},
+  'nz': {name:'NEW ZEALAND', country:'PACIFIC'}, 'pdo': {name:'PDO', country:'PACIFIC'}, 'sea': {name:'SEA', country:'PACIFIC'}, 'spacific': {name:'S PACIFIC', country:'PACIFIC'}, 'tna': {name:'TNA Tropical N. Atlantic', country:'ATLANTIC'}, 'tsa': {name:'TSA Tropical S. Atlantic', country:'ATLANTIC'}
+};
+
+const els = {
+  siteSearch: document.getElementById('siteSearch'),
+  siteSelect: document.getElementById('siteSelect'),
+  siteList: document.getElementById('siteList'),
+  loadBtn: document.getElementById('loadBtn'),
+  nextBtn: document.getElementById('nextBtn'),
+  title: document.getElementById('title'),
+  subtitle: document.getElementById('subtitle'),
+  status: document.getElementById('status'),
+  statKey: document.getElementById('statKey'),
+  statRows: document.getElementById('statRows'),
+  statCycle: document.getElementById('statCycle'),
+  statYears: document.getElementById('statYears'),
+  dataSourceText: document.getElementById('dataSourceText'),
+  themeToggle: document.getElementById('themeToggle')
+};
+
+function getTheme() {
+  return document.documentElement.getAttribute('data-theme') || 'dark';
+}
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  els.themeToggle.innerHTML = theme === 'dark'
+    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+}
+
+function fmt(v, d=2) {
+  return Number(v).toLocaleString(undefined, {maximumFractionDigits:d});
+}
+
+function labelForSite(key) {
+  const meta = SITE_META[key];
+  if (!meta) return key;
+  return `${key} — ${meta.name}`;
+}
+
+function buildCatalog() {
+  els.siteSelect.innerHTML = '';
+  els.siteList.innerHTML = '';
+  for (const key of SITES) {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = labelForSite(key);
+    els.siteSelect.appendChild(opt);
+
+    const btn = document.createElement('button');
+    btn.className = 'site-item';
+    btn.type = 'button';
+    btn.dataset.key = key;
+    const meta = SITE_META[key] || {};
+    btn.innerHTML = `<span><div class="site-name">${meta.name || key}</div><div class="site-meta">${key}</div></span><span class="site-meta">${meta.country || ''}</span>`;
+    btn.addEventListener('click', () => { els.siteSelect.value = key; loadSite(key); });
+    els.siteList.appendChild(btn);
+  }
+}
+
+function markActive(key) {
+  document.querySelectorAll('.site-item').forEach(el => el.classList.toggle('active', el.dataset.key === key));
+}
+
+function parseCsv(text) {
+  const rows = text.trim().split(/\r?\n/).map(line => line.split(',').map(s => Number(s.trim()))).filter(r => r.length >= 5 && r.every(v => Number.isFinite(v)));
+  return rows.map(r => ({ year:r[0], col2:r[1], col3:r[2], col4:r[3], cycle:r[4], col6:r[5], col7:r[6] }));
+}
+
+async function fetchSite(key) {
+  const url = `${BASE}/${encodeURIComponent(key)}/lte_results.csv`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${key}`);
+  return { url, data: parseCsv(await res.text()) };
+}
+
+function renderPlot(key, rows, sourceUrl) {
+  const meta = SITE_META[key] || {name:key, country:''};
+  const x = rows.map(r => r.col4);
+  const y = rows.map(r => r.col2);
+  const c = rows.map(r => r.cycle);
+  const years = rows.map(r => r.year);
+  const cycleMin = Math.min(...c), cycleMax = Math.max(...c);
+  const yearMin = Math.min(...years), yearMax = Math.max(...years);
+
+  els.title.textContent = `${meta.name || key}`;
+  els.subtitle.textContent = `X = Column 4, Y = Column 2, ordered across one available repeat cycle from ${fmt(cycleMin)} to ${fmt(cycleMax)}.`;
+  els.statKey.textContent = key;
+  els.statRows.textContent = fmt(rows.length, 0);
+  els.statCycle.textContent = `${fmt(cycleMin)}–${fmt(cycleMax)}`;
+  els.statYears.textContent = `${fmt(yearMin,1)}–${fmt(yearMax,1)}`;
+  els.dataSourceText.innerHTML = `Source: <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">${sourceUrl}</a>`;
+  markActive(key);
+
+  const dark = getTheme() === 'dark';
+  const css = getComputedStyle(document.documentElement);
+  const trace = {
+    x, y, mode:'markers', type:'scatter',
+    marker:{ size:14, symbol:'line-ns-open', line:{ width:2.2, color:c, colorscale: dark ? 'Viridis' : 'Turbo' }, color:c, colorscale: dark ? 'Viridis' : 'Turbo', showscale:true, colorbar:{ title:'Cycle', thickness:14 } },
+    text: rows.map(r => `Year: ${r.year.toFixed(4)}<br>Cycle: ${r.cycle.toFixed(4)}<br>Col4 (X): ${r.col4.toExponential(6)}<br>Col2 (Y): ${r.col2.toExponential(6)}`),
+    hovertemplate: '%{text}<extra></extra>',
+    name: meta.name || key
+  };
+
+  const startPt = { x:[x[0]], y:[y[0]], mode:'markers', type:'scatter', marker:{ size:11, color: css.getPropertyValue('--color-success').trim(), line:{color:'white', width:1.5} }, name:'Start', hovertemplate:'Start of cycle traversal<extra></extra>' };
+  const endPt = { x:[x[x.length-1]], y:[y[y.length-1]], mode:'markers', type:'scatter', marker:{ size:11, color: '#d76a6a', line:{color:'white', width:1.5} }, name:'End', hovertemplate:'End of cycle traversal<extra></extra>' };
+
+  const layout = {
+    paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+    margin:{l:70,r:30,t:28,b:60},
+    font:{ family:'Inter, sans-serif', color: css.getPropertyValue('--color-text').trim() },
+    xaxis:{ title:'LTE manifold level', gridcolor: css.getPropertyValue('--color-divider').trim(), zerolinecolor: css.getPropertyValue('--color-border').trim() },
+    yaxis:{ title:'LTE modulation', gridcolor: css.getPropertyValue('--color-divider').trim(), zerolinecolor: css.getPropertyValue('--color-border').trim() },
+    legend:{ orientation:'h', y:1.1, x:0 },
+  };
+  const config = { responsive:true, displaylogo:false, modeBarButtonsToRemove:['lasso2d','select2d'] };
+  Plotly.newPlot('chart', [trace, startPt, endPt], layout, config);
+}
+
+async function loadSite(key) {
+  els.status.className = 'loading';
+  els.status.textContent = `Loading ${key}…`;
+  try {
+    const {url, data} = await fetchSite(key);
+    renderPlot(key, data, url);
+    els.status.className = 'loading';
+    els.status.textContent = `Loaded ${data.length} rows from ${key}.`;
+  } catch (err) {
+    els.status.className = 'error';
+    els.status.textContent = `Unable to load ${key}: ${err.message}`;
+  }
+}
+
+function applyFilter(q) {
+  const s = q.trim().toLowerCase();
+  const opts = [...els.siteSelect.options];
+  let firstVisible = null;
+  opts.forEach(opt => {
+    const meta = (SITE_META[opt.value]?.name || '').toLowerCase();
+    const vis = !s || opt.value.toLowerCase().includes(s) || meta.includes(s);
+    opt.hidden = !vis;
+    if (vis && !firstVisible) firstVisible = opt.value;
+  });
+  document.querySelectorAll('.site-item').forEach(btn => {
+    const key = btn.dataset.key;
+    const meta = (SITE_META[key]?.name || '').toLowerCase();
+    const vis = !s || key.toLowerCase().includes(s) || meta.includes(s);
+    btn.style.display = vis ? 'flex' : 'none';
+  });
+  if (firstVisible) els.siteSelect.value = firstVisible;
+}
+
+els.loadBtn.addEventListener('click', () => loadSite(els.siteSelect.value));
+els.nextBtn.addEventListener('click', () => {
+  const visible = [...els.siteSelect.options].filter(o => !o.hidden);
+  const idx = visible.findIndex(o => o.value === els.siteSelect.value);
+  const next = visible[(idx + 1 + visible.length) % visible.length];
+  if (next) { els.siteSelect.value = next.value; loadSite(next.value); }
+});
+els.siteSearch.addEventListener('input', e => applyFilter(e.target.value));
+els.siteSelect.addEventListener('change', e => loadSite(e.target.value));
+els.themeToggle.addEventListener('click', () => { setTheme(getTheme() === 'dark' ? 'light' : 'dark'); if (els.siteSelect.value) loadSite(els.siteSelect.value); });
+
+buildCatalog();
+setTheme(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+const initial = 'nino34';
+els.siteSelect.value = initial;
+loadSite(initial);
+</script>
+</body>
+</html>
