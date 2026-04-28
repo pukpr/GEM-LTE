@@ -123,12 +123,12 @@ except ImportError:
 # ----------------------------------------------------------------------------
 # Physical constants
 # ----------------------------------------------------------------------------
-P_SIDEREAL    = 27.3216    # days, sidereal/tropical month -- emerges as drac - N
-P_DRACONIC    = 27.2122    # days, draconic/nodical month  -- the k=0 carrier
-P_ANOMALISTIC = 27.5545    # days, anomalistic month
-P_NODAL       = 6798.383   # days, lunar ascending-node regression (18.61 yr)
+P_SIDEREAL    = 27.321661    # days, sidereal/tropical month -- emerges as drac - N
+P_DRACONIC    = 27.212221    # days, draconic/nodical month  -- the k=0 carrier
+P_ANOMALISTIC = 27.554550    # days, anomalistic month
+P_NODAL       = 6793.4765   # days, lunar ascending-node regression (18.61 yr)
 P_SID_MIRROR  = 1.0 / (1.0/P_DRACONIC + 1.0/P_NODAL)  # 27.1036 d -- upper sideband
-DAYS_PER_YEAR = 365.25
+DAYS_PER_YEAR = 365.247484
 
 
 # ----------------------------------------------------------------------------

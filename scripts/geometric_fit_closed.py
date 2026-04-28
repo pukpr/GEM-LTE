@@ -32,28 +32,36 @@ the data: it produces only odd k_d harmonics by Jacobi-Anger.
 Two closed forms supported here
 -------------------------------
 
-1. ``pure`` -- the strict 8-parameter form above. Mostly diagnostic:
-   running it tells you how much variance the strict form gives up
-   relative to the linear-basis ceiling.
+1. ``pure`` -- the 11-parameter physical-geometry form:
 
-2. ``extended`` -- adds an explicit even-harmonic generator and a
-   linear (non-Bessel) carrier piece so the model spans the lattice
-   the data actually populates:
-
-        y(t) = a * [ sin(i sin(th_d+d_d))
-                   + i2 * sin(2*(th_d+d_d) + d_d2)        # even harmonic
-                   ]
-                 * (1 + e_eff cos(th_a + d_a))
+        y(t) = a * [ c_0 + sin(i sin(th_d + d_drac)) ]
+                 * (1 + e_eff cos(th_a + d_ano))
                  * (1 + m_N   cos(th_N + d_N))
-               + a_3sid * cos(3*(th_d - th_N) + d_3sid)   # 3*sid (9.107 d)
-               + b0
+             + a_sid * cos(th_sid + d_sid)
+                     * (1 + e_eff cos(th_a + d_ano))
+             + b0
 
-   Twelve parameters. The 'i2' term is what breaks the
-   no-even-harmonics restriction and lets the 13.6 d / 6.8 d band
-   exist physically. The 3*sid additive piece accounts for the strong
-   9.107 d residual that's a 3rd harmonic of the SIDEREAL carrier --
-   i.e. evidence that sidereal has its own non-trivial cubed-amplitude
-   piece, not just as a sideband of draconic.
+   The leading c_0 lets a *standalone* anomalistic peak emerge at
+   P=27.55 d as a*c_0*e_eff*cos(th_a+d_ano), which the original AC-only
+   carrier `sin(i*sin th_d)` could never produce. The sidereal block
+   (a_sid, d_sid) is an additive sidereal harmonic at P=27.3216 d (sid =
+   drac - N) modulated by the same anomalistic envelope, so a SINGLE
+   amp+phase pair simultaneously emits both the sidereal peak and the
+   anomalistic+sidereal cross-term at P=13.719 d. Both are physically
+   essential because m_N tends to collapse to ~0 in real data, which
+   kills the sideband structure that the carrier alone would otherwise
+   create. (The retired 3*sid term, which assumed the strong 'sid_mirror'
+   at drac+N, was a worse model -- the +N mirror is weak, the -N
+   sidereal is strong.)
+
+2. ``extended`` -- pure + an explicit even-harmonic generator (i2,
+   d_drac2) inside the inclination factor:
+
+        swing -> c_0 + sin(i*sin(th_d+d_d)) + i2 * sin(2*(th_d+d_d) + d_d2)
+
+   13 parameters. The 'i2' term breaks the Jacobi-Anger no-2*drac
+   restriction and lets a free 13.6 d band emerge. (Compound tides
+   typically explain that band better -- see --compound-tides lunar.)
 
 Compound tides (--compound-tides lunar / --strict-orbital)
 ----------------------------------------------------------
@@ -89,25 +97,24 @@ module is appended to the orbital base:
 Periods are LOCKED to the canonical compound-tide values; only
 amplitude and phase are free (6 extra params total).
 
-Combine with --strict-orbital to drop the i2 (even-harmonic) and
-a_3sid (additive 9.107) terms from the extended orbital model. This
-is the clean test of the question 'are the even-harmonic peaks
-geometric Bessel artifacts (i2 needed) or compound-tide contamination
-(compound module needed, i2 redundant)?'  If the strict-orbital +
-compound combination beats extended without compound, then the i2
-term in the extended model was dressing up compound-tide signal as
-if it were orbital geometry.
+Combine with --strict-orbital to drop the i2 (even-harmonic) term
+from the extended orbital model. This is the clean test of the
+question 'is the 13.6 d band a geometric Bessel artifact (i2 needed)
+or compound-tide contamination (compound module needed, i2 redundant)?'
+If the strict-orbital + compound combination beats extended without
+compound, then the i2 term in the extended model was dressing up
+compound-tide signal as if it were orbital geometry.
 
 Flag matrix (all combine with --mix-semiannual / --mix-evection):
-  --model pure                                  : 8 params,  baseline
-  --model extended                              : 12 params, baseline
-  --model extended  --compound-tides lunar      : 18 params, both modules
+  --model pure                                  : 11 params, baseline
+  --model extended                              : 13 params, baseline
+  --model extended  --compound-tides lunar      : 19 params, both modules
   --model extended  --compound-tides lunar  --strict-orbital
-                                                : 14 params, clean
+                                                : 17 params, clean
                                                   separation: orbital is
-                                                  pure 8-param product +
+                                                  pure 11-param form +
                                                   compound is 6 free.
-  --model pure      --compound-tides lunar      : 14 params, equivalent
+  --model pure      --compound-tides lunar      : 17 params, equivalent
                                                   to the above (pure is
                                                   already strict)
 
@@ -261,7 +268,7 @@ class CompoundSpec:
 @dataclass
 class StrictSpec:
     """Whether to suppress extended-model orbital additions."""
-    orbital: bool = False         # drop i2, a_3sid in extended model
+    orbital: bool = False         # drop i2 in extended model
 
 
 @dataclass
@@ -339,21 +346,39 @@ def _harm_omega(kd: int, kN: int, ka: int) -> float:
 
 @dataclass
 class ClosedParams:
-    """Parameters of the closed-form models."""
-    # Common 8 parameters (pure model uses just these)
+    """Parameters of the closed-form models.
+
+    Pure model (v4): 11 parameters.
+        y = a * [c_0 + sin(i*sin(th_d + d_drac))]
+              * (1 + e_eff * cos(th_a + d_ano))
+              * (1 + m_N   * cos(th_N + d_N))
+          + a_sid * cos(th_sid + d_sid)
+                  * (1 + e_eff * cos(th_a + d_ano))
+          + b0
+
+    The leading c_0 inside the inclination factor lets the standalone
+    anomalistic peak (P=27.55 d) emerge as a*c_0*e_eff*cos(th_a+d_ano).
+    The sidereal block (a_sid, d_sid) provides direct sidereal energy at
+    P=27.32 d, and -- through the (1+e*cos th_a) modulation -- it also
+    spawns the anomalistic-sidereal cross-term at P=13.719 d. Both are
+    needed because m_N tends to collapse to ~0 in real data, which kills
+    the sideband structure that the carrier alone would otherwise create.
+    """
+    # Pure-model 11 parameters
     a:       float = 0.0
+    c_0:     float = 0.0       # DC level inside inclination factor
     i_eff:   float = 0.0       # rad
     e_eff:   float = 0.0
     m_N:     float = 0.0
     d_drac:  float = 0.0
     d_ano:   float = 0.0
     d_N:     float = 0.0
+    a_sid:   float = 0.0       # sidereal block amplitude
+    d_sid:   float = 0.0       # sidereal block phase
     b0:      float = 0.0
-    # Extended-model additions
+    # Extended-model additions (only i2 remains; a_3sid retired)
     i2:      float = 0.0       # even-harmonic amplitude (relative to a)
     d_drac2: float = 0.0       # 2*drac phase offset
-    a_3sid:  float = 0.0       # additive 3*sid amplitude (period 9.107 d)
-    d_3sid:  float = 0.0
     # Mixing-carrier additions (semi-annual)
     alpha_sa: float = 0.0      # multiplicative depth (dimensionless)
     T_sa:     float = T_SEMIANNUAL_DEFAULT
@@ -397,36 +422,43 @@ class ClosedParams:
     phi_H_ano_m1N:       float = 0.0
 
 
+# Sidereal angular speed: sid = drac - N, so omega_sid = omega_drac - omega_N.
 def _base_pure(t: np.ndarray, p: ClosedParams) -> np.ndarray:
-    th_d = 2*np.pi*t/gf.P_DRACONIC
-    th_a = 2*np.pi*t/gf.P_ANOMALISTIC
-    th_N = 2*np.pi*t/gf.P_NODAL
-    swing   = np.sin(p.i_eff * np.sin(th_d + p.d_drac))
+    th_d   = 2*np.pi*t/gf.P_DRACONIC
+    th_a   = 2*np.pi*t/gf.P_ANOMALISTIC
+    th_N   = 2*np.pi*t/gf.P_NODAL
+    th_sid = th_d - th_N                                 # P=27.3216 d
+    swing   = p.c_0 + np.sin(p.i_eff * np.sin(th_d + p.d_drac))
     apsidal = 1.0 + p.e_eff * np.cos(th_a + p.d_ano)
     nodal   = 1.0 + p.m_N   * np.cos(th_N + p.d_N)
-    return p.a * swing * apsidal * nodal
+    base    = p.a * swing * apsidal * nodal
+    # Sidereal block (replaces a_3sid). Modulated by the same anomalistic
+    # envelope so that the anomalistic+sidereal cross-term at 13.719 d
+    # emerges from a single additional pair of parameters.
+    sid_block = p.a_sid * np.cos(th_sid + p.d_sid) * apsidal
+    return base + sid_block
 
 
 def _base_extended(t: np.ndarray, p: ClosedParams,
                    strict: StrictSpec | None = None) -> np.ndarray:
-    th_d  = 2*np.pi*t/gf.P_DRACONIC
-    th_a  = 2*np.pi*t/gf.P_ANOMALISTIC
-    th_N  = 2*np.pi*t/gf.P_NODAL
+    th_d   = 2*np.pi*t/gf.P_DRACONIC
+    th_a   = 2*np.pi*t/gf.P_ANOMALISTIC
+    th_N   = 2*np.pi*t/gf.P_NODAL
+    th_sid = th_d - th_N
     th_d_phi = th_d + p.d_drac
     if strict is not None and strict.orbital:
-        # Drop the i2 and a_3sid additions: extended collapses to pure.
-        swing = np.sin(p.i_eff * np.sin(th_d_phi))
+        # Drop the i2 addition: extended collapses to pure.
+        swing = p.c_0 + np.sin(p.i_eff * np.sin(th_d_phi))
     else:
-        swing = (np.sin(p.i_eff * np.sin(th_d_phi))
+        swing = (p.c_0
+                 + np.sin(p.i_eff * np.sin(th_d_phi))
                  + p.i2 * np.sin(2.0 * th_d_phi + p.d_drac2))
     apsidal = 1.0 + p.e_eff * np.cos(th_a + p.d_ano)
     nodal   = 1.0 + p.m_N   * np.cos(th_N + p.d_N)
-    base = p.a * swing * apsidal * nodal
-    # Additive 3*sidereal piece: sid = drac - N, so 3*sid = 3*drac - 3*N.
-    if strict is not None and strict.orbital:
-        return base
-    add  = p.a_3sid * np.cos(3*th_d - 3*th_N + p.d_3sid)
-    return base + add
+    base    = p.a * swing * apsidal * nodal
+    # Sidereal block (always active; subsumes the retired a_3sid term).
+    sid_block = p.a_sid * np.cos(th_sid + p.d_sid) * apsidal
+    return base + sid_block
 
 
 def _compound_term(t: np.ndarray, p: ClosedParams,
@@ -572,6 +604,18 @@ def bootstrap_from_linear(y: np.ndarray, t: np.ndarray,
     p.i_eff = float(g_lin.i_eff_jacobi) if g_lin.i_eff_jacobi > 0 else 0.1
     p.i_eff = max(0.01, min(np.pi/2, p.i_eff))
 
+    # New pure-model seeds: c_0 (DC of inclination factor) and the
+    # sidereal block (a_sid, d_sid).
+    #
+    # c_0 has no direct linear-basis observable; seed it small but nonzero
+    # so the optimizer's gradient is nonzero in that direction.
+    p.c_0 = 0.05
+    # a_sid, d_sid: read directly from the linear-basis amplitude at the
+    # sidereal lattice point (drac-N), which lives at P=27.3216 d.
+    A_sid, phi_sid = g_lin.amps.get("drac-N", (0.0, 0.0))
+    p.a_sid = float(A_sid)
+    p.d_sid = float(phi_sid)
+
     # Extended-model seeds
     # i2: from amplitude at (k_d=2, k_N=0, k_a=0) i.e. '2drac' column,
     # rescaled by carrier a.
@@ -581,12 +625,6 @@ def bootstrap_from_linear(y: np.ndarray, t: np.ndarray,
     # cos basis at 2*drac means amplitude phase = phi_2d (cos-conv).
     # sin form -> add pi/2 and subtract 2*d_drac.
     p.d_drac2 = float(phi_2d + np.pi/2 - 2*p.d_drac)
-
-    # a_3sid: amplitude at '3drac-3N' if present in the basis (added in
-    # the latest version of geometric_fit.py)
-    A_3sid, phi_3sid = g_lin.amps.get("3drac-3N", (0.0, 0.0))
-    p.a_3sid = float(A_3sid)
-    p.d_3sid = float(phi_3sid)
 
     # Mixing-carrier seeds: small nonzero alpha so the optimizer's
     # gradient is nonzero in those directions. Period seeds at the
@@ -614,10 +652,10 @@ def bootstrap_from_linear(y: np.ndarray, t: np.ndarray,
     p.phi_MSqm = 0.0
 
     if verbose:
-        print(f"[boot]  seeded from linear: a={p.a:.4g}, "
+        print(f"[boot]  seeded from linear: a={p.a:.4g}, c_0={p.c_0:.4g}, "
               f"i_eff={np.rad2deg(p.i_eff):.2f} deg, "
               f"e_eff={p.e_eff:.4f}, m_N={p.m_N:.4f}, "
-              f"i2={p.i2:.4g}, a_3sid={p.a_3sid:.4g}")
+              f"a_sid={p.a_sid:.4g}, i2={p.i2:.4g}")
 
     return p, dict(
         linear_r2 = diag_lin["r2"],
@@ -629,20 +667,25 @@ def bootstrap_from_linear(y: np.ndarray, t: np.ndarray,
 # ============================================================================
 # Bounded TRF refinement
 # ============================================================================
-# Core 8-vector  -- common to both models, mix-independent
-_CORE_NAMES = ("a", "i_eff", "e_eff", "m_N",
-               "d_drac", "d_ano", "d_N", "b0")
-_EXT_NAMES  = ("i2", "d_drac2", "a_3sid", "d_3sid")
+# Core 11-vector  -- common to pure & extended, mix-independent.
+# Includes c_0 (DC inside inclination factor) and the sidereal block
+# (a_sid, d_sid). The sidereal block replaces the retired a_3sid term.
+_CORE_NAMES = ("a", "c_0", "i_eff", "e_eff", "m_N",
+               "d_drac", "d_ano", "d_N",
+               "a_sid", "d_sid", "b0")
+_EXT_NAMES  = ("i2", "d_drac2")
 _SA_NAMES   = ("alpha_sa", "T_sa", "phi_sa")
 _EV_NAMES   = ("alpha_ev", "T_ev", "phi_ev")
 _CMP_NAMES  = ("A_Mf", "phi_Mf", "A_Mt", "phi_Mt", "A_MSqm", "phi_MSqm")
 
-_CORE_LB = np.array([1e-9, 1e-3, 0.0, 0.0,
-                     -10*np.pi, -10*np.pi, -10*np.pi, -np.inf])
-_CORE_UB = np.array([np.inf, np.pi/2, 0.9, 1.5,
-                      10*np.pi,  10*np.pi,  10*np.pi,  np.inf])
-_EXT_LB  = np.array([-1.0, -10*np.pi, 0.0, -10*np.pi])
-_EXT_UB  = np.array([ 1.0,  10*np.pi, np.inf, 10*np.pi])
+_CORE_LB = np.array([1e-9,  -1.0, 1e-3, 0.0, 0.0,
+                     -10*np.pi, -10*np.pi, -10*np.pi,
+                     -np.inf, -10*np.pi, -np.inf])
+_CORE_UB = np.array([np.inf, 1.0, np.pi/2, 0.9, 1.5,
+                      10*np.pi,  10*np.pi,  10*np.pi,
+                      np.inf, 10*np.pi, np.inf])
+_EXT_LB  = np.array([-1.0, -10*np.pi])
+_EXT_UB  = np.array([ 1.0,  10*np.pi])
 # Mixing carriers: alpha bounded ~[-0.9, 0.9] so 1+env stays positive,
 # T bounded tightly so the optimizer can't escape.
 _SA_LB = np.array([-0.9, 170.0, -10*np.pi])
@@ -682,7 +725,7 @@ def _layout(model: str, mix: MixSpec,
     names = _CORE_NAMES
     lb, ub = _CORE_LB, _CORE_UB
     if model == "extended" and not strict.orbital:
-        # Only include i2/a_3sid as free params if extended AND not strict.
+        # Only include i2 as free param if extended AND not strict.
         names = names + _EXT_NAMES
         lb = np.concatenate([lb, _EXT_LB])
         ub = np.concatenate([ub, _EXT_UB])
@@ -749,7 +792,7 @@ def fit_closed(y: np.ndarray, t: np.ndarray, p0: ClosedParams,
     p_fit = _unpack(res.x, names, p0)
 
     # Wrap phases into [0, 2pi)
-    phase_names = ["d_drac", "d_ano", "d_N", "d_drac2", "d_3sid",
+    phase_names = ["d_drac", "d_ano", "d_N", "d_sid", "d_drac2",
                    "phi_sa", "phi_ev",
                    "phi_Mf", "phi_Mt", "phi_MSqm"]
     for label, _, _, _ in _harm_lattice(harm.level):
@@ -851,6 +894,8 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
         "Recovered closed-form parameters",
         "-" * 60,
         f"  a            = {p.a:.6g}        (carrier amplitude)",
+        f"  c_0          = {p.c_0:+.6f}        (DC of inclination factor; "
+        f"enables standalone anomalistic at 27.55 d)",
         f"  i_eff        = {p.i_eff:.6f} rad   "
         f"({np.rad2deg(p.i_eff):.3f} deg)   (effective inclination)",
         f"  e_eff        = {p.e_eff:.6f}        (effective eccentricity)",
@@ -861,6 +906,11 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
         f"({np.rad2deg(p.d_ano):.2f} deg)",
         f"  d_N          = {p.d_N:.4f} rad   "
         f"({np.rad2deg(p.d_N):.2f} deg)",
+        f"  a_sid        = {p.a_sid:+.6g}       (sidereal block amp; "
+        f"P_sid=27.3216 d. Modulated by (1+e_eff*cos th_a) so it also "
+        f"spawns ano+sid at 13.719 d.)",
+        f"  d_sid        = {p.d_sid:.4f} rad   "
+        f"({np.rad2deg(p.d_sid):.2f} deg)",
         f"  b0           = {p.b0:.6g}",
     ]
     if model == "extended":
@@ -871,10 +921,6 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
             f"breaks Jacobi-Anger no-2*drac restriction)",
             f"  d_drac2      = {p.d_drac2:.4f} rad   "
             f"({np.rad2deg(p.d_drac2):.2f} deg)",
-            f"  a_3sid       = {p.a_3sid:.6g}       (additive 3*sid amplitude, "
-            f"period 9.107 d)",
-            f"  d_3sid       = {p.d_3sid:.4f} rad   "
-            f"({np.rad2deg(p.d_3sid):.2f} deg)",
         ]
     if compound.lunar:
         lines += [
@@ -896,9 +942,10 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
     if strict.orbital:
         lines += [
             "",
-            "  --strict-orbital ACTIVE: i2 and a_3sid suppressed; orbital",
-            "  module is the 8-param strict product. Compound-tide module",
-            "  carries the 13.6 / 9 / 6.8 d band variance.",
+            "  --strict-orbital ACTIVE: i2 suppressed in extended model;",
+            "  orbital module is the 11-param pure form (carrier with c_0",
+            "  + sidereal block). Compound-tide module carries the",
+            "  13.6 / 9 / 6.8 d compound-tide band variance.",
         ]
     if harm.level != "none":
         lines += [
@@ -1059,7 +1106,7 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
             n = len(t_f)
             window = 0.5 - 0.5*np.cos(2*np.pi*np.arange(n)/max(n-1,1))
             x = (resid - resid.mean()) * window
-            freqs = np.linspace(1.0/28.0, 1.0/27.0, 4000)
+            freqs = np.linspace(1.0/28.0, 1.0/26.0, 4000)
             angfreqs = 2*np.pi*freqs
             pgram = lombscargle(t_f, x.astype(float), angfreqs, normalize=True)
             periods = 1.0/freqs
@@ -1134,7 +1181,7 @@ def main():
                          "with locked periods and free amplitude+phase "
                          "each (6 extra params)")
     ap.add_argument("--strict-orbital", action="store_true",
-                    help="in extended model, suppress i2 and a_3sid so "
+                    help="in extended model, suppress i2 so "
                          "the orbital module is the strict 8-param product. "
                          "Combine with --compound-tides lunar to test "
                          "whether the even-harmonic peaks are geometric "
