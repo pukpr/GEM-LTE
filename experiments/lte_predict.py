@@ -309,11 +309,11 @@ def plot_prediction(
 ) -> None:
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.plot(times, prediction, color="tab:red", linewidth=1.1, label="Predicted")
-    ax.plot(times, mean_component, color="black", linewidth=0.8, linestyle="--", alpha=0.8, label="mean_forcing component")
-    ax.plot(times, annual_component, color="tab:blue", linewidth=0.7, alpha=0.7, label="annual correction")
+    ax.plot(times, mean_component, color="gray", linewidth=0.6, linestyle=":", alpha=0.8, label="mean_forcing component")
+    ax.plot(times, annual_component, color="tab:green", linewidth=0.3, linestyle="-.", alpha=0.7, label="annual correction")
     if comparison_df is not None and not comparison_df.empty:
         label = "Target actual data" if target_series_mode == "actual" else "Target lte_results model"
-        ax.plot(comparison_df["time"], comparison_df["actual"], color="tab:green", linewidth=0.9, label=label)
+        ax.plot(comparison_df["time"], comparison_df["actual"], color="tab:blue", linewidth=0.9, label=label)
     ax.set_title(f"LTE prediction for {target['site_id']} — {target['name']}")
     ax.set_xlabel("Decimal year")
     ax.set_ylabel("Model value")

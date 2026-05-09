@@ -60,7 +60,7 @@ package body GEM.LTE.Primitives.Solution is
    Trigger : Long_Float := GEM.Getenv ("TRIGGER", 0.999_999);
    Ratio : constant Long_Float := GEM.Getenv ("RATIO", 0.0);
    NLoops : constant Integer := GEM.Getenv ("NLOOPS", 20); --100
-   LTE_abs : constant Long_Float := GEM.Getenv ("ABS", 0.0);
+   LTE_abs : constant Long_Float := GEM.Getenv ("LTE_ABS", 0.0);
    Delay_Difference : constant Long_Float :=
      GEM.Getenv ("DD", 0.0); -- 1.0 = Full
    Diff_Delay_N : constant Integer := GEM.Getenv ("DDN", 23);
@@ -71,6 +71,7 @@ package body GEM.LTE.Primitives.Solution is
    Quad : constant Boolean := GEM.Getenv ("QUAD", False);
    Two_Stage : constant Boolean := GEM.Getenv ("STAGES", True);
    Test_Only : constant Boolean := GEM.Getenv ("TEST_ONLY", False);
+   Bessel_Mode : constant Integer := GEM.Getenv ("BM", 1);
 
    --  Compare model output against reference tidal data (dLOD - day length)
    --  Used for validation rather than optimization - generates CSV files
@@ -629,8 +630,8 @@ package body GEM.LTE.Primitives.Solution is
          for I in Model'Range loop
             M (I).Value :=
               M (I).Value +
-              Polarity * Value *
-                Cos (2.0 * Pi * D.B.IR * M (I).Date + D.B.ImpB) +
+              --Polarity * Value *
+              --  Cos (2.0 * Pi * D.B.IR * M (I).Date + D.B.ImpB) +
               Polarity * Annual_Factor * D.B.Ann1 *
                 Cos (2.0 * Pi * M (I).Date + D.B.Ann2) +
               Polarity * Annual_Factor * Semi_Factor * D.B.Sem1 *
@@ -638,6 +639,51 @@ package body GEM.LTE.Primitives.Solution is
          end loop;
          return M;
       end Annual_Add;
+
+      function Bessel
+        (Model : in Data_Pairs; 
+         eS, eC, k, k2, eS2, eC2 : in Long_Float) return Data_Pairs
+      is
+         M : Data_Pairs := Model;
+         Pi : Long_Float := Ada.Numerics.Pi;
+         use Ada.Numerics.Long_Elementary_Functions;
+      begin
+         for I in Model'Range loop
+            M (I).Value := M (I).Value + eS*Sin(2.0 * Pi * k * M (I).Value) + 
+                                         eC*Cos(2.0 * Pi * k * M (I).Value) +
+                                     eS2*eS*Sin(2.0 * Pi * k2* M (I).Value) + 
+                                     eC2*eC*Cos(2.0 * Pi * k2* M (I).Value);
+                               -- Secondary*eS*Sin(2.0 * Pi * k2* M (I).Value) + 
+                               -- Secondary*eC*Cos(2.0 * Pi * k2* M (I).Value);
+         end loop;
+         return M;
+      end Bessel;
+
+      function Bessel1
+        (Model : in Data_Pairs; 
+         eS, eC, k, Bias : in Long_Float) return Data_Pairs
+      is
+         M : Data_Pairs := Model;
+         Pi : Long_Float := Ada.Numerics.Pi;
+         use Ada.Numerics.Long_Elementary_Functions;
+         A, Phase, Value : Long_Float;
+      begin
+         for I in Model'Range loop
+            A := sqrt(eS*eS + eC*eC);
+            if eC = 0.0 and eS = 0.0 then
+               Phase := 0.0;
+            else
+               Phase := arctan(eC,eS);
+            end if;
+            Value := A*Sin(2.0 * Pi * k * M (I).Value + Phase);
+            if Bias /= 0.0 then
+               Value := Value*(abs(Value))**Bias;
+            end if;
+            M (I).Value := M (I).Value + Value;
+         end loop;
+         return M;
+      end Bessel1;
+
 
       procedure Put_CC
         (Val1, Val2 : in Long_Float; Counter : in Long_Integer;
@@ -776,8 +822,9 @@ package body GEM.LTE.Primitives.Solution is
                   (Template => Data_Records, Constituents => D.B.LPAP,
                    Periods => D.A.LP, Ref_Time => 0.0, Scaling => 0.0,
                    Year_Len => Year_Length, Integ => 0.0,
-                   Ext_Forcing => Data_Ext, Ext_Factor => D.B.ImpA,
-                   Ext_Phase => D.B.ImpB, Ext_Amp => D.B.IR),
+                   Ext_Forcing => Data_Ext, Ext_Factor => 0.0, -- D.B.ImpA,
+                   Ext_Phase => 0.0, -- D.B.ImpB, 
+                   Ext_Amp => 0.0), --D.B.IR),
               Offset => D.B.bg, Ramp => Ramp,
               Start => Data_Records (Data_Records'First).Date);
 
@@ -792,7 +839,7 @@ package body GEM.LTE.Primitives.Solution is
             F :=
               IIR
                 (Raw => Impulses, lagA => der, lagB => Revert_to_Mean * D.B.mA,
-                 lagC => D.B.mP, iA => D.B.init, iB => 0.0, iC => D.B.ImpC,
+                 lagC => D.B.mP, iA => D.B.init, iB => 0.0, iC => 0.0, -- D.B.ImpC,
                  Start => Initial_Conditions_Date, mA => 0.0, mB => 0.0);
          end if;
 
@@ -953,7 +1000,11 @@ package body GEM.LTE.Primitives.Solution is
                end if;
             end if;
             DR := Annual_Add (DR, -1.0);
-
+            if NM = 1 then
+               Forcing := Bessel(Forcing, D.B.ImpA, D.B.ImpB, M(NM), 0.0, 0.0, 0.0);
+            else
+               Forcing := Bessel(Forcing, D.B.ImpA, D.B.ImpB, M(NM), M(NM-1), D.B.ImpC, D.B.IR);
+            end if;
             Regression_Factors
               (Data_Records => Excluded (DR), -- Time series
             --  TODO: Can remove - First/Last parameters were factored into the
@@ -987,6 +1038,9 @@ package body GEM.LTE.Primitives.Solution is
             if Forcing_Only or (Is_Minimum_Entropy and not MLR_On) then
                Model := Forcing;
             else
+               --if Bessel_Mode = 3 then
+               --   Forcing := Bessel(Forcing, D.B.ImpA, D.B.ImpB, M(NM), D.B.ImpC);
+               --end if;
                Model :=
                  LTE
                    (Forcing => Forcing,

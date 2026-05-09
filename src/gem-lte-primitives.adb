@@ -200,8 +200,16 @@ package body GEM.LTE.Primitives is
       Res : Data_Pairs := Raw;
       Start_Index : Integer;
       Ramp : Long_Float;
+      Mem : Long_Float;
 
    begin
+      if lagA > 1.0 then
+         Mem := 1.0;
+      elsif lagA < 0.0 then
+         Mem := 0.0;
+      else
+         Mem := lagA;
+      end if;
       for I in Raw'Range loop
          Start_Index := I;
          exit when Raw (I).Date > Start;
@@ -212,13 +220,13 @@ package body GEM.LTE.Primitives is
       Res (Start_Index).Value := iA;
       for I in Start_Index + 1 .. Raw'Last loop
          Ramp := Long_Float'Copy_Sign (lagC, Res (I - 1).Value);
-         Res (I).Value := Raw (I).Value + Res (I - 1).Value - Ramp;
+         Res (I).Value := Raw (I).Value + Mem*Res (I - 1).Value - Ramp;
       end loop;
 
    -- If Start is inside the series, create "pre-history" by running backwards
       for I in reverse (Raw'First + 1) .. Start_Index loop
          Ramp := Long_Float'Copy_Sign (lagC, Res (I).Value);
-         Res (I - 1).Value := -Raw (I - 1).Value + Res (I).Value + Ramp; -- + Ramp
+         Res (I - 1).Value := -Raw (I - 1).Value + Mem*Res (I).Value + Ramp; -- + Ramp
       end loop;
 
       return Res;

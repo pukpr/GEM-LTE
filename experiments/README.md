@@ -181,3 +181,34 @@ earlier research question in a structured way: whether the low-rank annual
 correction shows commonality across many indices, whether sites naturally
 cluster by annual-correction signature, and whether relative phase or signed
 mode participation appears to vary with geography.
+
+## Harmonic signature map
+
+`lte_signature_map.py` visualizes the periodic forcing-modulation signature at
+each site. It reconstructs a compact periodic curve from the fitted
+`sin(M)`, `cos(M)`, and `sin(k M)` / `cos(k M)` harmonic coefficients, then
+plots that small x-y signature glyph directly at the site's longitude/latitude.
+
+It writes:
+
+- `harmonic_signature_summary.csv`
+- `harmonic_signature_map_summary.json`
+- `harmonic_signature_map.png`
+- `harmonic_signature_gallery.png`
+
+Typical usage:
+
+```bash
+cd experiments
+python3 lte_signature_map.py \
+  --model-dir annual_forcing_feature_outputs
+```
+
+For dense regions such as the Baltic, a basin-filtered regional view is usually
+easier to read:
+
+```bash
+python3 lte_signature_map.py \
+  --model-dir annual_forcing_feature_outputs \
+  --basin baltic
+```

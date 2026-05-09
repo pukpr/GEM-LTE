@@ -7,7 +7,7 @@ data:
     path: experiments/Feb2026/mean_forcing.dat
     composite_ridge: 1.0e-4
     lasso_alpha: 0.01
-    max_harmonic_factor: 30
+    max_harmonic_factor: 7
   exclude_prefixes:
     - qbo
   exclude_sites:

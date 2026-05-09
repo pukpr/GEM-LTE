@@ -32,27 +32,46 @@ the data: it produces only odd k_d harmonics by Jacobi-Anger.
 Two closed forms supported here
 -------------------------------
 
-1. ``pure`` -- the 11-parameter physical-geometry form:
+1. ``pure`` -- the 13-parameter physical-geometry form (v7):
 
         y(t) = a * [ c_0 + sin(i sin(th_d + d_drac)) ]
                  * (1 + e_eff cos(th_a + d_ano))
-                 * (1 + m_N   cos(th_N + d_N))
              + a_sid * cos(th_sid + d_sid)
+                     * (1 + e_eff cos(th_a + d_ano))
+             + a_mir * cos(th_mir + d_mir)
+                     * (1 + e_eff cos(th_a + d_ano))
+             + a_lat * |sin(th_d + d_lat)|
                      * (1 + e_eff cos(th_a + d_ano))
              + b0
 
+   with th_sid = th_d - th_N (sidereal, P=27.3216 d) and
+        th_mir = th_d + th_N (sidereal mirror, P=27.1037 d).
+
    The leading c_0 lets a *standalone* anomalistic peak emerge at
    P=27.55 d as a*c_0*e_eff*cos(th_a+d_ano), which the original AC-only
-   carrier `sin(i*sin th_d)` could never produce. The sidereal block
-   (a_sid, d_sid) is an additive sidereal harmonic at P=27.3216 d (sid =
-   drac - N) modulated by the same anomalistic envelope, so a SINGLE
-   amp+phase pair simultaneously emits both the sidereal peak and the
-   anomalistic+sidereal cross-term at P=13.719 d. Both are physically
-   essential because m_N tends to collapse to ~0 in real data, which
-   kills the sideband structure that the carrier alone would otherwise
-   create. (The retired 3*sid term, which assumed the strong 'sid_mirror'
-   at drac+N, was a worse model -- the +N mirror is weak, the -N
-   sidereal is strong.)
+   carrier `sin(i*sin th_d)` could never produce. The sidereal and
+   mirror blocks have INDEPENDENT amplitudes -- this was the v6 fix.
+   Earlier versions modulated the carrier by (1 + m_N*cos(th_N+d_N)),
+   which forced drac+N (mirror) and drac-N (sidereal) to have EQUAL
+   amplitudes, but real data has strong sidereal and weak mirror. The
+   carrier-coupling path was leaking the sidereal-mirror asymmetry into
+   the free-harmonic block. Each block is multiplied by the apsidal
+   envelope, so a single (amp, phase) pair sources both the 27-day
+   peak and its 13.7-day anomalistic cross-term.
+
+   The v7 addition is the 'absolute-latitude' block a_lat * |sin(th_d +
+   d_lat)|. Its Fourier expansion is even-only in the draconic angle
+   with FIXED amplitude ratios:
+       |sin x| = 2/pi - (4/pi) * sum_{k>=1} cos(2k x)/(4k^2-1)
+   so a single (a_lat, d_lat) pair sources the entire even-harmonic
+   ladder 2*drac (P=13.6061 d), 4*drac (P=6.8030 d), 6*drac (P=4.5354 d)
+   etc., plus -- under apsidal modulation -- their anomalistic sidebands
+   at locked geometric ratios. Physically this corresponds to a tidal
+   integrand that depends on |sin(declination)| (e.g. equatorial-bulge
+   torque magnitude, or hemisphere-symmetric integrated quantities)
+   rather than signed declination. With the new term active, H_2drac
+   in the harmonic block collapses to numerical zero -- it's now sourced
+   by the orbital module at the correct |sin| ratio.
 
 2. ``extended`` -- pure + an explicit even-harmonic generator (i2,
    d_drac2) inside the inclination factor:
@@ -286,10 +305,12 @@ class HarmonicSpec:
       'k3'   -- adds 3*drac block: (3,0,0), (3,-1,0), (3,-2,0), (3,-3,0)
                 plus the 2drac block (2,0,0), (2,-1,0)
                 plus 2ano (0,0,2) -- 7 amp/phase pairs = 14 params
-      'full' -- 'k3' + asymmetric carrier sidebands (drac+N, drac-N
-                additive corrections allowing amplitude asymmetry)
-                plus drac-N+ano, 2drac+N+ano, ano-N
-                -- 12 amp/phase pairs = 24 params
+      'full' -- 'k3' + ano+sid (13.72), ano+mir (13.67), 2drac+N+ano
+                (9.10), ano-N (27.67). Note: drac+/-N (the 27-day ±N
+                sidebands) are now sourced by the sidereal/mirror
+                blocks in the orbital module, so they are NOT in the
+                free-harmonic block any more (the v6 fix).
+                -- 11 amp/phase pairs = 22 params
     """
     level: str = "none"           # 'none' | 'k3' | 'full'
 
@@ -298,7 +319,7 @@ class HarmonicSpec:
         if self.level == "k3":
             return 14
         if self.level == "full":
-            return 24
+            return 22
         return 0
 
     @property
@@ -310,22 +331,29 @@ class HarmonicSpec:
 # Each contributes one (A, phi) free pair.
 _HARM_K3_LATTICE = (
     # 3*drac block (the 9-day band)
-    ("H_3drac",      3,  0,  0),    #  9.0707 d
+    # ("H_3drac",      3,  0,  0),    #  9.0707 d
+    ("H_drac_pN",      2,  -1, -1),    #  26.985 d
     ("H_3drac_m1N",  3, -1,  0),    #  9.0829 d  <-- biggest gap
     ("H_3drac_m2N",  3, -2,  0),    #  9.0950 d
     ("H_3drac_m3N",  3, -3,  0),    #  9.1072 d
     # 2*drac block (the 13.6 d band)
-    ("H_2drac",      2,  0,  0),    # 13.6061 d
+    # NOTE: in v7 the (2,0,0) point is sourced by the |sin th_d|
+    # absolute-latitude block in the orbital module (a_lat, d_lat),
+    # together with the 4*drac, 6*drac, ... ladder at locked geometric
+    # ratios. We keep H_2drac_m1N here because the |sin| series has no
+    # nodal content; that sideband still needs a free amplitude.
     ("H_2drac_m1N",  2, -1,  0),    # 13.6334 d
     # 2*ano peak (the 13.78 d secondary)
     ("H_2ano",       0,  0,  2),    # 13.7773 d
 )
 _HARM_FULL_EXTRA_LATTICE = (
-    # asymmetric carrier sidebands (additive corrections):
-    ("H_drac_p1N",   1, +1,  0),    # 27.1037 d
-    ("H_drac_m1N",   1, -1,  0),    # 27.3216 d
-    # cross-band gaps
-    ("H_drac_m1N_p1a", 1, -1, +1),   # 13.7188 d
+    # NOTE: in v6 the drac+/-N points (27.10 / 27.32 d) are sourced by
+    # the sidereal/mirror blocks in the orbital module. The 13.72 d
+    # cross-term IS partially sourced by the sidereal block's apsidal
+    # envelope but typically not at sufficient amplitude (ratio is
+    # a_sid * e/2), so we keep it as a free corrective.
+    ("H_drac_m1N_p1a", 1, -1, +1), # 13.7188 d (ano+sid corrective)
+    ("H_drac_p1N_p1a", 1, +1, +1), # 13.6650 d (ano+mir corrective)
     ("H_2drac_p1N_p1a", 2, +1, +1), #  9.0963 d
     ("H_ano_m1N",    0, -1, +1),    # 27.6666 d
 )
@@ -348,33 +376,51 @@ def _harm_omega(kd: int, kN: int, ka: int) -> float:
 class ClosedParams:
     """Parameters of the closed-form models.
 
-    Pure model (v4): 11 parameters.
+    Pure model (v7): 13 parameters.
         y = a * [c_0 + sin(i*sin(th_d + d_drac))]
               * (1 + e_eff * cos(th_a + d_ano))
-              * (1 + m_N   * cos(th_N + d_N))
-          + a_sid * cos(th_sid + d_sid)
-                  * (1 + e_eff * cos(th_a + d_ano))
+          + a_sid * cos(th_sid + d_sid) * (1 + e_eff * cos(th_a + d_ano))
+          + a_mir * cos(th_mir + d_mir) * (1 + e_eff * cos(th_a + d_ano))
+          + a_lat * |sin(th_d + d_lat)| * (1 + e_eff * cos(th_a + d_ano))
           + b0
+
+    where th_sid = th_d - th_N (sidereal, P=27.3216 d) and
+          th_mir = th_d + th_N (sidereal mirror, P=27.1037 d).
 
     The leading c_0 inside the inclination factor lets the standalone
     anomalistic peak (P=27.55 d) emerge as a*c_0*e_eff*cos(th_a+d_ano).
-    The sidereal block (a_sid, d_sid) provides direct sidereal energy at
-    P=27.32 d, and -- through the (1+e*cos th_a) modulation -- it also
-    spawns the anomalistic-sidereal cross-term at P=13.719 d. Both are
-    needed because m_N tends to collapse to ~0 in real data, which kills
-    the sideband structure that the carrier alone would otherwise create.
+    The sidereal and mirror blocks have INDEPENDENT amplitudes -- this
+    removes the false symmetry that the previous (1+m_N*cos th_N)
+    carrier modulation imposed on drac+/-N (where the carrier could
+    only paint both sidebands with the SAME amplitude). On real data
+    drac-N (sidereal) is strong while drac+N (mirror) is weak, and the
+    nodal-modulation hypothesis fails on long baselines anyway. Each
+    block is multiplied by the apsidal envelope so it also sources its
+    natural anomalistic cross-term: ano+sid at 13.719 d, ano+mir at
+    13.665 d.
     """
-    # Pure-model 11 parameters
+    # Pure-model 13 parameters (v7)
     a:       float = 0.0
     c_0:     float = 0.0       # DC level inside inclination factor
     i_eff:   float = 0.0       # rad
     e_eff:   float = 0.0
-    m_N:     float = 0.0
     d_drac:  float = 0.0
     d_ano:   float = 0.0
-    d_N:     float = 0.0
-    a_sid:   float = 0.0       # sidereal block amplitude
-    d_sid:   float = 0.0       # sidereal block phase
+    # v7.1: sidereal/mirror blocks reparametrized to Cartesian (c, s)
+    # coefficients to remove the (A, phi) coordinate singularity at A=0.
+    # Polar (a_*, d_*) values are derivable as
+    #   a = sqrt(c^2+s^2),  d = atan2(-s, c)
+    # since c*cos(th)+s*sin(th) = sqrt(c^2+s^2)*cos(th + atan2(-s,c)).
+    # NOTE: a_lat / d_lat stay polar because the |sin(th_d+d_lat)| factor
+    # is nonlinear in d_lat and the whole point of this term is the
+    # LOCKED Fourier-ratio ladder across 2,4,6 * drac. Cartesianizing
+    # would dissolve that lock into independent harmonics.
+    c_sid:   float = 0.0       # sidereal block: c*cos(th_sid) + s*sin(th_sid)
+    s_sid:   float = 0.0
+    c_mir:   float = 0.0       # sidereal mirror block
+    s_mir:   float = 0.0
+    a_lat:   float = 0.0       # |sin th_d| even-ladder amplitude (v7)
+    d_lat:   float = 0.0       # |sin th_d| phase
     b0:      float = 0.0
     # Extended-model additions (only i2 remains; a_3sid retired)
     i2:      float = 0.0       # even-harmonic amplitude (relative to a)
@@ -387,56 +433,62 @@ class ClosedParams:
     alpha_ev: float = 0.0
     T_ev:     float = T_EVECTION_DEFAULT
     phi_ev:   float = 0.0
-    # Compound-tide additions (additive; locked periods)
-    A_Mf:    float = 0.0
-    phi_Mf:  float = 0.0
-    A_Mt:    float = 0.0
-    phi_Mt:  float = 0.0
-    A_MSqm:  float = 0.0
-    phi_MSqm: float = 0.0
-    # Free harmonic amplitudes (k3 level)
-    A_H_3drac:        float = 0.0
-    phi_H_3drac:      float = 0.0
-    A_H_3drac_m1N:    float = 0.0
-    phi_H_3drac_m1N:  float = 0.0
-    A_H_3drac_m2N:    float = 0.0
-    phi_H_3drac_m2N:  float = 0.0
-    A_H_3drac_m3N:    float = 0.0
-    phi_H_3drac_m3N:  float = 0.0
-    A_H_2drac:        float = 0.0
-    phi_H_2drac:      float = 0.0
-    A_H_2drac_m1N:    float = 0.0
-    phi_H_2drac_m1N:  float = 0.0
-    A_H_2ano:         float = 0.0
-    phi_H_2ano:       float = 0.0
-    # Free harmonic amplitudes (full level extras)
-    A_H_drac_p1N:        float = 0.0
-    phi_H_drac_p1N:      float = 0.0
-    A_H_drac_m1N:        float = 0.0
-    phi_H_drac_m1N:      float = 0.0
-    A_H_drac_m1N_p1a:    float = 0.0
-    phi_H_drac_m1N_p1a:  float = 0.0
-    A_H_2drac_p1N_p1a:   float = 0.0
-    phi_H_2drac_p1N_p1a: float = 0.0
-    A_H_ano_m1N:         float = 0.0
-    phi_H_ano_m1N:       float = 0.0
+    # Compound-tide additions (additive; locked periods, Cartesian)
+    c_Mf:    float = 0.0
+    s_Mf:    float = 0.0
+    c_Mt:    float = 0.0
+    s_Mt:    float = 0.0
+    c_MSqm:  float = 0.0
+    s_MSqm:  float = 0.0
+    # Free harmonic amplitudes (k3 level, Cartesian)
+    # c_H_3drac:        float = 0.0
+    # s_H_3drac:        float = 0.0
+    c_H_drac_pN:        float = 0.0
+    s_H_drac_pN:        float = 0.0
+    c_H_3drac_m1N:    float = 0.0
+    s_H_3drac_m1N:    float = 0.0
+    c_H_3drac_m2N:    float = 0.0
+    s_H_3drac_m2N:    float = 0.0
+    c_H_3drac_m3N:    float = 0.0
+    s_H_3drac_m3N:    float = 0.0
+    c_H_2drac_m1N:    float = 0.0
+    s_H_2drac_m1N:    float = 0.0
+    c_H_2ano:         float = 0.0
+    s_H_2ano:         float = 0.0
+    # Free harmonic amplitudes (full level extras, Cartesian)
+    c_H_drac_m1N_p1a:    float = 0.0
+    s_H_drac_m1N_p1a:    float = 0.0
+    c_H_drac_p1N_p1a:    float = 0.0
+    s_H_drac_p1N_p1a:    float = 0.0
+    c_H_2drac_p1N_p1a:   float = 0.0
+    s_H_2drac_p1N_p1a:   float = 0.0
+    c_H_ano_m1N:         float = 0.0
+    s_H_ano_m1N:         float = 0.0
 
 
 # Sidereal angular speed: sid = drac - N, so omega_sid = omega_drac - omega_N.
+# Mirror   angular speed: mir = drac + N, so omega_mir = omega_drac + omega_N.
 def _base_pure(t: np.ndarray, p: ClosedParams) -> np.ndarray:
     th_d   = 2*np.pi*t/gf.P_DRACONIC
     th_a   = 2*np.pi*t/gf.P_ANOMALISTIC
     th_N   = 2*np.pi*t/gf.P_NODAL
     th_sid = th_d - th_N                                 # P=27.3216 d
+    th_mir = th_d + th_N                                 # P=27.1037 d
     swing   = p.c_0 + np.sin(p.i_eff * np.sin(th_d + p.d_drac))
     apsidal = 1.0 + p.e_eff * np.cos(th_a + p.d_ano)
-    nodal   = 1.0 + p.m_N   * np.cos(th_N + p.d_N)
-    base    = p.a * swing * apsidal * nodal
-    # Sidereal block (replaces a_3sid). Modulated by the same anomalistic
-    # envelope so that the anomalistic+sidereal cross-term at 13.719 d
-    # emerges from a single additional pair of parameters.
-    sid_block = p.a_sid * np.cos(th_sid + p.d_sid) * apsidal
-    return base + sid_block
+    base    = p.a * swing * apsidal
+    # v7.1: sidereal/mirror blocks now Cartesian (c, s):
+    #   a*cos(th + d) = c*cos(th) + s*sin(th)  with c=a*cos(d), s=-a*sin(d).
+    # Removes the coordinate singularity at a=0 so TRF can escape from
+    # the zero-amplitude saddle even with no bootstrap seed.
+    sid_block = (p.c_sid * np.cos(th_sid) + p.s_sid * np.sin(th_sid)) * apsidal
+    mir_block = (p.c_mir * np.cos(th_mir) + p.s_mir * np.sin(th_mir)) * apsidal
+    # v7: |sin(th_d + d_lat)| absolute-latitude block stays polar -- the
+    # |sin| factor is nonlinear in d_lat and the whole point is the
+    # locked Fourier-ratio ladder across 2,4,6 * drac (and apsidal
+    # sidebands), which Cartesianizing would dissolve.
+    lat_block = p.a_lat * np.abs(np.sin(th_d + p.d_lat)) * apsidal
+    return base + sid_block + mir_block + lat_block
 
 
 def _base_extended(t: np.ndarray, p: ClosedParams,
@@ -445,6 +497,7 @@ def _base_extended(t: np.ndarray, p: ClosedParams,
     th_a   = 2*np.pi*t/gf.P_ANOMALISTIC
     th_N   = 2*np.pi*t/gf.P_NODAL
     th_sid = th_d - th_N
+    th_mir = th_d + th_N
     th_d_phi = th_d + p.d_drac
     if strict is not None and strict.orbital:
         # Drop the i2 addition: extended collapses to pure.
@@ -454,36 +507,44 @@ def _base_extended(t: np.ndarray, p: ClosedParams,
                  + np.sin(p.i_eff * np.sin(th_d_phi))
                  + p.i2 * np.sin(2.0 * th_d_phi + p.d_drac2))
     apsidal = 1.0 + p.e_eff * np.cos(th_a + p.d_ano)
-    nodal   = 1.0 + p.m_N   * np.cos(th_N + p.d_N)
-    base    = p.a * swing * apsidal * nodal
-    # Sidereal block (always active; subsumes the retired a_3sid term).
-    sid_block = p.a_sid * np.cos(th_sid + p.d_sid) * apsidal
-    return base + sid_block
+    base    = p.a * swing * apsidal
+    # Sidereal/mirror/lat blocks (always active in v7).
+    sid_block = (p.c_sid * np.cos(th_sid) + p.s_sid * np.sin(th_sid)) * apsidal
+    mir_block = (p.c_mir * np.cos(th_mir) + p.s_mir * np.sin(th_mir)) * apsidal
+    lat_block = p.a_lat * np.abs(np.sin(th_d + p.d_lat)) * apsidal
+    return base + sid_block + mir_block + lat_block
 
 
 def _compound_term(t: np.ndarray, p: ClosedParams,
                    compound: CompoundSpec | None) -> np.ndarray:
-    """Additive compound-tide module (locked canonical periods)."""
+    """Additive compound-tide module (locked canonical periods, Cartesian)."""
     out = np.zeros_like(t, dtype=float)
     if compound is None or not compound.lunar:
         return out
-    out = out + p.A_Mf   * np.cos(2*np.pi*t/T_Mf   + p.phi_Mf)
-    out = out + p.A_Mt   * np.cos(2*np.pi*t/T_Mt   + p.phi_Mt)
-    out = out + p.A_MSqm * np.cos(2*np.pi*t/T_MSqm + p.phi_MSqm)
+    w_Mf, w_Mt, w_MSqm = 2*np.pi/T_Mf, 2*np.pi/T_Mt, 2*np.pi/T_MSqm
+    out = out + p.c_Mf   * np.cos(w_Mf*t)   + p.s_Mf   * np.sin(w_Mf*t)
+    out = out + p.c_Mt   * np.cos(w_Mt*t)   + p.s_Mt   * np.sin(w_Mt*t)
+    out = out + p.c_MSqm * np.cos(w_MSqm*t) + p.s_MSqm * np.sin(w_MSqm*t)
     return out
 
 
 def _harmonic_term(t: np.ndarray, p: ClosedParams,
                    harm: HarmonicSpec | None) -> np.ndarray:
-    """Additive free-harmonic block on the (kd, kN, ka) lattice."""
+    """Additive free-harmonic block on the (kd, kN, ka) lattice (Cartesian).
+
+    Stores each lattice point as (c, s) with the synthesis
+        c*cos(omega*t) + s*sin(omega*t)
+    which has full-rank Jacobian at the origin and lets TRF escape from
+    zero amplitude without an external seed.
+    """
     out = np.zeros_like(t, dtype=float)
     if harm is None or harm.level == "none":
         return out
     for label, kd, kN, ka in _harm_lattice(harm.level):
-        A = getattr(p, "A_" + label)
-        phi = getattr(p, "phi_" + label)
+        c = getattr(p, "c_" + label)
+        s = getattr(p, "s_" + label)
         omega = _harm_omega(kd, kN, ka)
-        out = out + A * np.cos(omega * t + phi)
+        out = out + c * np.cos(omega * t) + s * np.sin(omega * t)
     return out
 
 
@@ -586,13 +647,9 @@ def bootstrap_from_linear(y: np.ndarray, t: np.ndarray,
     p.d_drac = float(g_lin.d_drac + np.pi/2)
     p.b0     = 0.0
 
-    # m_N from the locked-AM estimate already computed
-    p.m_N   = max(0.0, min(1.0, float(g_lin.m_N)))
-    # Initial nodal phase: average of the two sideband phases (cos-conv).
-    if g_lin.A_dN_plus + g_lin.A_dN_minus > 0:
-        p.d_N = 0.5 * (g_lin.phi_dN_plus + g_lin.phi_dN_minus)
-    else:
-        p.d_N = 0.0
+    # v6: m_N / d_N retired from the carrier (false-symmetry generator).
+    # Sidereal/mirror sidebands are now sourced by the explicit a_sid /
+    # a_mir blocks instead, with bootstrapped seeds below.
 
     p.e_eff = max(0.0, min(0.9, float(g_lin.e_eff)))
     if g_lin.A_da_plus + g_lin.A_da_minus > 0:
@@ -604,17 +661,35 @@ def bootstrap_from_linear(y: np.ndarray, t: np.ndarray,
     p.i_eff = float(g_lin.i_eff_jacobi) if g_lin.i_eff_jacobi > 0 else 0.1
     p.i_eff = max(0.01, min(np.pi/2, p.i_eff))
 
-    # New pure-model seeds: c_0 (DC of inclination factor) and the
-    # sidereal block (a_sid, d_sid).
+    # New pure-model seeds: c_0 (DC of inclination factor),
+    # sidereal block (a_sid, d_sid), mirror block (a_mir, d_mir).
     #
     # c_0 has no direct linear-basis observable; seed it small but nonzero
     # so the optimizer's gradient is nonzero in that direction.
     p.c_0 = 0.05
-    # a_sid, d_sid: read directly from the linear-basis amplitude at the
-    # sidereal lattice point (drac-N), which lives at P=27.3216 d.
+    # v7.1: sidereal/mirror seeded as Cartesian (c, s) =
+    #   (A*cos(phi), -A*sin(phi)).  Even with no seed at all the model
+    # would now optimize cleanly thanks to the full-rank Jacobian, but
+    # using the linear-basis values gives TRF a head start.
     A_sid, phi_sid = g_lin.amps.get("drac-N", (0.0, 0.0))
-    p.a_sid = float(A_sid)
-    p.d_sid = float(phi_sid)
+    p.c_sid = float(A_sid * np.cos(phi_sid))
+    p.s_sid = float(-A_sid * np.sin(phi_sid))
+    A_mir, phi_mir = g_lin.amps.get("drac+N", (0.0, 0.0))
+    p.c_mir = float(A_mir * np.cos(phi_mir))
+    p.s_mir = float(-A_mir * np.sin(phi_mir))
+    # a_lat, d_lat (v7): seed from the linear-basis amplitude at
+    # 2*drac (P=13.6061 d). The |sin th_d| Fourier coefficient at the
+    # k=1 (i.e. 2*drac) term is -4/(3*pi); inverting gives
+    #    a_lat ~= -3*pi/4 * A_2drac (cos-form).
+    # Since the optimizer can absorb sign into d_lat (a |.| function),
+    # we just seed with the magnitude and let phase float.
+    A_2d_lin, phi_2d_lin = g_lin.amps.get("2drac", (0.0, 0.0))
+    p.a_lat = float(abs(A_2d_lin) * (3.0 * np.pi / 4.0))
+    # Phase seed: cos(2 th_d + phi_2d) matches the k=1 term of |sin|
+    # Fourier series, which is -cos(2 th_d - 2 d_lat). So pick
+    #    d_lat ~ phi_2d / 2 + pi/2  (the pi shift accounts for the
+    # negative sign of the leading Fourier coefficient).
+    p.d_lat = float(0.5 * phi_2d_lin + 0.5 * np.pi)
 
     # Extended-model seeds
     # i2: from amplitude at (k_d=2, k_N=0, k_a=0) i.e. '2drac' column,
@@ -644,18 +719,22 @@ def bootstrap_from_linear(y: np.ndarray, t: np.ndarray,
     A_2d, _   = g_lin.amps.get("2drac",      (0.0, 0.0))
     A_dr2s, _ = g_lin.amps.get("drac+2sid",  (0.0, 0.0))
     A_4d2N, _ = g_lin.amps.get("4drac-2N",   (0.0, 0.0))
-    p.A_Mf    = float(A_2d)
-    p.phi_Mf  = 0.0
-    p.A_Mt    = float(A_dr2s)
-    p.phi_Mt  = 0.0
-    p.A_MSqm  = float(A_4d2N)
-    p.phi_MSqm = 0.0
+    p.c_Mf,   p.s_Mf   = float(A_2d),   0.0
+    p.c_Mt,   p.s_Mt   = float(A_dr2s), 0.0
+    p.c_MSqm, p.s_MSqm = float(A_4d2N), 0.0
+
+    # v7.1: harmonic-block (c, s) all default to 0 -- with the Cartesian
+    # parameterization that's a fully feasible starting point.
 
     if verbose:
+        a_sid_eff = float(np.hypot(p.c_sid, p.s_sid))
+        a_mir_eff = float(np.hypot(p.c_mir, p.s_mir))
         print(f"[boot]  seeded from linear: a={p.a:.4g}, c_0={p.c_0:.4g}, "
               f"i_eff={np.rad2deg(p.i_eff):.2f} deg, "
-              f"e_eff={p.e_eff:.4f}, m_N={p.m_N:.4f}, "
-              f"a_sid={p.a_sid:.4g}, i2={p.i2:.4g}")
+              f"e_eff={p.e_eff:.4f}, "
+              f"a_sid={a_sid_eff:.4g}, a_mir={a_mir_eff:.4g}, "
+              f"a_lat={p.a_lat:.4g}, "
+              f"i2={p.i2:.4g}")
 
     return p, dict(
         linear_r2 = diag_lin["r2"],
@@ -667,22 +746,34 @@ def bootstrap_from_linear(y: np.ndarray, t: np.ndarray,
 # ============================================================================
 # Bounded TRF refinement
 # ============================================================================
-# Core 11-vector  -- common to pure & extended, mix-independent.
-# Includes c_0 (DC inside inclination factor) and the sidereal block
-# (a_sid, d_sid). The sidereal block replaces the retired a_3sid term.
-_CORE_NAMES = ("a", "c_0", "i_eff", "e_eff", "m_N",
-               "d_drac", "d_ano", "d_N",
-               "a_sid", "d_sid", "b0")
+# Core 13-vector (v7) -- common to pure & extended, mix-independent.
+# Includes c_0 (DC inside inclination factor), sidereal block
+# (a_sid, d_sid), mirror block (a_mir, d_mir), and the new
+# absolute-latitude block (a_lat, d_lat) that sources the entire
+# even-harmonic draconic ladder (2,4,6 * drac) at locked |sin|
+# Fourier ratios.
+# v6: m_N and d_N removed from the carrier (false-symmetry generator).
+# v7: a_lat, d_lat added; H_2drac removed from harmonic block.
+# v7.1 layout: sid, mir Cartesian (c, s); lat stays polar (a, d).
+_CORE_NAMES = ("a", "c_0", "i_eff", "e_eff",
+               "d_drac", "d_ano",
+               "c_sid", "s_sid",
+               "c_mir", "s_mir",
+               "a_lat", "d_lat", "b0")
 _EXT_NAMES  = ("i2", "d_drac2")
 _SA_NAMES   = ("alpha_sa", "T_sa", "phi_sa")
 _EV_NAMES   = ("alpha_ev", "T_ev", "phi_ev")
-_CMP_NAMES  = ("A_Mf", "phi_Mf", "A_Mt", "phi_Mt", "A_MSqm", "phi_MSqm")
+_CMP_NAMES  = ("c_Mf", "s_Mf", "c_Mt", "s_Mt", "c_MSqm", "s_MSqm")
 
-_CORE_LB = np.array([1e-9,  -1.0, 1e-3, 0.0, 0.0,
-                     -10*np.pi, -10*np.pi, -10*np.pi,
+_CORE_LB = np.array([1e-9,  -1.0, 1e-3, 0.0,
+                     -10*np.pi, -10*np.pi,
+                     -np.inf, -np.inf,
+                     -np.inf, -np.inf,
                      -np.inf, -10*np.pi, -np.inf])
-_CORE_UB = np.array([np.inf, 1.0, np.pi/2, 0.9, 1.5,
-                      10*np.pi,  10*np.pi,  10*np.pi,
+_CORE_UB = np.array([np.inf, 1.0, np.pi/2, 0.9,
+                      10*np.pi,  10*np.pi,
+                      np.inf, np.inf,
+                      np.inf, np.inf,
                       np.inf, 10*np.pi, np.inf])
 _EXT_LB  = np.array([-1.0, -10*np.pi])
 _EXT_UB  = np.array([ 1.0,  10*np.pi])
@@ -692,24 +783,26 @@ _SA_LB = np.array([-0.9, 170.0, -10*np.pi])
 _SA_UB = np.array([ 0.9, 195.0,  10*np.pi])
 _EV_LB = np.array([-0.9,  29.0, -10*np.pi])
 _EV_UB = np.array([ 0.9,  35.0,  10*np.pi])
-# Compound-tide additive amplitudes: free amplitude (any sign), free
-# phase. Periods are LOCKED (not optimized).
-_CMP_LB = np.array([-np.inf, -10*np.pi]*3)
-_CMP_UB = np.array([ np.inf,  10*np.pi]*3)
-# Free harmonic amplitudes: free amp (positive), free phase. Periods locked.
+# Compound-tide additive amplitudes: Cartesian (c, s) -- both unbounded.
+# Periods are LOCKED (not optimized).
+_CMP_LB = np.array([-np.inf]*6)
+_CMP_UB = np.array([ np.inf]*6)
+# Free harmonic amplitudes: Cartesian (c, s) -- both unbounded so the
+# Jacobian has full rank at the origin and TRF can escape from zero
+# without external seeding. Periods locked.
 # Names are auto-derived from the lattice tuples below.
 def _harm_names_for_level(level: str) -> Tuple[str, ...]:
     out: Tuple[str, ...] = ()
     for label, _, _, _ in _harm_lattice(level):
-        out = out + ("A_" + label, "phi_" + label)
+        out = out + ("c_" + label, "s_" + label)
     return out
 
 def _harm_lb_ub_for_level(level: str) -> Tuple[np.ndarray, np.ndarray]:
     n = len(_harm_lattice(level))
     if n == 0:
         return np.array([]), np.array([])
-    lb = np.tile(np.array([0.0, -10*np.pi]), n)
-    ub = np.tile(np.array([np.inf, 10*np.pi]), n)
+    lb = np.tile(np.array([-np.inf, -np.inf]), n)
+    ub = np.tile(np.array([ np.inf,  np.inf]), n)
     return lb, ub
 
 
@@ -791,12 +884,11 @@ def fit_closed(y: np.ndarray, t: np.ndarray, p0: ClosedParams,
                         method="trf", max_nfev=8000, xtol=1e-12)
     p_fit = _unpack(res.x, names, p0)
 
-    # Wrap phases into [0, 2pi)
-    phase_names = ["d_drac", "d_ano", "d_N", "d_sid", "d_drac2",
-                   "phi_sa", "phi_ev",
-                   "phi_Mf", "phi_Mt", "phi_MSqm"]
-    for label, _, _, _ in _harm_lattice(harm.level):
-        phase_names.append("phi_" + label)
+    # Wrap phases into [0, 2pi). v7.1: only genuine phase params remain;
+    # sid/mir/compound/harmonic blocks are now Cartesian (c, s) so they
+    # have no phase to wrap.
+    phase_names = ["d_drac", "d_ano", "d_lat", "d_drac2",
+                   "phi_sa", "phi_ev"]
     for name in phase_names:
         v = getattr(p_fit, name)
         setattr(p_fit, name, float(v % (2*np.pi)))
@@ -899,18 +991,30 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
         f"  i_eff        = {p.i_eff:.6f} rad   "
         f"({np.rad2deg(p.i_eff):.3f} deg)   (effective inclination)",
         f"  e_eff        = {p.e_eff:.6f}        (effective eccentricity)",
-        f"  m_N          = {p.m_N:.6f}        (nodal modulation depth)",
         f"  d_drac       = {p.d_drac:.4f} rad   "
         f"({np.rad2deg(p.d_drac):.2f} deg)",
         f"  d_ano        = {p.d_ano:.4f} rad   "
         f"({np.rad2deg(p.d_ano):.2f} deg)",
-        f"  d_N          = {p.d_N:.4f} rad   "
-        f"({np.rad2deg(p.d_N):.2f} deg)",
-        f"  a_sid        = {p.a_sid:+.6g}       (sidereal block amp; "
+        # v7.1: report sid/mir as derived polar (a, d) for readability
+        # while the optimizer worked in Cartesian (c, s).
+        f"  a_sid        = {np.hypot(p.c_sid, p.s_sid):+.6g}       (sidereal block amp; "
         f"P_sid=27.3216 d. Modulated by (1+e_eff*cos th_a) so it also "
-        f"spawns ano+sid at 13.719 d.)",
-        f"  d_sid        = {p.d_sid:.4f} rad   "
-        f"({np.rad2deg(p.d_sid):.2f} deg)",
+        f"spawns ano+sid at 13.719 d.) [Cartesian: c_sid={p.c_sid:+.4g}, s_sid={p.s_sid:+.4g}]",
+        f"  d_sid        = {np.arctan2(-p.s_sid, p.c_sid):.4f} rad   "
+        f"({np.rad2deg(np.arctan2(-p.s_sid, p.c_sid)):.2f} deg)",
+        f"  a_mir        = {np.hypot(p.c_mir, p.s_mir):+.6g}       (sidereal mirror amp; "
+        f"P_mir=27.1037 d. Independent of a_sid -- breaks the false "
+        f"symmetry of the retired m_N carrier modulation.) [Cartesian: c_mir={p.c_mir:+.4g}, s_mir={p.s_mir:+.4g}]",
+        f"  d_mir        = {np.arctan2(-p.s_mir, p.c_mir):.4f} rad   "
+        f"({np.rad2deg(np.arctan2(-p.s_mir, p.c_mir)):.2f} deg)",
+        # v7: |sin(th_d+d_lat)| absolute-latitude block. Stays polar so
+        # the locked Fourier-ratio ladder across 2,4,6 * drac is
+        # preserved; one (amp, phase) pair sources the entire family.
+        f"  a_lat        = {p.a_lat:+.6g}       (|sin(th_d+d_lat)| even-ladder "
+        f"amp; sources 2*drac=13.6061 d, 4*drac=6.8030 d, 6*drac=4.5354 d "
+        f"at locked |sin| Fourier ratios 1 : 1/5 : 1/7 ...)",
+        f"  d_lat        = {p.d_lat:.4f} rad   "
+        f"({np.rad2deg(p.d_lat):.2f} deg)",
         f"  b0           = {p.b0:.6g}",
     ]
     if model == "extended":
@@ -923,21 +1027,22 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
             f"({np.rad2deg(p.d_drac2):.2f} deg)",
         ]
     if compound.lunar:
+        # v7.1: derived polar (A, phi) reported; underlying (c, s) shown.
+        A_Mf   = float(np.hypot(p.c_Mf,   p.s_Mf));   phi_Mf   = float(np.arctan2(-p.s_Mf,   p.c_Mf))
+        A_Mt   = float(np.hypot(p.c_Mt,   p.s_Mt));   phi_Mt   = float(np.arctan2(-p.s_Mt,   p.c_Mt))
+        A_MSqm = float(np.hypot(p.c_MSqm, p.s_MSqm)); phi_MSqm = float(np.arctan2(-p.s_MSqm, p.c_MSqm))
         lines += [
             "",
             "  Compound-tide additions  (additive; canonical periods locked)",
-            f"  A_Mf         = {p.A_Mf:+.6g}        "
-            f"@ T_Mf   = {T_Mf} d   (lunar fortnightly, K1-O1)",
-            f"  phi_Mf       = {p.phi_Mf:.4f} rad   "
-            f"({np.rad2deg(p.phi_Mf):.2f} deg)",
-            f"  A_Mt         = {p.A_Mt:+.6g}        "
-            f"@ T_Mt   = {T_Mt} d    (ter-mensal lunar)",
-            f"  phi_Mt       = {p.phi_Mt:.4f} rad   "
-            f"({np.rad2deg(p.phi_Mt):.2f} deg)",
-            f"  A_MSqm       = {p.A_MSqm:+.6g}        "
-            f"@ T_MSqm = {T_MSqm} d    (compound quarter-monthly)",
-            f"  phi_MSqm     = {p.phi_MSqm:.4f} rad   "
-            f"({np.rad2deg(p.phi_MSqm):.2f} deg)",
+            f"  A_Mf         = {A_Mf:+.6g}        "
+            f"@ T_Mf   = {T_Mf} d   (lunar fortnightly, K1-O1)  [c={p.c_Mf:+.4g}, s={p.s_Mf:+.4g}]",
+            f"  phi_Mf       = {phi_Mf:.4f} rad   ({np.rad2deg(phi_Mf):.2f} deg)",
+            f"  A_Mt         = {A_Mt:+.6g}        "
+            f"@ T_Mt   = {T_Mt} d    (ter-mensal lunar)  [c={p.c_Mt:+.4g}, s={p.s_Mt:+.4g}]",
+            f"  phi_Mt       = {phi_Mt:.4f} rad   ({np.rad2deg(phi_Mt):.2f} deg)",
+            f"  A_MSqm       = {A_MSqm:+.6g}        "
+            f"@ T_MSqm = {T_MSqm} d    (compound quarter-monthly)  [c={p.c_MSqm:+.4g}, s={p.s_MSqm:+.4g}]",
+            f"  phi_MSqm     = {phi_MSqm:.4f} rad   ({np.rad2deg(phi_MSqm):.2f} deg)",
         ]
     if strict.orbital:
         lines += [
@@ -952,14 +1057,19 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
             "",
             f"  Free-harmonic block (level={harm.label}): explicit additive ",
             f"  amplitudes on the lattice (breaking Bessel ratios).",
+            f"  v7.1: stored as Cartesian (c, s); A=sqrt(c^2+s^2), "
+            f"phi=atan2(-s, c).",
         ]
         for label, kd, kN, ka in _harm_lattice(harm.level):
-            A = float(getattr(p, "A_" + label))
-            phi = float(getattr(p, "phi_" + label))
+            c = float(getattr(p, "c_" + label))
+            s = float(getattr(p, "s_" + label))
+            A = float(np.hypot(c, s))
+            phi = float(np.arctan2(-s, c))
             P = 2*np.pi/_harm_omega(kd, kN, ka) if _harm_omega(kd, kN, ka) != 0 else float('inf')
             lines += [
                 f"  {label:<22s} A={A:+.6g}  phi={phi:.3f} rad  "
-                f"P={P:.4f} d  (kd,kN,ka)=({kd:+d},{kN:+d},{ka:+d})"
+                f"P={P:.4f} d  (kd,kN,ka)=({kd:+d},{kN:+d},{ka:+d})  "
+                f"[c={c:+.4g}, s={s:+.4g}]"
             ]
     if mix.semiannual or mix.evection:
         lines += [
@@ -1073,14 +1183,16 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
     ax.set_ylabel("y")
     title = (f"Closed-form fit ({model})  -  R^2 = {diag['r2']:.4f}, "
              f"a = {p.a:.3g}, i_eff = {np.rad2deg(p.i_eff):.2f} deg, "
-             f"m_N = {p.m_N:.3f}, e_eff = {p.e_eff:.3f}")
+             f"e_eff = {p.e_eff:.3f}, "
+             f"a_sid = {np.hypot(p.c_sid, p.s_sid):.4g}, "
+             f"a_mir = {np.hypot(p.c_mir, p.s_mir):.4g}")
     title_bits = []
     if mix.semiannual:
         title_bits.append(f"a_sa={p.alpha_sa:+.3f}")
     if mix.evection:
         title_bits.append(f"a_ev={p.alpha_ev:+.3f}")
     if compound.lunar:
-        title_bits.append(f"A_Mf={p.A_Mf:+.3g}")
+        title_bits.append(f"A_Mf={np.hypot(p.c_Mf, p.s_Mf):+.3g}")
     if title_bits:
         title += "  [" + ", ".join(title_bits) + "]"
     if strict.orbital:
@@ -1106,7 +1218,7 @@ def save_outputs(out_dir: str, t: np.ndarray, y: np.ndarray,
             n = len(t_f)
             window = 0.5 - 0.5*np.cos(2*np.pi*np.arange(n)/max(n-1,1))
             x = (resid - resid.mean()) * window
-            freqs = np.linspace(1.0/28.0, 1.0/26.0, 4000)
+            freqs = np.linspace(1.0/40.0, 1.0/15.0, 4000)
             angfreqs = 2*np.pi*freqs
             pgram = lombscargle(t_f, x.astype(float), angfreqs, normalize=True)
             periods = 1.0/freqs

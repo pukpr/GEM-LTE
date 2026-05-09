@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
 import datetime
-
+import csv
 
 # ---------------------------------------------------------------------------
 # Core long period tides computation
@@ -106,13 +106,24 @@ def _date_array(start_year: int, n_years: int, dt_days: float = 1.0):
     return t_days, dates
 
 
-def plot_lpap(lpap: list, index: str, start_year: int = 1950, n_years: int = 50):
+def plot_lpap(lpap: list, index: str, start_year: int = 1950, n_years: int = 50, daily: bool = True):
     """
     Plot the composed sum of sinusoids defined by *lpap* over *n_years*
     starting at *start_year*.
     """
-    t_days, dates = _date_array(start_year, n_years, dt_days=1.0)
+    if daily:
+       t_days, dates = _date_array(start_year, n_years, dt_days=1.0)
+    else:
+       start_year = 1880
+       t_days, dates = _date_array(start_year, 150, dt_days=DAYS_PER_YEAR)
+    
     y = compose_sinusoids(lpap, t_days)
+    
+    with open("lpap.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        for td, amp in zip(t_days, y):
+              decimal_year = start_year + td / DAYS_PER_YEAR
+              writer.writerow([decimal_year, amp])
 
     fig, ax = plt.subplots(figsize=(14, 5))
     ax.plot(dates, y, lw=0.8, color="steelblue")
@@ -626,7 +637,11 @@ class App(tk.Tk):
         analyze_menu = tk.Menu(menubar, tearoff=False)
         analyze_menu.add_command(
             label="Plot Tidal Periodicities (lpap)…",
-            command=self._cmd_plot_lpap,
+            command=lambda: self._cmd_plot_lpap(True),
+        )
+        analyze_menu.add_command(
+            label="Plot Tidal annualized …",
+            command=lambda: self._cmd_plot_lpap(False),
         )
         analyze_menu.add_command(
             label="Plot Tidal Amplitude Spectrum (lpap)…",
@@ -735,7 +750,7 @@ class App(tk.Tk):
         else:
             subprocess.Popen(["bash", "-c", "gedit lt.exe.*.dat.p"], cwd=str(run_dir))
 
-    def _cmd_plot_lpap(self):
+    def _cmd_plot_lpap(self, flag):
         """Menu command: Analyze → Plot Tidal Periodicities (lpap)."""
         try:
             target_dir = str(self._run_dir())
@@ -750,7 +765,7 @@ class App(tk.Tk):
             return
 
         try:
-            plot_lpap(lpap, target_dir, start_year=1950, n_years=50)
+            plot_lpap(lpap, target_dir, start_year=1950, n_years=50, daily=flag)
         except (ValueError, TypeError, RuntimeError, OverflowError) as exc:
             messagebox.showerror("Plot error", str(exc))
         
@@ -878,13 +893,16 @@ class App(tk.Tk):
         main.add(right, weight=10)
 
         ttk.Label(left, text="Index directories (select one):").pack(anchor="w")
-        self.dir_list = tk.Listbox(left, height=28)
+        # self.dir_list = tk.Listbox(left, height=28)
+        self.dir_list = tk.Listbox(left, height=28, exportselection=False)
+        self.dir_list.configure(selectbackground="darkblue", selectforeground="white", activestyle="none")
         self.dir_list.pack(fill="both", expand=True)
         self.dir_list.bind("<<ListboxSelect>>", lambda e: self._on_select())
         self.dir_list.bind("<Motion>", self._on_list_motion)
         self.dir_list.bind("<Leave>", self._on_list_leave)
-
+        
         sel_frame = ttk.LabelFrame(right, text="Selected directory + ID.yml info", padding=8)
+        
         sel_frame.pack(fill="x")
 
         self.sel_var = tk.StringVar(value="(none)")
@@ -932,10 +950,12 @@ class App(tk.Tk):
         left_btns = ttk.Frame(btns)
         left_btns.grid(row=0, column=0, sticky="w")
 
-        ttk.Button(left_btns, text="Run lt", command=self.run_lt).pack(side="left")
+        ttk.Style().configure('Green.TButton', background='green', foreground='white')
+        ttk.Style().configure('LGreen.TButton', background='light green', foreground='black')
+        ttk.Button(left_btns, text="Run lt", command=self.run_lt, style='Green.TButton').pack(side="left")
         ttk.Checkbutton(left_btns, text="JSON", variable=self.use_json_var).pack(side="left", padx=(8, 0))
-        ttk.Button(left_btns, text="Run plot", command=self.run_plot).pack(side="left", padx=8)
-        ttk.Button(left_btns, text="Refresh PNG", command=self.show_png).pack(side="left", padx=8)
+        ttk.Button(left_btns, text="Run plot", command=self.run_plot, style='LGreen.TButton').pack(side="left", padx=8)
+        ttk.Button(left_btns, text="Refresh PNG", command=self.show_png, style='LGreen.TButton').pack(side="left", padx=8)
 
         # Right side: interval begin/end editors (LAST on the row)
         # right_fields = ttk.Frame(btns)
