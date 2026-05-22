@@ -464,20 +464,31 @@ def _open_terminal(cmd: list[str], cwd: Path, env: dict) -> None:
 
     title = str(cwd)
     set_title = f'echo -ne "\\033]0;{title}\\007"; '
+    export_prefix = "".join(
+        f"export {key}={shlex.quote(value)}; "
+        for key, value in sorted(env.items())
+        if os.environ.get(key) != value
+    )
     
     term = _find_terminal_linux()
     if term is None:
         # No GUI terminal found — run in background without a new window
         bare_cmd = " ".join(shlex.quote(a) for a in cmd)
         subprocess.Popen(
-            ["bash", "-c", "ulimit -s unlimited && " + bare_cmd],
+            ["bash", "-c", export_prefix + "ulimit -s unlimited && " + bare_cmd],
             cwd=str(cwd), env=env,
         )
         return
 
     term_name = term[0]
     # gnome-terminal uses -- to separate its args from the command
-    shell_cmd = set_title + "ulimit -s unlimited && " + " ".join(shlex.quote(a) for a in cmd) + "; exec bash"
+    shell_cmd = (
+        set_title
+        + export_prefix
+        + "ulimit -s unlimited && "
+        + " ".join(shlex.quote(a) for a in cmd)
+        + "; exec bash"
+    )
     subprocess.Popen(
         term + ["bash", "-c", shell_cmd],
         cwd=str(cwd), env=env,
@@ -588,10 +599,14 @@ class App(tk.Tk):
         self.trend_var = tk.BooleanVar(value=True)  # Default to true
         self.test_only_var = tk.BooleanVar(value=False)  # Default to false
         self.sim_var = tk.BooleanVar(value=False)  # Use lte_results.csv col 2 as calibration target
+        self.lod_var = tk.BooleanVar(value=True)
+        self.tidal_phase_var = tk.BooleanVar(value=False)
+        self.tidal_amplitude_var = tk.BooleanVar(value=False)
 
         self._build_ui()
         self._set_root(self.root_dir)
         self._build_menu()
+        self._sync_calibrate_envs()
         
     # ------------------------------------------------------------------
     # Layout
@@ -662,7 +677,43 @@ class App(tk.Tk):
         )
         menubar.add_cascade(label="Analyze", menu=analyze_menu)
 
+        # ── Calibrate menu ─────────────────────────────────────────────
+        calibrate_menu = tk.Menu(menubar, tearoff=False)
+        calibrate_menu.add_checkbutton(
+            label="test",
+            variable=self.test_only_var,
+        )
+        calibrate_menu.add_checkbutton(
+            label="sim",
+            variable=self.sim_var,
+        )
+        calibrate_menu.add_separator()
+        calibrate_menu.add_checkbutton(
+            label="no LOD cal",
+            variable=self.lod_var,
+            command=self._sync_calibrate_envs,
+        )
+        calibrate_menu.add_checkbutton(
+            label="tidal phase lock",
+            variable=self.tidal_phase_var,
+            command=self._sync_calibrate_envs,
+        )
+        calibrate_menu.add_checkbutton(
+            label="tidal amplitude lock",
+            variable=self.tidal_amplitude_var,
+            command=self._sync_calibrate_envs,
+        )
+        menubar.add_cascade(label="Calibrate", menu=calibrate_menu)
+
         self.config(menu=menubar)
+
+    def _sync_calibrate_envs(self):
+        os.environ["DLOD_REF"] = self._dlod_ref_value()
+        os.environ["LOCKT"] = "TRUE" if self.tidal_phase_var.get() else "FALSE"
+        os.environ["LOCKA"] = "TRUE" if self.tidal_amplitude_var.get() else "FALSE"
+
+    def _dlod_ref_value(self) -> str:
+        return "TRUE" if self.lod_var.get() else "FALSE"
 
 
     # ------------------------------------------------------------------
@@ -994,8 +1045,6 @@ class App(tk.Tk):
         ttk.Checkbutton(right_fields, text="exclude", variable=self.exclude_var).pack(side="left")
         ttk.Checkbutton(right_fields, text="filter", variable=self.filter_var).pack(side="left")
         ttk.Checkbutton(right_fields, text="trend", variable=self.trend_var).pack(side="left")
-        ttk.Checkbutton(right_fields, text="test", variable=self.test_only_var).pack(side="left")
-        ttk.Checkbutton(right_fields, text="sim", variable=self.sim_var).pack(side="left")
 
 
         img_frame = ttk.LabelFrame(right, text="PNG preview (from selected dir)", padding=8)
@@ -1185,6 +1234,9 @@ class App(tk.Tk):
         env["TREND"] = "true" if self.trend_var.get() else "false"
         env["F9"] = "1" if self.filter_var.get() else "0"
         env["TEST_ONLY"] = "true" if self.test_only_var.get() else "false"
+        env["DLOD_REF"] = self._dlod_ref_value()
+        env["LOCKT"] = "TRUE" if self.tidal_phase_var.get() else "FALSE"
+        env["LOCKA"] = "TRUE" if self.tidal_amplitude_var.get() else "FALSE"
 
         _open_terminal(lt_cmd, run_dir, env)
 
