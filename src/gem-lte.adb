@@ -82,7 +82,7 @@ begin
    for I in Doodson_Args'Range loop
       Doodson_Args (I).Period := Doodson (I, Doodson_Args);
       LP (I) := Doodson_Args (I).Period;
-      LPAP (I) := (0.01, 1.0);
+      LPAP (I) := (0.0, 1.0);
    end loop;
 
    for I in Doodson_Set'Range loop

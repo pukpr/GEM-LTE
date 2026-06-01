@@ -1,12 +1,17 @@
-FLIP                           0.01
+FLIP                           0.0015
 SPREAD_MIN                     0.000001
 SPREAD_MAX                     0.15
-MAXH                           400
+MAXH                           20
 -NH                             "1 1 1 1 1 1 1 1 1"
-NH                             "1 1 1 1 1 1 1 1 1 1 1"
+NH                             "1 1 1 1 1 1"
+NH                             "1"
 NM                             1
-YEAR                           0.005
-DLOD_REF                       TRUE
-LOCKT                          FALSE
-DTW                            6
+YEAR                           0.005305
+-DLOD_REF                       TRUE
+-LOCKT                          FALSE
+DTW                            3
+IDATE                          1880.0
+THRESHOLD_ACTION               CATCHUP
+PART                           FALSE
+
 

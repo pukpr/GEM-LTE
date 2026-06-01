@@ -77,6 +77,9 @@ package GEM.LTE.Primitives is
    --
    -- Utility procedures
    --
+   
+   function Winding_Agreement
+     (Model, Data, Manifold : in Data_Pairs) return Long_Float;
 
    -- Correlation coefficient
    function CC (X, Y : in Data_Pairs) return Long_Float;

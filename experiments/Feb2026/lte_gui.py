@@ -151,6 +151,7 @@ def plot_lpap_amplitudes(lpap: list, index: str):
 
     Each bar is labelled with the period (in days) on the y-axis and the
     x-axis tick labels are formatted to 5 significant digits.
+    Ordinals with periods greater than 365 days are plotted as gray bars.
     """
     periods = [float(e[0]) for e in lpap]
     amplitudes = [abs(float(e[1])) for e in lpap]
@@ -162,7 +163,10 @@ def plot_lpap_amplitudes(lpap: list, index: str):
     y_pos = np.arange(n)
 
     fig, ax = plt.subplots(figsize=(10, max(4, 0.35 * n)))
-    ax.barh(y_pos, amplitudes, align="center", color="steelblue", edgecolor="none")
+    
+    # Create colors: gray for periods > 365 days, steelblue for others
+    colors = ["lightgray" if abs(p) > 365 else "steelblue" for p in periods]
+    ax.barh(y_pos, amplitudes, align="center", color=colors, edgecolor="none")
     ax.set_yticks(y_pos)
     ax.set_yticklabels(labels, fontsize=8)
     ax.invert_yaxis()  # longest period at the top
@@ -602,6 +606,7 @@ class App(tk.Tk):
         self.lod_var = tk.BooleanVar(value=True)
         self.tidal_phase_var = tk.BooleanVar(value=False)
         self.tidal_amplitude_var = tk.BooleanVar(value=False)
+        self.zone_var = tk.BooleanVar(value=False)
 
         self._build_ui()
         self._set_root(self.root_dir)
@@ -687,6 +692,11 @@ class App(tk.Tk):
             label="sim",
             variable=self.sim_var,
         )
+        calibrate_menu.add_checkbutton(
+            label="zone",
+            variable=self.zone_var,
+            command=self._sync_calibrate_envs,
+        )
         calibrate_menu.add_separator()
         calibrate_menu.add_checkbutton(
             label="no LOD cal",
@@ -711,6 +721,7 @@ class App(tk.Tk):
         os.environ["DLOD_REF"] = self._dlod_ref_value()
         os.environ["LOCKT"] = "TRUE" if self.tidal_phase_var.get() else "FALSE"
         os.environ["LOCKA"] = "TRUE" if self.tidal_amplitude_var.get() else "FALSE"
+        os.environ["ZONE"] = "TRUE" if self.zone_var.get() else "FALSE"
 
     def _dlod_ref_value(self) -> str:
         return "TRUE" if self.lod_var.get() else "FALSE"
@@ -1237,6 +1248,7 @@ class App(tk.Tk):
         env["DLOD_REF"] = self._dlod_ref_value()
         env["LOCKT"] = "TRUE" if self.tidal_phase_var.get() else "FALSE"
         env["LOCKA"] = "TRUE" if self.tidal_amplitude_var.get() else "FALSE"
+        env["ZONE"] = "TRUE" if self.zone_var.get() else "FALSE"
 
         _open_terminal(lt_cmd, run_dir, env)
 
@@ -1261,8 +1273,10 @@ class App(tk.Tk):
         end   = self.interval_end_var.get().strip()
 
         if IS_WINDOWS:
+            env = os.environ.copy()
+            env["ZONE"] = "TRUE" if self.zone_var.get() else "FALSE"
             cmd = [PYTHON, str(plot_path), index, "Feb2026", begin, end, "0"]
-            _open_terminal(cmd, run_dir, os.environ.copy())
+            _open_terminal(cmd, run_dir, env)
             return
 
         # On Linux: execute plot.py in a subprocess so that matplotlib starts
@@ -1274,6 +1288,7 @@ class App(tk.Tk):
         def _run() -> None:
             env = os.environ.copy()
             env["MPLBACKEND"] = "Agg"  # non-interactive; prevents any window
+            env["ZONE"] = "TRUE" if self.zone_var.get() else "FALSE"
             cmd = [PYTHON, str(plot_path), index, "Feb2026", begin, end, "0"]
             try:
                 result = subprocess.run(

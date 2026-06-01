@@ -418,6 +418,7 @@ package body GEM.LTE.Primitives.Solution is
       ZC_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "ZC";
       FT_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "FT";
       DTW_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "DTW";
+      Winding_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "W";
       CID_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "CID";
       CTW_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "CTW";
       DER_Metric : constant Boolean := GEM.Getenv ("METRIC", "CC") = "DER";
@@ -447,6 +448,7 @@ package body GEM.LTE.Primitives.Solution is
       Lock_Freq : constant Boolean := GEM.Getenv ("LOCKF", False);
       Local_Max : constant Boolean := GEM.Getenv ("LOCAL", False);
       Lock_Tidal : constant Boolean := GEM.Getenv ("LOCKT", False);
+      Lock_T_Amp : constant Boolean := GEM.Getenv ("LOCKA", False);
       Lock_Short_Tidal : constant Boolean := GEM.Getenv ("LOCKST", False);
       Derivative : constant Boolean := GEM.Getenv ("DER", False);
       Partial : constant Boolean := GEM.Getenv ("PART", True);  -- FALSE
@@ -480,6 +482,8 @@ package body GEM.LTE.Primitives.Solution is
             return DER_CC (X, Y);
          elsif FT_Metric then
             return FT_CC (X, Y, Z);
+         elsif Winding_Metric then
+            return (Winding_Agreement (X, Y, Z) + CC(X,Y))/2.0;
          elsif DTW_Metric then
             return DTW_Distance (X, Y, DTW_Window);
          elsif EMD_Metric then
@@ -821,7 +825,7 @@ package body GEM.LTE.Primitives.Solution is
                 Tide_Sum
                   (Template => Data_Records, Constituents => D.B.LPAP,
                    Periods => D.A.LP, Ref_Time => 0.0, Scaling => 0.0,
-                   Year_Len => Year_Length, Integ => 0.0,
+                   Year_Len => Year_Length, Integ => D.B.ShiftT,
                    Ext_Forcing => Data_Ext, Ext_Factor => 0.0, -- D.B.ImpA,
                    Ext_Phase => 0.0, -- D.B.ImpB, 
                    Ext_Amp => 0.0), --D.B.IR),
@@ -840,7 +844,7 @@ package body GEM.LTE.Primitives.Solution is
               IIR
                 (Raw => Impulses, lagA => der, lagB => Revert_to_Mean * D.B.mA,
                  lagC => D.B.mP, iA => D.B.init, iB => 0.0, iC => 0.0, -- D.B.ImpC,
-                 Start => Initial_Conditions_Date, mA => 0.0, mB => 0.0);
+                 Start => Initial_Conditions_Date, mA => 1880.0, mB => 0.0);
          end if;
 
          if LTE_abs > 0.0 then
@@ -974,6 +978,43 @@ package body GEM.LTE.Primitives.Solution is
          for I in 1 .. NH loop
             M (NM + I) := Long_Float (Harms (I)) * M (NM);
          end loop;
+         
+         -- Check for duplicate periods that could cause singular regression matrix
+         declare
+            Has_Duplicates : Boolean := False;
+         begin
+            -- Check if harmonic periods match any base periods
+            for I in 1 .. NH loop
+               for J in 1 .. NM loop
+                  if abs (M (NM + I) - M (J)) < 1.0E-10 then
+                     Text_IO.Put_Line ("Error: Harmonic period matches base period - cannot perform regression");
+                     Has_Duplicates := True;
+                     exit;
+                  end if;
+               end loop;
+               exit when Has_Duplicates;
+            end loop;
+            
+            -- Check for duplicate harmonic periods
+            if not Has_Duplicates and NH > 1 then
+               for I in 1 .. NH - 1 loop
+                  for J in I + 1 .. NH loop
+                     if abs (M (NM + I) - M (NM + J)) < 1.0E-10 then
+                        Text_IO.Put_Line ("Error: Duplicate harmonic periods detected - cannot perform regression");
+                        Has_Duplicates := True;
+                        exit;
+                     end if;
+                  end loop;
+                  exit when Has_Duplicates;
+               end loop;
+            end if;
+            
+            if Has_Duplicates then
+               Singular := True;
+               return;
+            end if;
+         end;
+         
          if MLR_On or not (Forcing_Only or Is_Minimum_Entropy) then
             if Climate_Trend then
                Secular_Trend := 1.0;
@@ -1003,7 +1044,11 @@ package body GEM.LTE.Primitives.Solution is
             if NM = 1 then
                Forcing := Bessel(Forcing, D.B.ImpA, D.B.ImpB, M(NM), 0.0, 0.0, 0.0);
             else
-               Forcing := Bessel(Forcing, D.B.ImpA, D.B.ImpB, M(NM), M(NM-1), D.B.ImpC, D.B.IR);
+               if Lock_Freq then
+                  Forcing := Bessel(Forcing, D.B.ImpA, D.B.ImpB, M(NM-1), M(NM), D.B.ImpC, D.B.IR);
+               else
+                  Forcing := Bessel(Forcing, D.B.ImpA, D.B.ImpB, M(NM), M(NM-1), D.B.ImpC, D.B.IR);
+               end if;
             end if;
             Regression_Factors
               (Data_Records => Excluded (DR), -- Time series
@@ -1265,6 +1310,15 @@ package body GEM.LTE.Primitives.Solution is
                begin
                   Walker.Markov (Set, Keep, Spread, Set0);
                   D.B.LPAP := DBLAP;
+               end;
+            elsif Lock_T_Amp then
+               declare
+                  DBLAP : constant Amp_Phases := D.B.LPAP;
+               begin
+                  Walker.Markov (Set, Keep, Spread, Set0);
+                  for I in DBLAP'Range loop
+                     D.B.LPAP (I).Amplitude := DBLAP (I).Amplitude;
+                  end loop;
                end;
             else
                Walker.Markov (Set, Keep, Spread, Set0);

@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import os
+import json
 
 import matplotlib.image as mpimg
 import warnings
@@ -15,6 +16,26 @@ display = sys.argv[5]
 
 # Get the directory where the script itself is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ZONE_ENABLED = os.environ.get("ZONE", "FALSE").strip().upper() == "TRUE"
+
+
+def load_zone_factor(target_dir):
+    path = os.path.join(target_dir, "lt.exe.p")
+    with open(path, "r", encoding="utf-8") as fh:
+        payload = json.load(fh)
+
+    if not isinstance(payload, dict):
+        raise TypeError(f"{path} must contain a JSON object.")
+
+    ltep = payload.get("ltep")
+    if not isinstance(ltep, list) or not ltep:
+        raise KeyError(f"{path} is missing a non-empty 'ltep' list.")
+
+    return float(ltep[-1])
+
+
+def fold_to_zone(values, factor):
+    return np.mod(np.asarray(values, dtype=float) * factor, 1.0)
 
 # Build the path relative to the script
 img_path = os.path.join(BASE_DIR, 'locs', f"{identifier}_loc.png")
@@ -50,6 +71,22 @@ label_text = identifier
 
 start_time = float(start) # training_data[0,0]
 stop_time = float(stop) # training_data[1,0]
+zone_factor = load_zone_factor(os.getcwd()) if ZONE_ENABLED else None
+
+forcing_values = forcing.to_numpy(copy=False)
+if zone_factor is None:
+    folded_forcing = forcing_values
+    folded_mean_forcing = mean_forcing
+    forcing_ylabel = 'Value'
+    modulation_ylabel = 'Latent forcing level'
+else:
+    folded_forcing = fold_to_zone(forcing_values, zone_factor)
+    folded_mean_forcing = None if mean_forcing is None else mean_forcing.copy()
+    if folded_mean_forcing is not None:
+        folded_mean_forcing[:, 1] = fold_to_zone(folded_mean_forcing[:, 1], zone_factor)
+    fold_label = f'Folded value (k={zone_factor:.6g}, mod 1)'
+    forcing_ylabel = fold_label
+    modulation_ylabel = fold_label
 
 fig, axs = plt.subplots(3, 2, figsize=(16, 12), gridspec_kw={'width_ratios': [2.5, 1]}, sharex=False, facecolor='#e6f2ff')
 
@@ -68,13 +105,13 @@ axs[0,0].plot([start_time, stop_time], [0.0, 0.0], 'k--', linewidth=3, label='Tr
 
 
 # Middle chart: Forcing
-axs[1,0].plot(time, forcing, linewidth=1, color='red')
-if mean_forcing is not None:
-    mean_mask = (mean_forcing[:, 0] >= time.min()) & (mean_forcing[:, 0] <= time.max())
+axs[1,0].plot(time, folded_forcing, linewidth=1, color='red')
+if folded_mean_forcing is not None:
+    mean_mask = (folded_mean_forcing[:, 0] >= time.min()) & (folded_mean_forcing[:, 0] <= time.max())
     if np.any(mean_mask):
         axs[1,0].plot(
-            mean_forcing[mean_mask, 0],
-            mean_forcing[mean_mask, 1],
+            folded_mean_forcing[mean_mask, 0],
+            folded_mean_forcing[mean_mask, 1],
             'k--',
             linewidth=0.6,
             label='Mean forcing',
@@ -82,7 +119,9 @@ if mean_forcing is not None:
         axs[1,0].legend(loc='upper left')
 axs[1,0].set_title('Latent/hidden forcing layer')
 axs[1,0].set_xlabel('Year')
-axs[1,0].set_ylabel('Value')
+axs[1,0].set_ylabel(forcing_ylabel)
+if zone_factor is not None:
+    axs[1,0].set_ylim(0.0, 1.0)
 
 
 # Bottom chart: Running Windowed Correlation
@@ -143,14 +182,17 @@ axs[0,1].set_ylabel('Model')
 axs[0,1].set_xlabel('Data')
 axs[0,1].legend(loc='upper left')
 
+fMod = folded_forcing
 
 # Middle chart: LTE Forcing Modulation
-axs[1,1].plot(model, forcing, linestyle="None", marker='_', color='red', label='Model')
-axs[1,1].plot(data, forcing,  linestyle="None", marker='_', color='blue', label='Data')
+axs[1,1].plot(model, fMod, linestyle="None", marker='_', color='red', label='Model')
+axs[1,1].plot(data, fMod,  linestyle="None", marker='_', color='blue', label='Data')
 axs[1,1].set_title('LTE Modulation')
-axs[1,1].set_ylabel('Latent forcing level')
+axs[1,1].set_ylabel(modulation_ylabel)
 axs[1,1].set_xlabel('Level Modulation')
 axs[1,1].legend(loc='upper left')
+if zone_factor is not None:
+    axs[1,1].set_ylim(0.0, 1.0)
 
 
 # Bottom right chart: Power Spectrum (log/log)

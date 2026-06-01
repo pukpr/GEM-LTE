@@ -442,7 +442,7 @@ package body GEM.LTE.Primitives is
       One : constant Long_Float := 1.0;
       Partition : constant Integer := 7; -- 4
       Pad : Integer;
-      pragma Unreferenced (Integ);
+      -- pragma Unreferenced (Integ);
    begin
       Pad := Integer (abs Ext_Factor * 1_000.0) mod Ealign;
       for I in Template'Range loop
@@ -462,11 +462,13 @@ package body GEM.LTE.Primitives is
                   if Cos_Phase then
                      TF1 :=
                        TF1 +
-                       L.Amplitude * (Cos (2.0 * Pi * Freq * Time + L.Phase));
+                       L.Amplitude * (Cos (2.0 * Pi * Freq * Time + L.Phase)) - 
+                         Integ * Freq * (Sin (2.0 * Pi * Freq * Time + L.Phase));
                   else
                      TF1 :=
                        TF1 +
-                       L.Amplitude * (Sin (2.0 * Pi * Freq * Time + L.Phase));
+                       L.Amplitude * (Sin (2.0 * Pi * Freq * Time + L.Phase)) + 
+                         Integ * Freq * (Cos (2.0 * Pi * Freq * Time + L.Phase));
                   end if;
                end;
             end loop;
@@ -482,11 +484,13 @@ package body GEM.LTE.Primitives is
                   if Cos_Phase then
                      TF2 :=
                        TF2 +
-                       L.Amplitude * (Cos (2.0 * Pi * Freq * Time + L.Phase));
+                       L.Amplitude * (Cos (2.0 * Pi * Freq * Time + L.Phase)) - 
+                         Integ * Freq * (Sin (2.0 * Pi * Freq * Time + L.Phase));
                   else
                      TF2 :=
                        TF2 +
-                       L.Amplitude * (Sin (2.0 * Pi * Freq * Time + L.Phase));
+                       L.Amplitude * (Sin (2.0 * Pi * Freq * Time + L.Phase)) +
+                         Integ * Freq * (Cos (2.0 * Pi * Freq * Time + L.Phase));
                   end if;
                end;
             end loop;
@@ -764,6 +768,223 @@ package body GEM.LTE.Primitives is
    --
    -- The following are utility functions for simulation
    --
+
+   function Is_Valid (A, B, M : Long_Float) return Boolean is
+   begin
+      return not (A = 0.0 or else B = 0.0 or else M = 0.0);
+   end Is_Valid;
+
+   function Wrap_Pi (X : Long_Float) return Long_Float is
+      use Ada.Numerics;
+      Y : Long_Float := X;
+      Two_Pi : constant Long_Float := 2.0 * Pi;
+   begin
+      while Y > Pi loop
+         Y := Y - Two_Pi;
+      end loop;
+      while Y < -Pi loop
+         Y := Y + Two_Pi;
+      end loop;
+      return Y;
+   end Wrap_Pi;
+
+   -- Bound a net increment into a phase-like angle in [-Pi/2, Pi/2]
+   function Step_Angle (DV : Long_Float; Scale : Long_Float) return Long_Float is
+      use Ada.Numerics.Long_Elementary_Functions;
+      S : constant Long_Float := (if Scale <= 0.0 then 1.0 else Scale);
+   begin
+      return Arctan (DV / S);
+   end Step_Angle;
+
+   -- Robust local scale estimated from manifold increment magnitude
+   function Local_Scale (DM : Long_Float) return Long_Float is
+   begin
+      if abs DM < 1.0E-12 then
+         return 1.0;
+      else
+         return abs DM;
+      end if;
+   end Local_Scale;
+
+   -- Detect a turning point in the manifold:
+   -- slope changes sign between I-1 -> I and I -> I+1
+   function Is_Turning_Point
+     (Manifold : Data_Pairs;
+      I        : Integer) return Boolean
+   is
+      D1, D2 : Long_Float;
+   begin
+      if I <= Manifold'First or else I >= Manifold'Last then
+         return False;
+      end if;
+
+      if not Is_Valid
+        (Manifold (I - 1).Value, Manifold (I).Value, Manifold (I + 1).Value)
+      then
+         return False;
+      end if;
+
+      D1 := Manifold (I).Value     - Manifold (I - 1).Value;
+      D2 := Manifold (I + 1).Value - Manifold (I).Value;
+
+      if abs D1 < 1.0E-12 or else abs D2 < 1.0E-12 then
+         return False;
+      end if;
+
+      return (D1 > 0.0 and then D2 < 0.0) or else
+             (D1 < 0.0 and then D2 > 0.0);
+   end Is_Turning_Point;
+
+   -- Main metric:
+   -- high values indicate model/data follow the same manifold-defined step winding
+   function Winding_Agreement
+     (Model, Data, Manifold : in Data_Pairs) return Long_Float
+   is
+      use Ada.Numerics;
+      use Ada.Numerics.Long_Elementary_Functions;
+
+      Start : Integer := Model'First;
+      Stop  : Integer := Model'Last;
+      J     : Integer;
+
+      Prev_Turn     : Integer := Integer'First;
+      Turn_Count    : Integer := 0;
+
+      Sum_MD2       : Long_Float := 0.0; -- model vs data angle mismatch
+      Sum_MM2       : Long_Float := 0.0; -- model vs manifold angle mismatch
+      Sum_DM2       : Long_Float := 0.0; -- data vs manifold angle mismatch
+      Sum_Sign      : Long_Float := 0.0; -- sign coherence bonus
+      Sum_Weight    : Long_Float := 0.0;
+
+      Sigma_Angle   : constant Long_Float := Pi / 4.0;
+
+      function Min3 (A, B, C : Integer) return Integer is
+      begin
+         if A <= B and then A <= C then
+            return A;
+         elsif B <= A and then B <= C then
+            return B;
+         else
+            return C;
+         end if;
+      end Min3;
+
+   begin
+      -- Basic shared bounds
+      Start := Min3 (Model'First, Data'First, Manifold'First);
+      Stop  := Min3 (Model'Last,  Data'Last,  Manifold'Last);
+
+      -- Trim leading invalids
+      while Start <= Stop loop
+         exit when Is_Valid
+           (Model (Start).Value, Data (Start).Value, Manifold (Start).Value);
+         Start := Start + 1;
+      end loop;
+
+      -- Trim trailing invalids
+      while Stop >= Start loop
+         exit when Is_Valid
+           (Model (Stop).Value, Data (Stop).Value, Manifold (Stop).Value);
+         Stop := Stop - 1;
+      end loop;
+
+      if Stop - Start < 4 then
+         return 0.0;
+      end if;
+
+      J := Start;
+
+      -- Walk turning points of manifold; each interval between turns is one hidden step
+      for I in Start + 1 .. Stop - 1 loop
+         if Is_Valid (Model (I - 1).Value, Data (I - 1).Value, Manifold (I - 1).Value) and then
+               Is_Valid (Model (I).Value,     Data (I).Value,     Manifold (I).Value) and then
+               Is_Valid (Model (I + 1).Value, Data (I + 1).Value, Manifold (I + 1).Value) and then
+               Is_Turning_Point (Manifold, I)
+         then
+            if Prev_Turn = Integer'First then
+               Prev_Turn := I;
+            else
+               declare
+                  S : constant Integer := Prev_Turn;
+                  E : constant Integer := I;
+
+                  DMf : constant Long_Float := Manifold (E).Value - Manifold (S).Value;
+                  DX  : constant Long_Float := Model (E).Value    - Model (S).Value;
+                  DY  : constant Long_Float := Data (E).Value     - Data (S).Value;
+
+                  Scale : constant Long_Float := Local_Scale (DMf);
+
+                  Phi_M : constant Long_Float := Step_Angle (DMf, Scale);
+                  Phi_X : constant Long_Float := Step_Angle (DX,  Scale);
+                  Phi_Y : constant Long_Float := Step_Angle (DY,  Scale);
+
+                  D_XY  : constant Long_Float := Wrap_Pi (Phi_X - Phi_Y);
+                  D_XM  : constant Long_Float := Wrap_Pi (Phi_X - Phi_M);
+                  D_YM  : constant Long_Float := Wrap_Pi (Phi_Y - Phi_M);
+
+                  Weight : constant Long_Float := abs DMf;
+
+                  Sign_XM : constant Long_Float :=
+                    (if DX * DMf > 0.0 then 1.0 else 0.0);
+                  Sign_YM : constant Long_Float :=
+                    (if DY * DMf > 0.0 then 1.0 else 0.0);
+                  Sign_XY : constant Long_Float :=
+                    (if DX * DY > 0.0 then 1.0 else 0.0);
+
+                  Sign_Score : constant Long_Float :=
+                    (Sign_XM + Sign_YM + Sign_XY) / 3.0;
+               begin
+                  if E > S and then Weight > 0.0 then
+                     Sum_MD2    := Sum_MD2 + Weight * D_XY * D_XY;
+                     Sum_MM2    := Sum_MM2 + Weight * D_XM * D_XM;
+                     Sum_DM2    := Sum_DM2 + Weight * D_YM * D_YM;
+                     Sum_Sign   := Sum_Sign + Weight * Sign_Score;
+                     Sum_Weight := Sum_Weight + Weight;
+                     Turn_Count := Turn_Count + 1;
+                  end if;
+               end;
+
+               Prev_Turn := I;
+            end if;
+         end if;
+      end loop;
+
+      if Turn_Count < 2 or else Sum_Weight <= 0.0 then
+         return 0.0;
+      end if;
+
+      declare
+         E_XY   : constant Long_Float := Sum_MD2 / Sum_Weight;
+         E_XM   : constant Long_Float := Sum_MM2 / Sum_Weight;
+         E_YM   : constant Long_Float := Sum_DM2 / Sum_Weight;
+         Sgn    : constant Long_Float := Sum_Sign / Sum_Weight;
+
+         -- exponential penalty for angular mismatch
+         Q_XY   : constant Long_Float := Exp (-E_XY / (2.0 * Sigma_Angle * Sigma_Angle));
+         Q_XM   : constant Long_Float := Exp (-E_XM / (2.0 * Sigma_Angle * Sigma_Angle));
+         Q_YM   : constant Long_Float := Exp (-E_YM / (2.0 * Sigma_Angle * Sigma_Angle));
+
+         -- combine direct agreement + manifold coherence + sign coherence
+         Score  : Long_Float :=
+           0.45 * Q_XY +
+           0.25 * Q_XM +
+           0.20 * Q_YM +
+           0.10 * Sgn;
+      begin
+         if Score < 0.0 then
+            return 0.0;
+         elsif Score > 1.0 then
+            return 1.0;
+         else
+            return Score;
+         end if;
+      end;
+
+   exception
+      when Constraint_Error =>
+         return 0.0;
+   end Winding_Agreement;
+
 
    -- Pearson's Correlation Coefficient
    function CC (X, Y : in Data_Pairs) return Long_Float is
